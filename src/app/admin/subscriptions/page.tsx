@@ -24,6 +24,9 @@ const statusStyles: Record<string, { label: string; icon: React.ElementType; col
     cancelled: { label: "Cancelada", icon: XCircle, color: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400" },
 };
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AdminSubscriptionsPage() {
     const subscriptions = await getSubscriptionsInfo();
 

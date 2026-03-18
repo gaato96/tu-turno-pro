@@ -68,6 +68,9 @@ function KPICard({
     );
 }
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function DashboardPage() {
     let data;
     try {

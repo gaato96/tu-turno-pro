@@ -21,6 +21,9 @@ import { getTenantsInfo } from "./actions";
 import { AdminTenantsClient } from "./client-page";
 import { CreateTenantDialog } from "./create-tenant-dialog";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AdminTenantsPage() {
     const tenants = await getTenantsInfo();
 
