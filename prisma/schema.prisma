@@ -1,13 +1,291 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
-generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
-}
+// Tu Turno Pro — Complete Database Schema
+// Multi-tenant SaaS for Sports Complex Management
 
 datasource db {
   provider = "postgresql"
+}
+
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+// ============================================
+// TENANT & AUTH
+// ============================================
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  logo      String?
+  modules   String[] @default(["reservations"]) // enabled features: reservations, inventory, reports, pos
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Subscription
+  plan       String    @default("starter") // free, starter, pro, enterprise
+  planStatus String    @default("active") // active, past_due, cancelled
+  planExpiry DateTime?
+
+  users        User[]
+  complexes    Complex[]
+  products     Product[]
+  categories   Category[]
+  sales        Sale[]
+  cashSessions CashSession[]
+  suppliers    Supplier[]
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String?
+  hashedPassword String
+  role           String   @default("staff") // super_admin, admin, staff
+  phone          String?
+  tenantId       String?
+  tenant         Tenant?  @relation(fields: [tenantId], references: [id])
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  reservations      Reservation[]
+  cashSessionsOpen  CashSession[] @relation("OpenedBy")
+  cashSessionsClose CashSession[] @relation("ClosedBy")
+}
+
+// ============================================
+// COMPLEX & COURTS
+// ============================================
+
+model Complex {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  address     String?
+  phone       String?
+  openingTime String   @default("08:00")
+  closingTime String   @default("23:00")
+  sportTypes  String[] @default(["futbol"]) // futbol, padel, tenis
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  courts       Court[]
+  reservations Reservation[]
+  cashSessions CashSession[]
+  schedules    ComplexSchedule[]
+}
+
+model ComplexSchedule {
+  id          String  @id @default(cuid())
+  complexId   String
+  complex     Complex @relation(fields: [complexId], references: [id], onDelete: Cascade)
+  dayOfWeek   Int // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  openingTime String  @default("08:00")
+  closingTime String  @default("23:00")
+  isActive    Boolean @default(true)
+
+  @@unique([complexId, dayOfWeek])
+}
+
+model Court {
+  id                 String  @id @default(cuid())
+  complexId          String
+  complex            Complex @relation(fields: [complexId], references: [id], onDelete: Cascade)
+  name               String
+  sportType          String  @default("futbol") // futbol, padel, tenis
+  dayRate            Decimal @db.Decimal(10, 2)
+  nightRate          Decimal @db.Decimal(10, 2)
+  nightRateStartTime String  @default("19:00") // When night rate kicks in
+  isActive           Boolean @default(true)
+  displayOrder       Int     @default(0)
+
+  // Linked Courts: parent/child relationship
+  parentCourtId String?
+  parentCourt   Court?  @relation("LinkedCourts", fields: [parentCourtId], references: [id])
+  childCourts   Court[] @relation("LinkedCourts")
+
+  reservations Reservation[]
+}
+
+// ============================================
+// RESERVATIONS
+// ============================================
+
+model Reservation {
+  id        String  @id @default(cuid())
+  tenantId  String
+  complexId String
+  complex   Complex @relation(fields: [complexId], references: [id])
+  courtId   String
+  court     Court   @relation(fields: [courtId], references: [id])
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id])
+
+  // Customer info (for walk-ins or web bookings)
+  customerName  String
+  customerPhone String?
+  customerEmail String?
+
+  // Time
+  date      DateTime @db.Date
+  startTime DateTime @db.Timestamptz
+  endTime   DateTime @db.Timestamptz
+
+  // Status & Source
+  status String @default("pending") // pending, confirmed, in_game, finished, paid, cancelled
+  source String @default("backoffice") // web, backoffice
+
+  // Financials
+  courtAmount       Decimal @default(0) @db.Decimal(10, 2)
+  consumptionAmount Decimal @default(0) @db.Decimal(10, 2)
+  discount          Decimal @default(0) @db.Decimal(10, 2)
+  totalAmount       Decimal @default(0) @db.Decimal(10, 2)
+
+  // Payment
+  paymentMethod  String? // cash, card, transfer, mixed
+  paymentDetails Json? // For mixed payments: { cash: 5000, card: 3000 }
+
+  // Recurrence
+  isRecurring         Boolean @default(false)
+  parentReservationId String?
+
+  // Event (all courts)
+  isEvent Boolean @default(false)
+
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales Sale[]
+
+  @@index([complexId, date])
+  @@index([courtId, date])
+  @@index([status])
+}
+
+// ============================================
+// POS & INVENTORY
+// ============================================
+
+model Supplier {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  contact   String?
+  phone     String?
+  email     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+}
+
+model Category {
+  id       String  @id @default(cuid())
+  tenantId String
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name     String
+  icon     String? // lucide icon name
+  isActive Boolean @default(true)
+
+  products Product[]
+}
+
+model Product {
+  id          String    @id @default(cuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id])
+  supplierId  String?
+  supplier    Supplier? @relation(fields: [supplierId], references: [id])
+  name        String
+  description String?
+  costPrice   Decimal   @db.Decimal(10, 2)
+  salePrice   Decimal   @db.Decimal(10, 2)
+  stock       Int       @default(0)
+  minStock    Int       @default(5)
+  trackStock  Boolean   @default(true)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  saleItems SaleItem[]
+}
+
+model Sale {
+  id            String       @id @default(cuid())
+  tenantId      String
+  tenant        Tenant       @relation(fields: [tenantId], references: [id])
+  reservationId String?
+  reservation   Reservation? @relation(fields: [reservationId], references: [id])
+  cashSessionId String?
+  cashSession   CashSession? @relation(fields: [cashSessionId], references: [id])
+
+  invoiceNumber  String? @unique // V{YYYYMMDD}-{XXXX}
+  subtotal       Decimal @db.Decimal(10, 2)
+  total          Decimal @db.Decimal(10, 2)
+  status         String  @default("completed") // on_tab, completed, cancelled
+  paymentMethod  String? // cash, card, transfer, mixed
+  paymentDetails Json? // For mixed: { cash: 2000, card: 1500 }
+
+  items     SaleItem[]
+  createdAt DateTime   @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([cashSessionId])
+}
+
+model SaleItem {
+  id        String  @id @default(cuid())
+  saleId    String
+  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Decimal @db.Decimal(10, 2)
+  subtotal  Decimal @db.Decimal(10, 2)
+}
+
+// ============================================
+// CASH MANAGEMENT
+// ============================================
+
+model CashSession {
+  id        String  @id @default(cuid())
+  tenantId  String
+  tenant    Tenant  @relation(fields: [tenantId], references: [id])
+  complexId String
+  complex   Complex @relation(fields: [complexId], references: [id])
+
+  openedById String
+  openedBy   User    @relation("OpenedBy", fields: [openedById], references: [id])
+  closedById String?
+  closedBy   User?   @relation("ClosedBy", fields: [closedById], references: [id])
+
+  openingDate    DateTime  @default(now())
+  closingDate    DateTime?
+  openingBalance Decimal   @db.Decimal(10, 2)
+  closingBalance Decimal?  @db.Decimal(10, 2)
+
+  // Calculated at close
+  expectedBalance Decimal? @db.Decimal(10, 2)
+  cashTotal       Decimal? @db.Decimal(10, 2)
+  cardTotal       Decimal? @db.Decimal(10, 2)
+  transferTotal   Decimal? @db.Decimal(10, 2)
+  difference      Decimal? @db.Decimal(10, 2)
+
+  status String  @default("open") // open, closed
+  notes  String?
+
+  sales Sale[]
+
+  @@index([tenantId, status])
 }

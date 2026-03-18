@@ -1,0 +1,15 @@
+Using engine type "client" requires either "adapter" or "accelerateUrl" to be provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+
+PrismaClientConstructorValidationError: Using engine type "client" requires either "adapter" or "accelerateUrl" to be provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at Rm (D:\Gutmark\Diseño Web\SaaS\Tu Turno Pro\tu-turno-pro\node_modules\@prisma\client\runtime\client.js:66:3615)
+    at jl (D:\Gutmark\Diseño Web\SaaS\Tu Turno Pro\tu-turno-pro\node_modules\@prisma\client\runtime\client.js:66:3916)
+    at new t (D:\Gutmark\Diseño Web\SaaS\Tu Turno Pro\tu-turno-pro\node_modules\@prisma\client\runtime\client.js:70:1808)
+    at Object.<anonymous> (D:\Gutmark\Diseño Web\SaaS\Tu Turno Pro\tu-turno-pro\debug_prisma.js:6:20)
+    at Module._compile (node:internal/modules/cjs/loader:1761:14)
+    at Object..js (node:internal/modules/cjs/loader:1893:10)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
