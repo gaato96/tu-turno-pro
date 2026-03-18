@@ -80,14 +80,12 @@ export async function createSupplier(formData: FormData) {
     const tenantId = getTenantId(session);
 
     const name = formData.get("name") as string;
-    const contactName = formData.get("contactName") as string || null;
+    const contact = formData.get("contactName") as string || null;
     const phone = formData.get("phone") as string || null;
     const email = formData.get("email") as string || null;
-    const address = formData.get("address") as string || null;
-    const notes = formData.get("notes") as string || null;
 
     await prisma.supplier.create({
-        data: { tenantId, name, contactName, phone, email, address, notes }
+        data: { tenantId, name, contact, phone, email }
     });
     revalidatePath("/dashboard/products");
 }
@@ -97,15 +95,13 @@ export async function updateSupplier(id: string, formData: FormData) {
     const tenantId = getTenantId(session);
 
     const name = formData.get("name") as string;
-    const contactName = formData.get("contactName") as string || null;
+    const contact = formData.get("contactName") as string || null;
     const phone = formData.get("phone") as string || null;
     const email = formData.get("email") as string || null;
-    const address = formData.get("address") as string || null;
-    const notes = formData.get("notes") as string || null;
 
     await prisma.supplier.updateMany({
         where: { id, tenantId },
-        data: { name, contactName, phone, email, address, notes }
+        data: { name, contact, phone, email }
     });
     revalidatePath("/dashboard/products");
 }
