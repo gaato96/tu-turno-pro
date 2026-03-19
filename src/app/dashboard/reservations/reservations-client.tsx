@@ -257,9 +257,6 @@ export default function ReservationsClient({
                 }
 
                 setPaymentReservation(null);
-                if (detailReservation) {
-                    // Close detail view if open, or keep it open with new state? Given flow, keeping it open is fine, state is updated above.
-                }
             } catch (error: any) {
                 toast.error(error.message || "Error al registrar el cobro");
             }
@@ -375,7 +372,7 @@ export default function ReservationsClient({
             {/* Calendar Grid */}
             <Card className={`card-elevated border-border/50 overflow-hidden ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
                 <div className="overflow-x-auto">
-                    <div className="min-w-[800px]">
+                    <div className="min-w-[700px] md:min-w-0">
                         {/* Column Headers (Courts) */}
                         <div className="grid sticky top-0 z-10 bg-card border-b border-border" style={{ gridTemplateColumns: `80px repeat(${courts.length}, 1fr)` }}>
                             <div className="p-3 text-xs font-semibold text-muted-foreground border-r border-border flex items-center">
@@ -404,8 +401,7 @@ export default function ReservationsClient({
                         {timeSlots.map((time) => {
                             const isHour = time.endsWith(":00");
                             const hour = parseInt(time.split(":")[0]);
-                            const isNightStart = hour >= 19 || hour < 6; // Assume night if >=19 or early morning
-
+                            const isNightStart = hour >= 19 || hour < 6;
 
                             return (
                                 <div
@@ -443,22 +439,19 @@ export default function ReservationsClient({
                                                         onClick={() => setDetailReservation(reservation)}
                                                     >
                                                         <div className="flex items-start justify-between">
-                                                            <div className="min-w-0">
+                                                            <div className="min-w-0 text-white">
                                                                 <p className="text-xs font-bold truncate">{reservation.customerName}</p>
                                                                 <p className="text-[10px] opacity-75">
                                                                     {format(new Date(reservation.startTime), "HH:mm")} — {format(new Date(reservation.endTime), "HH:mm")}
                                                                 </p>
                                                             </div>
-                                                            <Badge className="text-[9px] px-1.5 py-0 rounded-full shrink-0 ml-1" variant="secondary">
+                                                            <Badge className="text-[9px] px-1.5 py-0 rounded-full shrink-0 ml-1 bg-white/20 border-white/20 text-white" variant="outline">
                                                                 {statusCfg.label}
                                                             </Badge>
                                                         </div>
-
-                                                        {/* Hover actions removed - user will click card to open detail modal */}
-
                                                         {reservation.isRecurring && (
                                                             <div className="absolute top-1 right-1">
-                                                                <RotateCcw className="w-3 h-3 opacity-50" />
+                                                                <RotateCcw className="w-3 h-3 text-white/50" />
                                                             </div>
                                                         )}
                                                     </div>
@@ -522,7 +515,6 @@ export default function ReservationsClient({
                                 </SelectTrigger>
                                 <SelectContent>
                                     {courts.map((court) => (
-                                        // @ts-ignore
                                         <SelectItem key={court.id} value={court.id}>
                                             {sportEmoji[court.sportType]} {court.name} — ${court.dayRate.toLocaleString()}/{court.nightRate.toLocaleString()}
                                         </SelectItem>
@@ -597,7 +589,7 @@ export default function ReservationsClient({
                                         const startHour = parseInt(newRes.startTime.split(":")[0]);
                                         const isNight = startHour >= parseInt(court.nightRateStartTime.split(":")[0]);
                                         const rate = isNight ? court.nightRate : court.dayRate;
-                                        return (rate * parseInt(newRes.duration) / 60).toLocaleString();
+                                        return (rate * Number(newRes.duration) / 60).toLocaleString();
                                     })()}
                                 </p>
                             </Card>
@@ -663,7 +655,7 @@ export default function ReservationsClient({
                             <div className="flex justify-between items-center px-2">
                                 <span className="text-sm text-muted-foreground">Total a pagar</span>
                                 <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                                    ${detailReservation.totalAmount.toLocaleString()}
+                                    ${Number(detailReservation.totalAmount).toLocaleString()}
                                 </span>
                             </div>
 
@@ -747,7 +739,6 @@ export default function ReservationsClient({
                 </DialogContent>
             </Dialog>
 
-            {/* Payment Modal */}
             <PaymentDialog
                 open={!!paymentReservation}
                 onOpenChange={(open) => !open && setPaymentReservation(null)}

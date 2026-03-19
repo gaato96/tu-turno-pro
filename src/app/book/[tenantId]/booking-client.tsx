@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { getAvailableSlots, createPublicReservation } from "./actions";
-import { CalendarDays, MapPin, Clock, User, CheckCircle2, ChevronRight, Trophy, ArrowLeft } from "lucide-react";
+import { CalendarDays, MapPin, Clock, User, CheckCircle2, ChevronRight, Trophy, ArrowLeft, MessageCircle } from "lucide-react";
 
 const TIME_SLOTS = Array.from({ length: 32 }, (_, i) => {
     const hour = Math.floor(i / 2) + 8;
@@ -26,7 +26,7 @@ const sportEmoji: Record<string, string> = {
     otro: "🎯"
 };
 
-export function BookingClient({ tenantId, tenantName, complexes }: { tenantId: string, tenantName: string, complexes: any[] }) {
+export function BookingClient({ tenantId, tenantName, tenantPhone, complexes }: { tenantId: string, tenantName: string, tenantPhone: string, complexes: any[] }) {
     const [step, setStep] = useState(1);
     const [isPending, startTransition] = useTransition();
 
@@ -166,9 +166,25 @@ export function BookingClient({ tenantId, tenantName, complexes }: { tenantId: s
                         </div>
                     </div>
 
-                    <Button onClick={() => window.location.reload()} className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">
-                        Hacer otra reserva
-                    </Button>
+                    <div className="flex flex-col gap-3">
+                        {tenantPhone && (
+                            <Button
+                                onClick={() => {
+                                    const dateStr = format(new Date(successData.date), "EEEE d 'de' MMMM", { locale: es });
+                                    const timeStr = format(new Date(successData.startTime), "HH:mm");
+                                    const msg = encodeURIComponent(`Hola, realicé una reserva en ${successData.complexName}.\n\n📅 *Día:* ${dateStr}\n⏰ *Hora:* ${timeStr}hs\n🏟️ *Cancha:* ${successData.courtName}\n👤 *Nombre:* ${customerName}\n\nFavor de confirmar. ¡Gracias!`);
+                                    window.open(`https://wa.me/${tenantPhone.replace(/\D/g, "")}?text=${msg}`, "_blank");
+                                }}
+                                className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-md flex items-center justify-center gap-2 h-12"
+                            >
+                                <MessageCircle className="w-5 h-5" />
+                                Notificar por WhatsApp
+                            </Button>
+                        )}
+                        <Button variant="outline" onClick={() => window.location.reload()} className="w-full rounded-xl h-12 border-border/50">
+                            Hacer otra reserva
+                        </Button>
+                    </div>
                 </Card>
             </div>
         );

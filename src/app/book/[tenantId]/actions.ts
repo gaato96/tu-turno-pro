@@ -1,11 +1,12 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 
 export async function getTenantInfo(tenantId: string) {
     const tenant = await prisma.user.findFirst({
         where: { tenantId, role: "admin" },
-        select: { name: true, tenantId: true }
+        select: { name: true, tenantId: true, phone: true }
     });
 
     if (!tenant) return null;
@@ -20,7 +21,7 @@ export async function getTenantInfo(tenantId: string) {
     });
 
     return {
-        tenant: { tenantId: tenant.tenantId, tenantName: tenant.name },
+        tenant: { tenantId: tenant.tenantId, tenantName: tenant.name, phone: tenant.phone },
         complexes
     };
 }
@@ -121,6 +122,8 @@ export async function createPublicReservation(data: any) {
             notes: "Reserva generada vía Web Público",
         }
     });
+
+    revalidatePath("/dashboard");
 
     return {
         success: true,

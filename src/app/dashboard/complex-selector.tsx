@@ -9,12 +9,13 @@ export function ComplexSelector({ complexes }: { complexes: { id: string, name: 
     const searchParams = useSearchParams();
     const currentComplexId = searchParams.get("complexId") || "all";
 
-    const handleSelect = (id: string | null) => {
-        const params = new URLSearchParams(searchParams.toString());
-        if (id && id !== "all") {
-            params.set("complexId", id);
-        } else {
+    const handleSelect = (val: string | null) => {
+        if (!val) return;
+        const params = new URLSearchParams(window.location.search);
+        if (val === "all") {
             params.delete("complexId");
+        } else {
+            params.set("complexId", val);
         }
         router.push(`/dashboard?${params.toString()}`);
     };

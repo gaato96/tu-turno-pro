@@ -93,9 +93,9 @@ export default async function DashboardPage({
     })();
 
     return (
-        <div className="space-y-8 page-pattern">
+        <div className="space-y-8 page-pattern pb-20">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 animate-fade-in">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 animate-fade-in overflow-hidden">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">
                         {greeting} 👋
@@ -109,10 +109,10 @@ export default async function DashboardPage({
                     </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
                     <ComplexSelector complexes={data?.complexes ?? []} />
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <Link href={`/dashboard/reservations?new=true${complexId ? `&complexId=${complexId}` : ""}`}>
                             <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 rounded-xl">
                                 <Plus className="w-4 h-4 mr-2" />
