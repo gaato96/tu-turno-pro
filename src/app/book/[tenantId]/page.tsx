@@ -45,7 +45,7 @@ export default async function PublicBookingPage({
             </header>
 
             <main className="flex-1 max-w-4xl mx-auto w-full p-4 lg:py-8">
-                <BookingClient tenantId={info.tenant.tenantId} tenantName={info.tenant.tenantName!} complexes={info.complexes} />
+                <BookingClient tenantId={tenantId} tenantName={info.tenant.tenantName || "Complejo"} complexes={info.complexes} />
             </main>
         </div>
     );
