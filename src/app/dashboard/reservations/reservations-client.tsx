@@ -237,6 +237,7 @@ export default function ReservationsClient({
                 if (detailReservation?.id === id) {
                     setDetailReservation({ ...detailReservation, status: newStatus });
                 }
+                router.refresh();
             } catch (error: any) {
                 toast.error(error.message || "Error al actualizar la reserva");
             }
@@ -320,7 +321,7 @@ export default function ReservationsClient({
                     {complexes && complexes.length > 1 && (
                         <Select value={complex.id} onValueChange={(v) => router.push(`/dashboard/reservations?date=${currentDate}&complexId=${v}`)}>
                             <SelectTrigger className="w-[200px] h-10 rounded-xl bg-card border-border/50">
-                                <SelectValue placeholder="Seleccionar sede" />
+                                <SelectValue placeholder="Seleccionar sede">{complex.name}</SelectValue>
                             </SelectTrigger>
                             <SelectContent>
                                 {complexes.map(c => (
@@ -542,7 +543,7 @@ export default function ReservationsClient({
                                     setNewRes({ ...newRes, startTime: v, endTime: `${endH.toString().padStart(2, "0")}:${endM.toString().padStart(2, "0")}` });
                                 }}>
                                     <SelectTrigger className="mt-1.5 rounded-xl">
-                                        <SelectValue />
+                                        <SelectValue>{newRes.startTime || "10:00"}</SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
                                         {timeSlots.filter((t) => t.endsWith(":00")).map((t) => (
@@ -555,7 +556,7 @@ export default function ReservationsClient({
                                 <Label>Duración</Label>
                                 <Select value={newRes.duration} onValueChange={(v) => v && handleDurationChange(v)}>
                                     <SelectTrigger className="mt-1.5 rounded-xl">
-                                        <SelectValue />
+                                        <SelectValue>{newRes.duration === "120" ? "2 horas" : newRes.duration === "90" ? "1.5 horas" : "1 hora"}</SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="60">1 hora</SelectItem>

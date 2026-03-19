@@ -22,10 +22,14 @@ export async function getDashboardData(complexId?: string) {
         targetComplexId = userComplexId;
     }
 
-    const today = new Date();
-    const startOfDay = new Date(today);
+    const now = new Date();
+    // UTC-3 offset calculation
+    const tzOffset = -180; // Argentina is UTC-3
+    const localTime = new Date(now.getTime() + (tzOffset + now.getTimezoneOffset()) * 60000);
+
+    const startOfDay = new Date(localTime);
     startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(today);
+    const endOfDay = new Date(localTime);
     endOfDay.setHours(23, 59, 59, 999);
 
     const [todayReservations, activeReservations, upcomingReservations, pendingReservations, finishedReservations, todaySales, topProducts, complexes] = await Promise.all([

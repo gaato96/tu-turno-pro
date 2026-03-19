@@ -214,7 +214,11 @@ export function POSTerminal({ categories, products, activeReservations }: any) {
                             <div className="space-y-2">
                                 <Label>Método de Pago</Label>
                                 <Select value={payMethod} onValueChange={(v) => setPayMethod(v ?? "cash")}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectTrigger>
+                                        <SelectValue>
+                                            {payMethod === "cash" ? "Efectivo" : payMethod === "card" ? "Tarjeta" : "Transferencia"}
+                                        </SelectValue>
+                                    </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="cash">Efectivo</SelectItem>
                                         <SelectItem value="card">Tarjeta</SelectItem>
@@ -226,7 +230,16 @@ export function POSTerminal({ categories, products, activeReservations }: any) {
                             <div className="space-y-2">
                                 <Label>Vincular a Reserva Activa</Label>
                                 <Select value={selectedReservationId} onValueChange={(v) => setSelectedReservationId(v ?? "")}>
-                                    <SelectTrigger><SelectValue placeholder="Seleccionar reserva" /></SelectTrigger>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Seleccionar reserva">
+                                            {(() => {
+                                                const r = activeReservations.find((res: any) => res.id === selectedReservationId);
+                                                if (!r) return null;
+                                                const timeString = new Date(r.startTime).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+                                                return `${r.customerName} — ${r.court?.name || "Cancha"} (${timeString})`;
+                                            })()}
+                                        </SelectValue>
+                                    </SelectTrigger>
                                     <SelectContent>
                                         {activeReservations.map((r: any) => {
                                             const timeString = new Date(r.startTime).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });

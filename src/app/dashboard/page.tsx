@@ -113,7 +113,7 @@ export default async function DashboardPage({
                     <ComplexSelector complexes={data?.complexes ?? []} />
 
                     <div className="flex items-center gap-2">
-                        <Link href="/dashboard/reservations?new=true">
+                        <Link href={`/dashboard/reservations?new=true${complexId ? `&complexId=${complexId}` : ""}`}>
                             <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 rounded-xl">
                                 <Plus className="w-4 h-4 mr-2" />
                                 Nueva Reserva

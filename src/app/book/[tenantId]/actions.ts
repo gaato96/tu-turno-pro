@@ -122,5 +122,13 @@ export async function createPublicReservation(data: any) {
         }
     });
 
-    return { success: true, reservation };
+    return {
+        success: true,
+        reservation: {
+            ...reservation,
+            date: reservation.date.toISOString(),
+            startTime: reservation.startTime.toISOString(),
+            endTime: reservation.endTime.toISOString(),
+        }
+    };
 }
