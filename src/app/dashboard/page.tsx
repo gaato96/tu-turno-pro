@@ -20,7 +20,7 @@ import {
     Wallet,
 } from "lucide-react";
 import Link from "next/link";
-import { ActiveReservationsWidget, UpcomingReservationsWidget } from "./dashboard-widgets";
+import { ActiveReservationsWidget, UpcomingReservationsWidget, FinishedReservationsWidget } from "./dashboard-widgets";
 
 function KPICard({
     title,
@@ -164,8 +164,10 @@ export default async function DashboardPage() {
                     <h2 className="text-xl font-bold">Próximos Turnos</h2>
                     <UpcomingReservationsWidget upcomingReservations={data?.upcomingReservations ?? []} />
 
+                    <FinishedReservationsWidget finishedReservations={data?.finishedReservations ?? []} />
+
                     <Link href="/dashboard/reservations">
-                        <Button variant="ghost" className="w-full rounded-xl text-sm text-muted-foreground">
+                        <Button variant="ghost" className="w-full rounded-xl text-sm text-muted-foreground mt-4">
                             Ver agenda completa
                             <ArrowRight className="w-3.5 h-3.5 ml-1" />
                         </Button>

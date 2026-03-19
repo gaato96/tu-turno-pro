@@ -39,6 +39,7 @@ import {
     X,
     MessageCircle,
     RotateCcw,
+    ShoppingCart,
 } from "lucide-react";
 import { format, addDays, subDays, isToday } from "date-fns";
 import { es } from "date-fns/locale";
@@ -416,39 +417,7 @@ export default function ReservationsClient({
                                                             </Badge>
                                                         </div>
 
-                                                        {/* Hover actions */}
-                                                        <div className="absolute inset-x-0 bottom-0 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/20 to-transparent rounded-b-xl">
-                                                            <div className="flex gap-1">
-                                                                {reservation.status === "pending" && (
-                                                                    <Button size="sm" className="h-6 text-[10px] px-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white flex-1" onClick={(e) => { e.stopPropagation(); updateStatus(reservation.id, "confirmed"); }}>
-                                                                        <Check className="w-3 h-3 mr-0.5" /> Confirmar
-                                                                    </Button>
-                                                                )}
-                                                                {reservation.status === "confirmed" && (
-                                                                    <Button size="sm" className="h-6 text-[10px] px-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white flex-1" onClick={(e) => { e.stopPropagation(); updateStatus(reservation.id, "in_game"); }}>
-                                                                        <Play className="w-3 h-3 mr-0.5" /> Check-in
-                                                                    </Button>
-                                                                )}
-                                                                {reservation.status === "in_game" && (
-                                                                    <Button size="sm" className="h-6 text-[10px] px-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white flex-1" onClick={(e) => { e.stopPropagation(); updateStatus(reservation.id, "finished"); }}>
-                                                                        <Square className="w-3 h-3 mr-0.5" /> Terminar
-                                                                    </Button>
-                                                                )}
-                                                                {reservation.status === "finished" && (
-                                                                    <Button size="sm" className="h-6 text-[10px] px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex-1" onClick={(e) => { e.stopPropagation(); setPaymentReservation(reservation); }}>
-                                                                        <DollarSign className="w-3 h-3 mr-0.5" /> Cobrar
-                                                                    </Button>
-                                                                )}
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="ghost"
-                                                                    className="h-6 w-6 p-0 rounded-lg bg-white/20 hover:bg-white/30"
-                                                                    onClick={(e) => { e.stopPropagation(); handleWhatsApp(reservation.customerPhone, reservation.customerName); }}
-                                                                >
-                                                                    <MessageCircle className="w-3 h-3" />
-                                                                </Button>
-                                                            </div>
-                                                        </div>
+                                                        {/* Hover actions removed - user will click card to open detail modal */}
 
                                                         {reservation.isRecurring && (
                                                             <div className="absolute top-1 right-1">
@@ -514,7 +483,8 @@ export default function ReservationsClient({
                                 </SelectTrigger>
                                 <SelectContent>
                                     {courts.map((court) => (
-                                        <SelectItem key={court.id} value={court.id}>
+                                        // @ts-ignore
+                                        <SelectItem key={court.id} value={court.id} textValue={court.name}>
                                             {sportEmoji[court.sportType]} {court.name} — ${court.dayRate.toLocaleString()}/{court.nightRate.toLocaleString()}
                                         </SelectItem>
                                     ))}
@@ -696,6 +666,18 @@ export default function ReservationsClient({
                                     disabled={isPending}
                                 >
                                     <DollarSign className="w-5 h-5 mr-2" /> Cobrar Turno
+                                </Button>
+                            )}
+
+                            {detailReservation.status !== "cancelled" && (
+                                <Button
+                                    variant="outline"
+                                    className="w-full mt-2 rounded-xl h-12 border-blue-500/30 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                    onClick={() => {
+                                        router.push(`/dashboard/pos?reservationId=${detailReservation.id}`);
+                                    }}
+                                >
+                                    <ShoppingCart className="w-4 h-4 mr-2" /> Agregar Consumo
                                 </Button>
                             )}
                         </div>

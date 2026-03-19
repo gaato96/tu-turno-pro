@@ -137,18 +137,80 @@ export function UpcomingReservationsWidget({ upcomingReservations }: { upcomingR
                         </div>
                         {/* Hover Action */}
                         <div className="absolute inset-y-0 right-0 p-1.5 bg-gradient-to-l from-amber-50 dark:from-background to-transparent via-amber-50 dark:via-background flex items-center opacity-0 group-hover:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0">
-                            <Button size="sm" className="h-full rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" disabled={isPending} onClick={() => handleStatus(r.id, "in_game")}>
-                                <Play className="w-3.5 h-3.5 mr-1.5" />
-                                Check-in
-                            </Button>
+                            {r.status === "pending" ? (
+                                <Button size="sm" className="h-full rounded-lg bg-blue-500 hover:bg-blue-600 text-white" disabled={isPending} onClick={() => handleStatus(r.id, "confirmed")}>
+                                    Confirmar
+                                </Button>
+                            ) : (
+                                <Button size="sm" className="h-full rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" disabled={isPending} onClick={() => handleStatus(r.id, "in_game")}>
+                                    <Play className="w-3.5 h-3.5 mr-1.5" />
+                                    Check-in
+                                </Button>
+                            )}
                         </div>
                     </div>
                 ))
             ) : (
                 <div className="p-6 text-center text-sm text-muted-foreground border rounded-xl border-dashed">
                     <AlertCircle className="w-6 h-6 mx-auto mb-2 opacity-30" />
-                    No hay turnos en la próxima hora
+                    No hay turnos programados para hoy
                 </div>
+            )}
+        </div>
+    );
+}
+
+export function FinishedReservationsWidget({ finishedReservations }: { finishedReservations: any[] }) {
+    const [isPending, startTransition] = useTransition();
+    const [paymentReservation, setPaymentReservation] = useState<any | null>(null);
+    const router = useRouter();
+
+    const handlePayment = (method: string, details?: any) => {
+        if (!paymentReservation) return;
+        startTransition(async () => {
+            try {
+                await payReservation(paymentReservation.id, method, details);
+                toast.success("Cobro registrado exitosamente");
+                setPaymentReservation(null);
+                router.refresh();
+            } catch (e: any) {
+                toast.error(e.message);
+            }
+        });
+    };
+
+    if (!finishedReservations || finishedReservations.length === 0) return null;
+
+    return (
+        <div className="space-y-3 mt-6 animate-slide-up">
+            <h2 className="text-xl font-bold text-orange-600 dark:text-orange-400">Pendientes a Cobrar</h2>
+            <div className="stagger-children">
+                {finishedReservations.map((r: any) => (
+                    <Card key={r.id} className="p-3.5 mt-2 rounded-xl border border-orange-500/30 bg-orange-50 dark:bg-orange-500/5 flex items-center justify-between shadow-sm">
+                        <div className="min-w-0">
+                            <p className="text-sm font-semibold truncate">{r.customerName}</p>
+                            <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                                <span>{r.courtName}</span>
+                                <span>•</span>
+                                <span className="font-bold text-foreground">${r.totalAmount.toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <Button size="sm" className="shrink-0 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white" disabled={isPending} onClick={() => setPaymentReservation(r)}>
+                            <DollarSign className="w-3.5 h-3.5 mr-1" />
+                            Cobrar
+                        </Button>
+                    </Card>
+                ))}
+            </div>
+
+            {paymentReservation && (
+                <PaymentDialog
+                    open={!!paymentReservation}
+                    onOpenChange={(open) => !open && setPaymentReservation(null)}
+                    totalAmount={paymentReservation.totalAmount}
+                    onConfirm={handlePayment}
+                    isPending={isPending}
+                />
             )}
         </div>
     );

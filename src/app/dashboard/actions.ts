@@ -19,25 +19,29 @@ export async function getDashboardData() {
     const endOfDay = new Date(today);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const [todayReservations, todaySales, activeReservations, upcomingReservations, topProducts] = await Promise.all([
-        prisma.reservation.count({ where: { tenantId, date: { gte: startOfDay, lte: endOfDay }, status: { not: "cancelled" } } }),
+    const [todayReservations, todaySales, activeReservations, upcomingReservations, finishedReservations, topProducts] = await Promise.all([
+        prisma.reservation.count({ where: { tenantId, date: { gte: startOfDay, lte: endOfDay }, status: { notIn: ["cancelled"] } } }),
         prisma.sale.findMany({
             where: { tenantId, createdAt: { gte: startOfDay, lte: endOfDay }, status: { not: "cancelled" } }
         }),
         prisma.reservation.findMany({
             where: { tenantId, date: { gte: startOfDay, lte: endOfDay }, status: "in_game" },
-            include: { court: { select: { name: true } } }
+            include: { court: { select: { name: true }, } },
+            orderBy: { startTime: "asc" }
         }),
         prisma.reservation.findMany({
             where: {
                 tenantId,
                 date: { gte: startOfDay, lte: endOfDay },
-                status: "confirmed",
-                startTime: { gte: today, lte: new Date(today.getTime() + 60 * 60 * 1000) }
+                status: { in: ["pending", "confirmed"] },
             },
             include: { court: { select: { name: true } } },
-            orderBy: { startTime: "asc" },
-            take: 5
+            orderBy: { startTime: "asc" }
+        }),
+        prisma.reservation.findMany({
+            where: { tenantId, date: { gte: startOfDay, lte: endOfDay }, status: "finished" },
+            include: { court: { select: { name: true } } },
+            orderBy: { startTime: "asc" }
         }),
         prisma.saleItem.groupBy({
             by: ["productId"],
@@ -79,8 +83,17 @@ export async function getDashboardData() {
         upcomingReservations: upcomingReservations.map(r => ({
             id: r.id,
             customerName: r.customerName,
+            status: r.status,
             courtName: r.court?.name,
             startTime: r.startTime.toISOString(),
+        })),
+        finishedReservations: finishedReservations.map(r => ({
+            id: r.id,
+            customerName: r.customerName,
+            courtName: r.court?.name,
+            startTime: r.startTime.toISOString(),
+            endTime: r.endTime.toISOString(),
+            totalAmount: Number(r.totalAmount),
         })),
         topProducts: topProducts.map(tp => ({
             name: nameMap[tp.productId] || "Producto",
