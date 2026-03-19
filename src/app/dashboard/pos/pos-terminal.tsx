@@ -15,23 +15,25 @@ import {
 import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, DollarSign, Send } from "lucide-react";
 import { processSale } from "./actions";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 
 type CartItem = { productId: string; name: string; unitPrice: number; quantity: number };
 
 export function POSTerminal({ categories, products, activeReservations }: any) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
     const [search, setSearch] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [cart, setCart] = useState<CartItem[]>([]);
 
     // Checkout
+    const defaultRes = searchParams.get("reservationId") || "";
     const [checkoutOpen, setCheckoutOpen] = useState(false);
-    const [checkoutType, setCheckoutType] = useState<"direct" | "tab">("direct");
+    const [checkoutType, setCheckoutType] = useState<"direct" | "tab">(defaultRes ? "tab" : "direct");
     const [payMethod, setPayMethod] = useState("cash");
-    const [selectedReservationId, setSelectedReservationId] = useState("");
+    const [selectedReservationId, setSelectedReservationId] = useState(defaultRes);
 
     const filteredProducts = products.filter((p: any) => {
         const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());

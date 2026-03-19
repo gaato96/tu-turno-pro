@@ -213,16 +213,30 @@ export async function payReservation(reservationId: string, paymentMethod: strin
     });
     if (!reservation) throw new Error("Reservation not found");
 
-    await prisma.reservation.update({
-        where: { id: reservationId },
-        data: {
-            status: "paid",
-            paymentMethod,
-            paymentDetails: paymentDetails || undefined,
-        }
+    await prisma.$transaction(async (tx) => {
+        // 1. Mark reservation as paid
+        await tx.reservation.update({
+            where: { id: reservationId },
+            data: {
+                status: "paid",
+                paymentMethod,
+                paymentDetails: paymentDetails ? JSON.parse(JSON.stringify(paymentDetails)) : undefined,
+            }
+        });
+
+        // 2. Clear any on_tab sales linked to this reservation
+        await tx.sale.updateMany({
+            where: { reservationId, status: "on_tab" },
+            data: {
+                status: "completed",
+                paymentMethod,
+                paymentDetails: paymentDetails ? JSON.parse(JSON.stringify(paymentDetails)) : undefined,
+            }
+        });
     });
 
     revalidatePath("/dashboard/reservations");
+    revalidatePath("/dashboard");
     return { success: true };
 }
 
