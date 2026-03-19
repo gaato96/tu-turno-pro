@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { ActiveReservationsWidget, UpcomingReservationsWidget, FinishedReservationsWidget } from "./dashboard-widgets";
+import { ComplexSelector } from "./complex-selector";
 
 function KPICard({
     title,
@@ -71,10 +72,15 @@ function KPICard({
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+    searchParams
+}: {
+    searchParams: { complexId?: string }
+}) {
+    const { complexId } = searchParams;
     let data;
     try {
-        data = await getDashboardData();
+        data = await getDashboardData(complexId);
     } catch {
         data = null;
     }
@@ -89,7 +95,7 @@ export default async function DashboardPage() {
     return (
         <div className="space-y-8 page-pattern">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 animate-fade-in">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">
                         {greeting} 👋
@@ -102,25 +108,24 @@ export default async function DashboardPage() {
                         })}
                     </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                    <Link href="/dashboard/reservations?new=true">
-                        <Button className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-lg shadow-emerald-500/20 rounded-xl">
-                            <Plus className="w-4 h-4 mr-2" />
-                            Nueva Reserva
-                        </Button>
-                    </Link>
-                    <Link href="/dashboard/pos">
-                        <Button variant="outline" className="rounded-xl">
-                            <ShoppingCart className="w-4 h-4 mr-2" />
-                            Nueva Venta
-                        </Button>
-                    </Link>
-                    <Link href="/dashboard/cash">
-                        <Button variant="outline" className="rounded-xl bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/20">
-                            <Wallet className="w-4 h-4 mr-2" />
-                            Caja
-                        </Button>
-                    </Link>
+
+                <div className="flex flex-wrap items-center gap-3">
+                    <ComplexSelector complexes={data?.complexes ?? []} />
+
+                    <div className="flex items-center gap-2">
+                        <Link href="/dashboard/reservations?new=true">
+                            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 rounded-xl">
+                                <Plus className="w-4 h-4 mr-2" />
+                                Nueva Reserva
+                            </Button>
+                        </Link>
+                        <Link href="/dashboard/cash">
+                            <Button variant="outline" className="rounded-xl bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400">
+                                <Wallet className="w-4 h-4 mr-2" />
+                                Caja
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
             </div>
 
@@ -157,7 +162,9 @@ export default async function DashboardPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <ActiveReservationsWidget activeReservations={data?.activeReservations ?? []} />
+                <div className="lg:col-span-2">
+                    <ActiveReservationsWidget activeReservations={data?.activeReservations ?? []} />
+                </div>
 
                 {/* Notifications / Upcoming */}
                 <div className="space-y-4 animate-slide-up">
@@ -166,7 +173,7 @@ export default async function DashboardPage() {
 
                     <FinishedReservationsWidget finishedReservations={data?.finishedReservations ?? []} />
 
-                    <Link href="/dashboard/reservations">
+                    <Link href="/dashboard/reservations" className="block">
                         <Button variant="ghost" className="w-full rounded-xl text-sm text-muted-foreground mt-4">
                             Ver agenda completa
                             <ArrowRight className="w-3.5 h-3.5 ml-1" />

@@ -9,7 +9,7 @@ function getTenantId(session: any): string {
     return tid;
 }
 
-export async function getDashboardData() {
+export async function getDashboardData(complexId?: string) {
     const session = await auth();
     const tenantId = getTenantId(session);
 
@@ -19,12 +19,12 @@ export async function getDashboardData() {
     const endOfDay = new Date(today);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const [todayReservations, activeReservations, upcomingReservations, finishedReservations, todaySales, topProducts] = await Promise.all([
+    const [todayReservations, activeReservations, upcomingReservations, finishedReservations, todaySales, topProducts, complexes] = await Promise.all([
         prisma.reservation.count({
-            where: { tenantId, date: { gte: startOfDay, lte: endOfDay }, status: { notIn: ["cancelled"] } }
+            where: { tenantId, complexId, date: { gte: startOfDay, lte: endOfDay }, status: { notIn: ["cancelled"] } }
         }),
         prisma.reservation.findMany({
-            where: { tenantId, status: "in_game" },
+            where: { tenantId, complexId, status: "in_game" },
             include: {
                 court: { select: { name: true } },
                 sales: {
@@ -35,7 +35,7 @@ export async function getDashboardData() {
             orderBy: { startTime: "asc" }
         }),
         prisma.reservation.findMany({
-            where: { tenantId, status: { in: ["confirmed", "pending"] }, date: { gte: startOfDay, lte: endOfDay } },
+            where: { tenantId, complexId, status: { in: ["confirmed", "pending"] }, date: { gte: startOfDay, lte: endOfDay } },
             include: {
                 court: { select: { name: true } },
                 sales: {
@@ -47,7 +47,7 @@ export async function getDashboardData() {
             take: 10
         }),
         prisma.reservation.findMany({
-            where: { tenantId, status: "finished", date: { gte: startOfDay, lte: endOfDay } },
+            where: { tenantId, complexId, status: "finished" },
             include: {
                 court: { select: { name: true } },
                 sales: {
@@ -59,16 +59,40 @@ export async function getDashboardData() {
             take: 10
         }),
         prisma.sale.findMany({
-            where: { tenantId, createdAt: { gte: startOfDay, lte: endOfDay }, status: { not: "cancelled" } }
+            where: {
+                tenantId,
+                createdAt: { gte: startOfDay, lte: endOfDay },
+                status: { not: "cancelled" },
+                ...(complexId && {
+                    OR: [
+                        { reservation: { complexId } },
+                        { cashSession: { complexId } }
+                    ]
+                })
+            }
         }),
         prisma.saleItem.groupBy({
             by: ["productId"],
             where: {
-                sale: { tenantId, createdAt: { gte: startOfDay, lte: endOfDay }, status: { not: "cancelled" } }
+                sale: {
+                    tenantId,
+                    createdAt: { gte: startOfDay, lte: endOfDay },
+                    status: { not: "cancelled" },
+                    ...(complexId && {
+                        OR: [
+                            { reservation: { complexId } },
+                            { cashSession: { complexId } }
+                        ]
+                    })
+                }
             },
             _sum: { quantity: true, subtotal: true },
             orderBy: { _sum: { quantity: "desc" } },
             take: 5
+        }),
+        prisma.complex.findMany({
+            where: { tenantId },
+            select: { id: true, name: true }
         })
     ]);
 
@@ -116,6 +140,7 @@ export async function getDashboardData() {
         activeReservations: activeReservations.map(mapReservation),
         upcomingReservations: upcomingReservations.map(mapReservation),
         finishedReservations: finishedReservations.map(mapReservation),
+        complexes,
         topProducts: topProducts.map(tp => ({
             name: nameMap[tp.productId] || "Producto",
             quantity: tp._sum.quantity || 0,

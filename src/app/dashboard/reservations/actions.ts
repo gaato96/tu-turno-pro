@@ -191,6 +191,7 @@ export async function createReservation(formData: FormData) {
     });
 
     revalidatePath("/dashboard/reservations");
+    revalidatePath("/dashboard");
     return { success: true };
 }
 
@@ -211,6 +212,7 @@ export async function changeReservationStatus(reservationId: string, newStatus: 
     });
 
     revalidatePath("/dashboard/reservations");
+    revalidatePath("/dashboard");
     return { success: true };
 }
 
@@ -302,5 +304,6 @@ export async function cancelReservation(reservationId: string) {
     });
 
     revalidatePath("/dashboard/reservations");
+    revalidatePath("/dashboard");
     return { success: true };
 }

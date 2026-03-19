@@ -64,14 +64,18 @@ export async function createPublicReservation(data: any) {
     const endM = endMinutes % 60;
     const endTime = `${endH.toString().padStart(2, "0")}:${endM.toString().padStart(2, "0")}`;
 
+    const parsedDate = new Date(data.date + "T00:00:00");
+    const parsedStartTime = new Date(data.date + "T" + data.startTime + ":00");
+    const parsedEndTime = new Date(data.date + "T" + endTime + ":00");
+
     const existing = await prisma.reservation.findFirst({
         where: {
             tenantId: data.tenantId,
             courtId: data.courtId,
-            date: data.date,
+            date: parsedDate,
             status: { in: ["confirmed", "in_game"] },
             OR: [
-                { startTime: { lt: endTime }, endTime: { gt: data.startTime } }
+                { startTime: { lt: parsedEndTime }, endTime: { gt: parsedStartTime } }
             ]
         }
     });
@@ -99,10 +103,6 @@ export async function createPublicReservation(data: any) {
         courtAmount += ratePer30Min;
         iter.setMinutes(iter.getMinutes() + 30);
     }
-
-    const parsedDate = new Date(data.date + "T00:00:00");
-    const parsedStartTime = new Date(data.date + "T" + data.startTime + ":00");
-    const parsedEndTime = new Date(data.date + "T" + endTime + ":00");
 
     const reservation = await prisma.reservation.create({
         data: {
