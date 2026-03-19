@@ -155,7 +155,7 @@ export function DashboardReservationModal({ reservation, onClose }: { reservatio
                             </Button>
                         )}
 
-                        {(reservation.status === "in_game" || reservation.status === "confirmed") && (
+                        {(reservation.status === "in_game" || reservation.status === "confirmed" || reservation.status === "finished") && (
                             <Button variant="outline" className="col-span-2 w-full rounded-xl h-12 border-emerald-500/30 font-medium" onClick={() => router.push(`/dashboard/pos?reservationId=${reservation.id}`)}>
                                 <ShoppingCart className="w-4 h-4 mr-2" /> Agregar Consumo al Turno
                             </Button>
@@ -338,3 +338,49 @@ export function FinishedReservationsWidget({ finishedReservations }: { finishedR
         </div>
     );
 }
+
+export function PendingReservationsAlert({ pendingReservations }: { pendingReservations: any[] }) {
+    const [selectedReservation, setSelectedReservation] = useState<any | null>(null);
+
+    if (!pendingReservations || pendingReservations.length === 0) return null;
+
+    return (
+        <div className="space-y-3 animate-slide-up mb-8 p-4 rounded-2xl bg-amber-500/5 border-2 border-amber-500/20">
+            <div className="flex items-center gap-2 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center animate-pulse shadow-lg shadow-amber-500/20">
+                    <AlertCircle className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                    <h2 className="text-xl font-extrabold tracking-tight">
+                        Confirmar Reservas Web
+                    </h2>
+                    <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">Hay {pendingReservations.length} pedidos nuevos pendientes de aprobación.</p>
+                </div>
+            </div>
+            <div className="stagger-children grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {pendingReservations.map((r: any) => (
+                    <Card key={r.id} onClick={() => setSelectedReservation(r)} className="p-4 rounded-xl border-2 border-amber-200 dark:border-amber-500/20 bg-white dark:bg-slate-900 hover:border-amber-500 cursor-pointer shadow-sm transition-all transform hover:scale-[1.02]">
+                        <div className="flex justify-between items-start mb-2">
+                            <div className="min-w-0 flex-1">
+                                <p className="text-sm font-bold truncate leading-tight">{r.customerName}</p>
+                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{r.courtName}</p>
+                            </div>
+                            <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 border-none px-2 py-0 h-5 text-[10px] font-bold">
+                                NUEVA
+                            </Badge>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-1 font-bold text-amber-700 dark:text-amber-400">
+                                <Clock className="w-3 h-3" />
+                                {new Date(r.startTime).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                            </div>
+                            <span className="text-muted-foreground font-medium">Sede: {r.courtName?.split(" - ")[0] || "..."}</span>
+                        </div>
+                    </Card>
+                ))}
+            </div>
+            <DashboardReservationModal reservation={selectedReservation} onClose={() => setSelectedReservation(null)} />
+        </div>
+    );
+}
+

@@ -232,7 +232,7 @@ export function POSTerminal({ categories, products, activeReservations }: any) {
                                             const timeString = new Date(r.startTime).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
                                             const label = `${r.customerName} — ${r.court?.name || "Cancha"} (${timeString})`;
                                             return (
-                                                <SelectItem key={r.id} value={r.id}>
+                                                <SelectItem key={r.id} value={r.id} textValue={label}>
                                                     {label}
                                                 </SelectItem>
                                             );

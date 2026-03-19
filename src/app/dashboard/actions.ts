@@ -13,18 +13,27 @@ export async function getDashboardData(complexId?: string) {
     const session = await auth();
     const tenantId = getTenantId(session);
 
+    const userRole = (session?.user as any)?.role;
+    const userComplexId = (session?.user as any)?.complexId;
+
+    // Enforce complexId for staff
+    let targetComplexId = complexId;
+    if (userRole === "staff" && userComplexId) {
+        targetComplexId = userComplexId;
+    }
+
     const today = new Date();
     const startOfDay = new Date(today);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(today);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const [todayReservations, activeReservations, upcomingReservations, finishedReservations, todaySales, topProducts, complexes] = await Promise.all([
+    const [todayReservations, activeReservations, upcomingReservations, pendingReservations, finishedReservations, todaySales, topProducts, complexes] = await Promise.all([
         prisma.reservation.count({
-            where: { tenantId, complexId, date: { gte: startOfDay, lte: endOfDay }, status: { notIn: ["cancelled"] } }
+            where: { tenantId, complexId: targetComplexId, date: { gte: startOfDay, lte: endOfDay }, status: { notIn: ["cancelled"] } }
         }),
         prisma.reservation.findMany({
-            where: { tenantId, complexId, status: "in_game" },
+            where: { tenantId, complexId: targetComplexId, status: "in_game" },
             include: {
                 court: { select: { name: true } },
                 sales: {
@@ -35,7 +44,7 @@ export async function getDashboardData(complexId?: string) {
             orderBy: { startTime: "asc" }
         }),
         prisma.reservation.findMany({
-            where: { tenantId, complexId, status: { in: ["confirmed", "pending"] }, date: { gte: startOfDay, lte: endOfDay } },
+            where: { tenantId, complexId: targetComplexId, status: "confirmed", date: { gte: startOfDay, lte: endOfDay } },
             include: {
                 court: { select: { name: true } },
                 sales: {
@@ -47,7 +56,14 @@ export async function getDashboardData(complexId?: string) {
             take: 10
         }),
         prisma.reservation.findMany({
-            where: { tenantId, complexId, status: "finished" },
+            where: { tenantId, complexId: targetComplexId, status: "pending" },
+            include: {
+                court: { select: { name: true, complex: { select: { name: true } } } }
+            },
+            orderBy: { createdAt: "desc" }
+        }),
+        prisma.reservation.findMany({
+            where: { tenantId, complexId: targetComplexId, status: "finished" },
             include: {
                 court: { select: { name: true } },
                 sales: {
@@ -63,10 +79,10 @@ export async function getDashboardData(complexId?: string) {
                 tenantId,
                 createdAt: { gte: startOfDay, lte: endOfDay },
                 status: { not: "cancelled" },
-                ...(complexId && {
+                ...(targetComplexId && {
                     OR: [
-                        { reservation: { complexId } },
-                        { cashSession: { complexId } }
+                        { reservation: { complexId: targetComplexId } },
+                        { cashSession: { complexId: targetComplexId } }
                     ]
                 })
             }
@@ -78,10 +94,10 @@ export async function getDashboardData(complexId?: string) {
                     tenantId,
                     createdAt: { gte: startOfDay, lte: endOfDay },
                     status: { not: "cancelled" },
-                    ...(complexId && {
+                    ...(targetComplexId && {
                         OR: [
-                            { reservation: { complexId } },
-                            { cashSession: { complexId } }
+                            { reservation: { complexId: targetComplexId } },
+                            { cashSession: { complexId: targetComplexId } }
                         ]
                     })
                 }
@@ -91,7 +107,7 @@ export async function getDashboardData(complexId?: string) {
             take: 5
         }),
         prisma.complex.findMany({
-            where: { tenantId },
+            where: { tenantId, id: userRole === "staff" ? userComplexId : undefined },
             select: { id: true, name: true }
         })
     ]);
@@ -105,8 +121,22 @@ export async function getDashboardData(complexId?: string) {
     });
     const nameMap = Object.fromEntries(productNames.map(p => [p.id, p.name]));
 
-    const complex = await prisma.complex.findFirst({ where: { tenantId }, include: { courts: { where: { isActive: true } } } });
-    const totalSlots = complex ? complex.courts.length * (parseInt(complex.closingTime?.split(":")[0] || "23") - parseInt(complex.openingTime?.split(":")[0] || "8")) : 1;
+    // 108: Find specific complex for capacity calculation
+    const selectedComplex = await prisma.complex.findFirst({
+        where: { tenantId, id: targetComplexId || undefined },
+        include: { courts: { where: { isActive: true } } }
+    });
+
+    // totalSlots is sum of all courts' hours if no complex selected, or just the one selected
+    let totalSlots = 1;
+    if (selectedComplex) {
+        totalSlots = selectedComplex.courts.length * (parseInt(selectedComplex.closingTime?.split(":")[0] || "23") - parseInt(selectedComplex.openingTime?.split(":")[0] || "8"));
+    } else {
+        // Broad estimation across all complexes
+        const allComplexes = await prisma.complex.findMany({ where: { tenantId }, include: { courts: { where: { isActive: true } } } });
+        totalSlots = allComplexes.reduce((sum, c) => sum + (c.courts.length * (parseInt(c.closingTime?.split(":")[0] || "23") - parseInt(c.openingTime?.split(":")[0] || "8"))), 0);
+    }
+
     const occupancy = totalSlots > 0 ? Math.round((todayReservations / totalSlots) * 100) : 0;
 
     const mapReservation = (r: any) => ({
@@ -140,11 +170,13 @@ export async function getDashboardData(complexId?: string) {
         activeReservations: activeReservations.map(mapReservation),
         upcomingReservations: upcomingReservations.map(mapReservation),
         finishedReservations: finishedReservations.map(mapReservation),
-        complexes,
+        pendingReservations: pendingReservations.map(mapReservation),
+        todaySales,
         topProducts: topProducts.map(tp => ({
-            name: nameMap[tp.productId] || "Producto",
-            quantity: tp._sum.quantity || 0,
-            revenue: Number(tp._sum.subtotal || 0),
+            name: nameMap[tp.productId] || "Producto desconocido",
+            quantity: tp._sum.quantity,
+            revenue: tp._sum.subtotal
         })),
+        complexes,
     };
 }

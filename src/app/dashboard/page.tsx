@@ -20,7 +20,7 @@ import {
     Wallet,
 } from "lucide-react";
 import Link from "next/link";
-import { ActiveReservationsWidget, UpcomingReservationsWidget, FinishedReservationsWidget } from "./dashboard-widgets";
+import { ActiveReservationsWidget, UpcomingReservationsWidget, FinishedReservationsWidget, PendingReservationsAlert } from "./dashboard-widgets";
 import { ComplexSelector } from "./complex-selector";
 
 function KPICard({
@@ -119,6 +119,12 @@ export default async function DashboardPage({
                                 Nueva Reserva
                             </Button>
                         </Link>
+                        <Link href="/dashboard/pos">
+                            <Button variant="outline" className="rounded-xl">
+                                <ShoppingCart className="w-4 h-4 mr-2" />
+                                Nueva Venta
+                            </Button>
+                        </Link>
                         <Link href="/dashboard/cash">
                             <Button variant="outline" className="rounded-xl bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400">
                                 <Wallet className="w-4 h-4 mr-2" />
@@ -128,6 +134,9 @@ export default async function DashboardPage({
                     </div>
                 </div>
             </div>
+
+            {/* Pending Alerts */}
+            <PendingReservationsAlert pendingReservations={data?.pendingReservations ?? []} />
 
             {/* KPI Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">

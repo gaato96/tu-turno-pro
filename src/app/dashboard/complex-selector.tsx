@@ -27,9 +27,8 @@ export function ComplexSelector({ complexes }: { complexes: { id: string, name: 
                     <SelectValue placeholder="Todos los complejos" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-border/50">
-                    <SelectItem value="all">Ver Todos los Complejos</SelectItem>
                     {complexes.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
+                        <SelectItem key={c.id} value={c.id} textValue={c.name}>
                             {c.name}
                         </SelectItem>
                     ))}

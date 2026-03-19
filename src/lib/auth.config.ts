@@ -15,6 +15,7 @@ export const authConfig = {
                 token.tenantName = (user as any).tenantName;
                 token.tenantSlug = (user as any).tenantSlug;
                 token.tenantModules = (user as any).tenantModules;
+                token.complexId = (user as any).complexId;
             }
             return token;
         },
@@ -26,6 +27,7 @@ export const authConfig = {
                 (session.user as any).tenantName = token.tenantName;
                 (session.user as any).tenantSlug = token.tenantSlug;
                 (session.user as any).tenantModules = token.tenantModules;
+                (session.user as any).complexId = token.complexId;
             }
             return session;
         },

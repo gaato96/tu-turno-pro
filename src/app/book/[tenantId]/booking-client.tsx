@@ -147,7 +147,7 @@ export function BookingClient({ tenantId, tenantName, complexes }: { tenantId: s
                             <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500"><CalendarDays className="w-5 h-5" /></div>
                             <div>
                                 <p className="text-xs text-muted-foreground">Día y Hora</p>
-                                <p className="font-semibold">{format(parseISO(successData.date), "EEEE d 'de' MMMM", { locale: es })} — {successData.startTime} hs</p>
+                                <p className="font-semibold">{format(new Date(successData.date), "EEEE d 'de' MMMM", { locale: es })} — {successData.startTime} hs</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
