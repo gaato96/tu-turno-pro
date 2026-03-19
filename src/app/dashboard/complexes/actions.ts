@@ -124,7 +124,54 @@ export async function deleteComplex(complexId: string) {
     const session = await auth();
     getTenantId(session);
 
-    await prisma.complex.delete({ where: { id: complexId } });
+    await prisma.$transaction(async (tx) => {
+        // 1. Unassign staff
+        await tx.user.updateMany({
+            where: { complexId },
+            data: { complexId: null },
+        });
+
+        // 2. Unlink child courts to prevent self-referencing delete errors
+        await tx.court.updateMany({
+            where: { complexId },
+            data: { parentCourtId: null },
+        });
+
+        // 3. Delete Sales related to Reservations in this complex
+        const reservations = await tx.reservation.findMany({ where: { complexId }, select: { id: true } });
+        const reservationIds = reservations.map(r => r.id);
+        if (reservationIds.length > 0) {
+            const sales = await tx.sale.findMany({ where: { reservationId: { in: reservationIds } }, select: { id: true } });
+            const saleIds = sales.map(s => s.id);
+            if (saleIds.length > 0) {
+                await tx.saleItem.deleteMany({ where: { saleId: { in: saleIds } } });
+                await tx.sale.deleteMany({ where: { id: { in: saleIds } } });
+            }
+        }
+
+        // 4. Delete Sales related to CashSessions in this complex
+        const cashSessions = await tx.cashSession.findMany({ where: { complexId }, select: { id: true } });
+        const cashSessionIds = cashSessions.map(c => c.id);
+        if (cashSessionIds.length > 0) {
+            const sales = await tx.sale.findMany({ where: { cashSessionId: { in: cashSessionIds } }, select: { id: true } });
+            const saleIds = sales.map(s => s.id);
+            if (saleIds.length > 0) {
+                await tx.saleItem.deleteMany({ where: { saleId: { in: saleIds } } });
+                await tx.sale.deleteMany({ where: { id: { in: saleIds } } });
+            }
+        }
+
+        // 5. Delete Reservations and CashSessions
+        if (reservationIds.length > 0) await tx.reservation.deleteMany({ where: { complexId } });
+        if (cashSessionIds.length > 0) await tx.cashSession.deleteMany({ where: { complexId } });
+
+        // 6. Delete the complex (Prisma will cascade delete courts and schedules, but let's be explicit just in case)
+        await tx.court.deleteMany({ where: { complexId } });
+        await tx.complexSchedule.deleteMany({ where: { complexId } });
+
+        await tx.complex.delete({ where: { id: complexId } });
+    });
+
     revalidatePath("/dashboard/complexes");
 }
 

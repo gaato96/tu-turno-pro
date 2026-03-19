@@ -7,13 +7,14 @@ export const revalidate = 0;
 export default async function ReservationsPage({
     searchParams
 }: {
-    searchParams: { date?: string }
+    searchParams: { date?: string, complexId?: string }
 }) {
     // Get server date or query param
     const today = new Date().toISOString().split("T")[0];
     const targetDateStr = searchParams.date || today;
+    const targetComplexId = searchParams.complexId;
 
-    const { complex, courts, reservations } = await getCalendarData(targetDateStr);
+    const { complex, complexes, courts, reservations } = await getCalendarData(targetDateStr, targetComplexId);
 
     if (!complex) {
         return (
@@ -26,6 +27,7 @@ export default async function ReservationsPage({
     return (
         <ReservationsClient
             complex={complex}
+            complexes={complexes}
             courts={courts}
             initialReservations={reservations}
             currentDate={targetDateStr}

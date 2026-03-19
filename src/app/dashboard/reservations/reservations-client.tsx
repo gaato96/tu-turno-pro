@@ -91,11 +91,13 @@ const sportEmoji: Record<string, string> = {
 
 export default function ReservationsClient({
     complex,
+    complexes,
     courts,
     initialReservations,
     currentDate
 }: {
     complex: any;
+    complexes: any[];
     courts: Court[];
     initialReservations: any[];
     currentDate: string;
@@ -134,10 +136,9 @@ export default function ReservationsClient({
     const [paymentReservation, setPaymentReservation] = useState<any | null>(null);
 
     const handleSlotClick = (courtId: string, time: string) => {
-        // Check if slot is occupied
-        // Format db time correctly
+        // Check if slot is occupied (basic client side validation)
         const occupied = reservations.some((r) => {
-            if (r.courtId !== courtId) return false;
+            if (r.courtId !== courtId && r.status !== "cancelled") return false;
             const rStart = format(new Date(r.startTime), "HH:mm");
             const rEnd = format(new Date(r.endTime), "HH:mm");
             return time >= rStart && time < rEnd;
@@ -177,7 +178,7 @@ export default function ReservationsClient({
                 formData.append("complexId", complex.id);
                 formData.append("courtId", newRes.courtId);
                 formData.append("customerName", newRes.customerName);
-                formData.append("customerPhone", newRes.customerPhone);
+                if (newRes.customerPhone) formData.append("customerPhone", newRes.customerPhone);
                 formData.append("date", currentDate);
                 formData.append("startTime", newRes.startTime);
                 formData.append("endTime", newRes.endTime);
@@ -230,7 +231,7 @@ export default function ReservationsClient({
 
     const handleWhatsApp = (phone: string, name: string) => {
         const message = encodeURIComponent(
-            `¡Hola ${name}! Te recordamos tu reserva en Complejo El Césped. ¡Te esperamos! 🏆`
+            `¡Hola ${name}! Te recordamos tu reserva en ${complex.name}. ¡Te esperamos! 🏆`
         );
         window.open(`https://wa.me/${phone.replace(/\D/g, "")}?text=${message}`, "_blank");
     };
@@ -276,19 +277,33 @@ export default function ReservationsClient({
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Agenda de Reservas</h1>
                     <p className="text-muted-foreground mt-1">
-                        Gestión visual de turnos por cancha
+                        Gestión visual de turnos en {complex.name}
                     </p>
                 </div>
-                <Button
-                    onClick={() => {
-                        setNewRes({ customerName: "", customerPhone: "", courtId: "", startTime: "10:00", endTime: "11:00", duration: "60", isRecurring: false });
-                        setShowNewReservation(true);
-                    }}
-                    className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-lg shadow-emerald-500/20 rounded-xl"
-                >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Nueva Reserva
-                </Button>
+                <div className="flex items-center gap-3">
+                    {complexes && complexes.length > 1 && (
+                        <Select value={complex.id} onValueChange={(v) => router.push(`/dashboard/reservations?date=${currentDate}&complexId=${v}`)}>
+                            <SelectTrigger className="w-[200px] h-10 rounded-xl bg-card border-border/50">
+                                <SelectValue placeholder="Seleccionar sede" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {complexes.map(c => (
+                                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
+                    <Button
+                        onClick={() => {
+                            setNewRes({ customerName: "", customerPhone: "", courtId: "", startTime: "10:00", endTime: "11:00", duration: "60", isRecurring: false });
+                            setShowNewReservation(true);
+                        }}
+                        className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-lg shadow-emerald-500/20 rounded-xl"
+                    >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Nueva Reserva
+                    </Button>
+                </div>
             </div>
 
             {/* Date Navigation */}

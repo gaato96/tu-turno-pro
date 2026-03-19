@@ -14,12 +14,25 @@ function getTenantId(session: any): string {
 
 // ── Calendar Data ──
 
-export async function getCalendarData(dateStr: string) {
+export async function getCalendarData(dateStr: string, activeComplexId?: string) {
     const session = await auth();
     const tenantId = getTenantId(session);
 
-    const complex = await prisma.complex.findFirst({
+    // Get all complexes for the selector
+    const allComplexes = await prisma.complex.findMany({
         where: { tenantId, isActive: true },
+        select: { id: true, name: true }
+    });
+
+    if (allComplexes.length === 0) return { complex: null, complexes: [], courts: [], reservations: [] };
+
+    let complexIdToUse = activeComplexId;
+    if (!complexIdToUse || !allComplexes.find(c => c.id === complexIdToUse)) {
+        complexIdToUse = allComplexes[0].id;
+    }
+
+    const complex = await prisma.complex.findFirst({
+        where: { id: complexIdToUse, tenantId, isActive: true },
         include: {
             courts: {
                 where: { isActive: true },
@@ -28,7 +41,7 @@ export async function getCalendarData(dateStr: string) {
         }
     });
 
-    if (!complex) return { complex: null, courts: [], reservations: [] };
+    if (!complex) return { complex: null, complexes: allComplexes, courts: [], reservations: [] };
 
     const selectedDate = new Date(dateStr + "T00:00:00");
     const startOfDay = new Date(selectedDate);
@@ -44,7 +57,7 @@ export async function getCalendarData(dateStr: string) {
                 gte: startOfDay,
                 lte: endOfDay
             },
-            status: { not: "cancelled" }
+            status: { notIn: ["cancelled"] }
         },
         include: {
             court: { select: { name: true } }
@@ -53,7 +66,7 @@ export async function getCalendarData(dateStr: string) {
     });
 
     // Serialize Decimal fields for client
-    const serializedReservations = reservations.map(r => ({
+    const serializedReservations = reservations.map((r: any) => ({
         ...r,
         courtAmount: Number(r.courtAmount),
         consumptionAmount: Number(r.consumptionAmount),
@@ -61,7 +74,7 @@ export async function getCalendarData(dateStr: string) {
         totalAmount: Number(r.totalAmount),
     }));
 
-    const serializedCourts = complex.courts.map(c => ({
+    const serializedCourts = complex.courts.map((c: any) => ({
         ...c,
         dayRate: Number(c.dayRate),
         nightRate: Number(c.nightRate),
@@ -69,6 +82,7 @@ export async function getCalendarData(dateStr: string) {
 
     return {
         complex: { id: complex.id, name: complex.name, openingTime: complex.openingTime, closingTime: complex.closingTime },
+        complexes: allComplexes,
         courts: serializedCourts,
         reservations: serializedReservations
     };
@@ -98,18 +112,52 @@ export async function createReservation(formData: FormData) {
     const complex = await prisma.complex.findFirst({ where: { id: complexId, tenantId } });
     if (!complex) throw new Error("Complex not found");
 
-    const court = await prisma.court.findFirst({ where: { id: courtId, complexId } });
+    const court = await prisma.court.findFirst({
+        where: { id: courtId, complexId },
+        include: { childCourts: true, parentCourt: true }
+    });
     if (!court) throw new Error("Court not found");
 
-    // Calculate rate: if startTime >= nightRateStartTime, use nightRate
-    const nightStart = parseInt(court.nightRateStartTime.split(":")[0]);
-    const slotStartHour = startTime.getHours();
-    const rate = slotStartHour >= nightStart ? Number(court.nightRate) : Number(court.dayRate);
+    // Overlap validation logic
+    // We need to check if the court itself, its parent, or any of its children are already booked.
+    const courtIdsToCheck = [court.id];
+    if (court.parentCourtId) courtIdsToCheck.push(court.parentCourtId);
+    if (court.childCourts.length > 0) courtIdsToCheck.push(...court.childCourts.map(c => c.id));
 
-    // Duration in hours
-    const durationMs = endTime.getTime() - startTime.getTime();
-    const durationHours = durationMs / (1000 * 60 * 60);
-    const courtAmount = rate * durationHours;
+    const overlappingReservations = await prisma.reservation.findMany({
+        where: {
+            courtId: { in: courtIdsToCheck },
+            status: { notIn: ["cancelled"] },
+            AND: [
+                { startTime: { lt: endTime } },
+                { endTime: { gt: startTime } }
+            ]
+        }
+    });
+
+    if (overlappingReservations.length > 0) {
+        throw new Error("El horario seleccionado o una cancha vinculada ya se encuentra reservada.");
+    }
+
+    // Calculate rate accurately splitting by nightStart
+    const nightStartHour = parseInt(court.nightRateStartTime.split(":")[0]);
+    const nightStartMinute = parseInt(court.nightRateStartTime.split(":")[1] || "0");
+
+    let courtAmount = 0;
+    let iter = new Date(startTime);
+
+    // Calculate in 30-min chunks
+    while (iter < endTime) {
+        const h = iter.getHours();
+        const m = iter.getMinutes();
+
+        const isNight = h > nightStartHour || (h === nightStartHour && m >= nightStartMinute);
+        const ratePer30Min = (isNight ? Number(court.nightRate) : Number(court.dayRate)) / 2;
+
+        courtAmount += ratePer30Min;
+
+        iter.setMinutes(iter.getMinutes() + 30);
+    }
 
     await prisma.reservation.create({
         data: {
