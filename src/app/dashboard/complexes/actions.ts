@@ -87,6 +87,8 @@ export async function createComplex(data: {
     });
 
     revalidatePath("/dashboard/complexes");
+    revalidatePath("/dashboard/reservations");
+    revalidatePath("/dashboard");
 }
 
 export async function updateComplex(
@@ -118,16 +120,18 @@ export async function updateComplex(
     });
 
     revalidatePath("/dashboard/complexes");
+    revalidatePath("/dashboard/reservations");
+    revalidatePath("/dashboard");
 }
 
 export async function deleteComplex(complexId: string) {
     const session = await auth();
-    getTenantId(session);
-
+    const tenantId = getTenantId(session);
     await prisma.$transaction(async (tx) => {
         // 1. Unassign staff
+        // @ts-ignore - Prisma might have out-of-sync types for this relation scalar in updateMany
         await tx.user.updateMany({
-            where: { complexId },
+            where: { tenantId, complexId: complexId },
             data: { complexId: null },
         });
 
@@ -137,16 +141,16 @@ export async function deleteComplex(complexId: string) {
             data: { parentCourtId: null },
         });
 
-        // 3. Delete Sales related to Reservations in this complex
+        // 3. Handle Sales related to Reservations in this complex
+        // We set reservationId to null so we don't break foreign keys if we delete reservations
         const reservations = await tx.reservation.findMany({ where: { complexId }, select: { id: true } });
-        const reservationIds = reservations.map(r => r.id);
-        if (reservationIds.length > 0) {
-            const sales = await tx.sale.findMany({ where: { reservationId: { in: reservationIds } }, select: { id: true } });
-            const saleIds = sales.map(s => s.id);
-            if (saleIds.length > 0) {
-                await tx.saleItem.deleteMany({ where: { saleId: { in: saleIds } } });
-                await tx.sale.deleteMany({ where: { id: { in: saleIds } } });
-            }
+        const resIds = reservations.map(r => r.id);
+
+        if (resIds.length > 0) {
+            await tx.sale.updateMany({
+                where: { reservationId: { in: resIds } },
+                data: { reservationId: null }
+            });
         }
 
         // 4. Delete Sales related to CashSessions in this complex
@@ -162,7 +166,7 @@ export async function deleteComplex(complexId: string) {
         }
 
         // 5. Delete Reservations and CashSessions
-        if (reservationIds.length > 0) await tx.reservation.deleteMany({ where: { complexId } });
+        if (resIds.length > 0) await tx.reservation.deleteMany({ where: { complexId } });
         if (cashSessionIds.length > 0) await tx.cashSession.deleteMany({ where: { complexId } });
 
         // 6. Delete the complex (Prisma will cascade delete courts and schedules, but let's be explicit just in case)
@@ -211,6 +215,8 @@ export async function createCourt(data: {
     });
 
     revalidatePath("/dashboard/complexes");
+    revalidatePath("/dashboard/reservations");
+    revalidatePath("/dashboard");
 }
 
 export async function updateCourt(
@@ -243,6 +249,8 @@ export async function updateCourt(
     });
 
     revalidatePath("/dashboard/complexes");
+    revalidatePath("/dashboard/reservations");
+    revalidatePath("/dashboard");
 }
 
 export async function deleteCourt(courtId: string) {
@@ -257,4 +265,6 @@ export async function deleteCourt(courtId: string) {
 
     await prisma.court.delete({ where: { id: courtId } });
     revalidatePath("/dashboard/complexes");
+    revalidatePath("/dashboard/reservations");
+    revalidatePath("/dashboard");
 }

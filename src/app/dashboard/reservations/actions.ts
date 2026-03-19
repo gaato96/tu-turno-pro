@@ -43,24 +43,33 @@ export async function getCalendarData(dateStr: string, activeComplexId?: string)
 
     if (!complex) return { complex: null, complexes: allComplexes, courts: [], reservations: [] };
 
-    const selectedDate = new Date(dateStr + "T00:00:00");
-    const startOfDay = new Date(selectedDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(selectedDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    const openingH = parseInt(complex.openingTime?.split(":")[0] || "08");
+    const closingH = parseInt(complex.closingTime?.split(":")[0] || "23");
+
+    const businessStart = new Date(dateStr + "T" + (complex.openingTime || "08:00") + ":00");
+
+    // If closing time is before or same hour as opening, it means next day
+    let businessEnd = new Date(dateStr + "T" + (complex.closingTime || "23:00") + ":00");
+    if (closingH <= openingH) {
+        businessEnd.setDate(businessEnd.getDate() + 1);
+    }
 
     const reservations = await prisma.reservation.findMany({
         where: {
             tenantId,
             complexId: complex.id,
-            date: {
-                gte: startOfDay,
-                lte: endOfDay
+            startTime: {
+                gte: businessStart,
+                lt: businessEnd
             },
             status: { notIn: ["cancelled"] }
         },
         include: {
-            court: { select: { name: true } }
+            court: { select: { name: true } },
+            sales: {
+                where: { status: { not: "cancelled" } },
+                include: { items: { include: { product: { select: { name: true } } } } }
+            }
         },
         orderBy: { startTime: "asc" }
     });

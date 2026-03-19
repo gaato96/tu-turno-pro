@@ -529,12 +529,12 @@ export function ProductsClient({ initialProducts, initialCategories, initialSupp
                             Los siguientes productos han alcanzado su límite de stock mínimo y requieren reposición.
                         </p>
                         <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                            {initialSuppliers.map((supplier: any) => {
+                            {[...initialSuppliers, { id: null, name: "Sin Proveedor" }].map((supplier: any) => {
                                 const productsToOrder = initialProducts.filter(p => p.supplierId === supplier.id && p.trackStock && p.stock <= p.minStock);
                                 if (productsToOrder.length === 0) return null;
 
                                 return (
-                                    <Card key={supplier.id} className="p-4 border-emerald-500/20 bg-emerald-50/30 dark:bg-emerald-500/5">
+                                    <Card key={supplier.id || "none"} className="p-4 border-emerald-500/20 bg-emerald-50/30 dark:bg-emerald-500/5">
                                         <h3 className="font-bold flex items-center gap-2 mb-2 text-emerald-800 dark:text-emerald-400">
                                             <Truck className="w-4 h-4" /> {supplier.name}
                                         </h3>
@@ -576,6 +576,26 @@ export function ProductsClient({ initialProducts, initialCategories, initialSupp
                         <Button
                             className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
                             onClick={() => {
+                                const lowStock = initialProducts.filter(p => p.trackStock && p.stock <= p.minStock);
+                                let text = "📋 *PEDIDO DE REPOSICIÓN - TU TURNO PRO*\n\n";
+
+                                const groups = [
+                                    ...initialSuppliers.map(s => ({ name: s.name, id: s.id })),
+                                    { name: "Sin Proveedor", id: null }
+                                ];
+
+                                groups.forEach(g => {
+                                    const prods = lowStock.filter(p => p.supplierId === g.id);
+                                    if (prods.length > 0) {
+                                        text += `🔹 *Proveedor: ${g.name}*\n`;
+                                        prods.forEach(p => {
+                                            text += `  • ${p.name} (Faltan: ${p.minStock - p.stock + 5} aprox)\n`;
+                                        });
+                                        text += "\n";
+                                    }
+                                });
+
+                                navigator.clipboard.writeText(text);
                                 toast.success("Pedido copiado al portapapeles", { description: "Ahora puedes pegarlo en WhatsApp o por mail a tus proveedores." });
                             }}
                         >

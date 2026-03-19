@@ -29,11 +29,23 @@ export async function getAvailableSlots(tenantId: string, courtId: string, date:
     const court = await prisma.court.findFirst({ where: { id: courtId, isActive: true } });
     if (!court) return { court: null, reservations: [] };
 
+    const selectedDate = new Date(date + "T00:00:00");
+    const startOfDay = new Date(selectedDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(selectedDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
     const reservations = await prisma.reservation.findMany({
-        where: { tenantId, courtId, date, status: { in: ["confirmed", "in_game"] } }
+        where: { tenantId, courtId, date: { gte: startOfDay, lte: endOfDay }, status: { in: ["confirmed", "in_game"] } }
     });
 
-    return { court, reservations };
+    const mapped = reservations.map(r => ({
+        ...r,
+        startTime: r.startTime.toISOString().replace("Z", ""),
+        endTime: r.endTime.toISOString().replace("Z", ""),
+    }));
+
+    return { court, reservations: mapped };
 }
 
 export async function createPublicReservation(data: any) {
@@ -88,6 +100,10 @@ export async function createPublicReservation(data: any) {
         iter.setMinutes(iter.getMinutes() + 30);
     }
 
+    const parsedDate = new Date(data.date + "T00:00:00");
+    const parsedStartTime = new Date(data.date + "T" + data.startTime + ":00");
+    const parsedEndTime = new Date(data.date + "T" + endTime + ":00");
+
     const reservation = await prisma.reservation.create({
         data: {
             tenantId: data.tenantId,
@@ -95,9 +111,9 @@ export async function createPublicReservation(data: any) {
             courtId: court.id,
             customerName: data.customerName,
             customerPhone: data.customerPhone,
-            date: data.date,
-            startTime: data.startTime,
-            endTime,
+            date: parsedDate,
+            startTime: parsedStartTime,
+            endTime: parsedEndTime,
             status: "pending", // Empezar en pendiente para que el admin deba confirmarla
             source: "web",
             courtAmount,

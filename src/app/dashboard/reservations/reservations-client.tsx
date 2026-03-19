@@ -70,12 +70,7 @@ interface Reservation {
     isRecurring: boolean;
 }
 
-const TIME_SLOTS: string[] = [];
-for (let h = 8; h < 23; h++) {
-    TIME_SLOTS.push(`${h.toString().padStart(2, "0")}:00`);
-    TIME_SLOTS.push(`${h.toString().padStart(2, "0")}:30`);
-}
-
+// Status colors and labels
 const statusConfig: Record<string, { label: string; class: string; icon: React.ElementType }> = {
     pending: { label: "Pendiente", class: "status-pending", icon: Clock },
     confirmed: { label: "Confirmada", class: "status-confirmed", icon: Check },
@@ -137,6 +132,31 @@ export default function ReservationsClient({
         duration: "60",
         isRecurring: false,
     });
+
+    // Dynamic Time Slots generation
+    const timeSlots = (() => {
+        const slots: string[] = [];
+        const openH = parseInt(complex.openingTime?.split(":")[0] || "08");
+        const closeH = parseInt(complex.closingTime?.split(":")[0] || "23");
+
+        // Calculate total 30min slots
+        let currentH = openH;
+        let currentM = 0;
+
+        const endH = closeH <= openH ? closeH + 24 : closeH;
+
+        while (currentH < endH || (currentH === endH && currentM === 0)) {
+            const h = currentH % 24;
+            slots.push(`${h.toString().padStart(2, "0")}:${currentM === 0 ? "00" : "30"}`);
+
+            currentM += 30;
+            if (currentM >= 60) {
+                currentH += 1;
+                currentM = 0;
+            }
+        }
+        return slots;
+    })();
 
     const [detailReservation, setDetailReservation] = useState<any | null>(null);
     const [paymentReservation, setPaymentReservation] = useState<any | null>(null);
@@ -380,10 +400,11 @@ export default function ReservationsClient({
                         </div>
 
                         {/* Time Rows */}
-                        {TIME_SLOTS.map((time) => {
+                        {timeSlots.map((time) => {
                             const isHour = time.endsWith(":00");
                             const hour = parseInt(time.split(":")[0]);
-                            const isNightStart = hour >= 19;
+                            const isNightStart = hour >= 19 || hour < 6; // Assume night if >=19 or early morning
+
 
                             return (
                                 <div
@@ -524,7 +545,7 @@ export default function ReservationsClient({
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {TIME_SLOTS.filter((t) => t.endsWith(":00")).map((t) => (
+                                        {timeSlots.filter((t) => t.endsWith(":00")).map((t) => (
                                             <SelectItem key={t} value={t}>{t}</SelectItem>
                                         ))}
                                     </SelectContent>
@@ -644,6 +665,29 @@ export default function ReservationsClient({
                                     ${detailReservation.totalAmount.toLocaleString()}
                                 </span>
                             </div>
+
+                            {/* Consumptions List */}
+                            {detailReservation.sales && detailReservation.sales.length > 0 && (
+                                <div className="space-y-2 px-2">
+                                    <h4 className="text-sm font-bold flex items-center gap-2">
+                                        <ShoppingCart className="w-4 h-4" /> Consumos
+                                    </h4>
+                                    <div className="bg-muted/50 rounded-xl p-3 space-y-2 border border-border/50">
+                                        {detailReservation.sales.flatMap((s: any) => s.items).map((item: any, idx: number) => (
+                                            <div key={idx} className="flex justify-between text-xs">
+                                                <span>{item.quantity}x {item.product?.name || "Producto"}</span>
+                                                <span className="font-semibold">${Number(item.subtotal).toLocaleString()}</span>
+                                            </div>
+                                        ))}
+                                        <div className="pt-2 border-t flex justify-between text-[11px] text-muted-foreground uppercase font-bold tracking-tighter">
+                                            <span>Subtotal Consumo</span>
+                                            <span className="text-emerald-600 dark:text-emerald-400">
+                                                ${Number(detailReservation.consumptionAmount).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Actions Grouped by Status */}
                             <div className="grid grid-cols-2 gap-2 mt-4">

@@ -4,12 +4,188 @@ import { useTransition, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Timer, Play, Clock, AlertCircle, Square, DollarSign, Activity } from "lucide-react";
+import { Timer, Play, Clock, AlertCircle, Square, DollarSign, Activity, MessageCircle, ShoppingCart, Check, X } from "lucide-react";
 import { changeReservationStatus, payReservation } from "./reservations/actions";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { PaymentDialog } from "@/components/payment-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+const statusConfig: Record<string, { label: string; class: string }> = {
+    pending: { label: "Pendiente", class: "status-pending" },
+    confirmed: { label: "Confirmada", class: "status-confirmed" },
+    in_game: { label: "En Juego", class: "status-in_game" },
+    finished: { label: "Finalizada", class: "status-finished" },
+    paid: { label: "Pagada", class: "status-paid" },
+    cancelled: { label: "Cancelada", class: "status-cancelled" },
+};
+
+export function DashboardReservationModal({ reservation, onClose }: { reservation: any | null, onClose: () => void }) {
+    const [isPending, startTransition] = useTransition();
+    const router = useRouter();
+    const [paymentOpen, setPaymentOpen] = useState(false);
+
+    if (!reservation) return null;
+
+    const handleWhatsApp = () => {
+        if (!reservation.customerPhone) return;
+        const msg = encodeURIComponent(`¡Hola ${reservation.customerName}! Te recordamos tu reserva de la cancha ${reservation.courtName}. ¡Te esperamos! 🏆`);
+        window.open(`https://wa.me/${reservation.customerPhone.replace(/\D/g, "")}?text=${msg}`, "_blank");
+    };
+
+    const updateStatus = (newStatus: string) => {
+        startTransition(async () => {
+            try {
+                await changeReservationStatus(reservation.id, newStatus);
+                toast.success("Estado actualizado con éxito");
+                router.refresh();
+                onClose();
+            } catch (e: any) {
+                toast.error(e.message || "Error al actualizar");
+            }
+        });
+    };
+
+    const handlePayment = (method: string, details?: any) => {
+        startTransition(async () => {
+            try {
+                await payReservation(reservation.id, method, details);
+                toast.success("Cobro registrado exitosamente");
+                setPaymentOpen(false);
+                router.refresh();
+                onClose();
+            } catch (error: any) {
+                toast.error(error.message || "Error al registrar el cobro");
+            }
+        });
+    };
+
+    return (
+        <Dialog open={!!reservation} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="sm:max-w-[420px] rounded-2xl">
+                <DialogHeader>
+                    <DialogTitle className="text-xl font-bold flex items-center justify-between">
+                        <span>Detalle de Reserva</span>
+                        <Badge className={`${statusConfig[reservation.status]?.class} rounded-full`}>
+                            {statusConfig[reservation.status]?.label || "Activa"}
+                        </Badge>
+                    </DialogTitle>
+                </DialogHeader>
+
+                <div className="space-y-6 py-2">
+                    <Card className={`p-4 rounded-xl border-dashed ${statusConfig[reservation.status]?.class || ""}`}>
+                        <h3 className="text-lg font-bold mb-1">{reservation.customerName}</h3>
+                        {reservation.customerPhone && (
+                            <p className="text-sm font-medium mb-3 opacity-90">{reservation.customerPhone}</p>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-4 mt-4">
+                            <div>
+                                <p className="text-xs opacity-75 mb-1">Cancha</p>
+                                <p className="font-semibold text-sm">{reservation.courtName}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs opacity-75 mb-1">Horario</p>
+                                <p className="font-semibold text-sm flex items-center">
+                                    <Clock className="w-3.5 h-3.5 mr-1" />
+                                    {new Date(reservation.startTime).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                                    {" - "}
+                                    {new Date(reservation.endTime).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                                </p>
+                            </div>
+                        </div>
+                    </Card>
+
+                    {/* Consumptions List */}
+                    {reservation.sales && reservation.sales.length > 0 && (
+                        <div className="space-y-2 px-2">
+                            <h4 className="text-sm font-bold flex items-center gap-2 text-muted-foreground">
+                                <ShoppingCart className="w-4 h-4" /> Consumos vinculado
+                            </h4>
+                            <div className="bg-muted/50 rounded-xl p-3 space-y-2 border border-border/50">
+                                {reservation.sales.flatMap((s: any) => s.items).map((item: any, idx: number) => (
+                                    <div key={idx} className="flex justify-between text-xs">
+                                        <span>{item.quantity}x {item.product?.name || "Producto"}</span>
+                                        <span className="font-semibold">${Number(item.subtotal).toLocaleString()}</span>
+                                    </div>
+                                ))}
+                                <div className="pt-2 border-t flex justify-between text-[11px] text-muted-foreground uppercase font-bold tracking-tighter">
+                                    <span>Subtotal Consumo</span>
+                                    <span className="text-emerald-600 dark:text-emerald-400">
+                                        ${Number(reservation.consumptionAmount).toLocaleString()}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-between items-center px-2">
+                        <span className="text-sm text-muted-foreground">Total a pagar</span>
+                        <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                            ${reservation.totalAmount.toLocaleString()}
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 mt-4">
+                        {reservation.status === "pending" && (
+                            <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-12" onClick={() => updateStatus("confirmed")} disabled={isPending}>
+                                <Check className="w-4 h-4 mr-2" /> Confirmar
+                            </Button>
+                        )}
+                        {reservation.status === "confirmed" && (
+                            <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-12" onClick={() => updateStatus("in_game")} disabled={isPending}>
+                                <Play className="w-4 h-4 mr-2" /> Iniciar (Check-in)
+                            </Button>
+                        )}
+                        {reservation.status === "in_game" && (
+                            <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white rounded-xl h-12" onClick={() => updateStatus("finished")} disabled={isPending}>
+                                <Square className="w-4 h-4 mr-2" /> Finalizar Turno
+                            </Button>
+                        )}
+                        {(reservation.status === "pending" || reservation.status === "confirmed") && (
+                            <Button variant="outline" className="w-full rounded-xl h-12 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30" onClick={() => updateStatus("cancelled")} disabled={isPending}>
+                                Cancelar Turno
+                            </Button>
+                        )}
+
+                        {reservation.customerPhone && (
+                            <Button variant="outline" className="w-full rounded-xl h-12 border-emerald-500/30 text-emerald-600 hover:bg-emerald-50" onClick={handleWhatsApp}>
+                                <MessageCircle className="w-4 h-4 mr-2" /> WhatsApp
+                            </Button>
+                        )}
+
+                        {(reservation.status === "in_game" || reservation.status === "confirmed") && (
+                            <Button variant="outline" className="col-span-2 w-full rounded-xl h-12 border-emerald-500/30 font-medium" onClick={() => router.push(`/dashboard/pos?reservationId=${reservation.id}`)}>
+                                <ShoppingCart className="w-4 h-4 mr-2" /> Agregar Consumo al Turno
+                            </Button>
+                        )}
+                    </div>
+
+                    {reservation.status === "finished" && (
+                        <Button
+                            className="w-full h-14 text-lg rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/20"
+                            onClick={() => setPaymentOpen(true)}
+                            disabled={isPending}
+                        >
+                            <DollarSign className="w-5 h-5 mr-2" /> Cobrar Turno
+                        </Button>
+                    )}
+                </div>
+            </DialogContent>
+
+            {paymentOpen && (
+                <PaymentDialog
+                    open={paymentOpen}
+                    onOpenChange={setPaymentOpen}
+                    totalAmount={reservation.totalAmount}
+                    onConfirm={handlePayment}
+                    isPending={isPending}
+                />
+            )}
+        </Dialog>
+    );
+}
 
 export function ActiveReservationsWidget({ activeReservations }: { activeReservations: any[] }) {
     const [isPending, startTransition] = useTransition();
@@ -42,6 +218,8 @@ export function ActiveReservationsWidget({ activeReservations }: { activeReserva
         });
     };
 
+    const [selectedReservation, setSelectedReservation] = useState<any | null>(null);
+
     return (
         <div className="lg:col-span-2 space-y-4 animate-slide-up">
             <div className="flex items-center justify-between">
@@ -55,9 +233,8 @@ export function ActiveReservationsWidget({ activeReservations }: { activeReserva
             {activeReservations && activeReservations.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 stagger-children">
                     {activeReservations.map((r: any) => {
-                        const dateStr = r.startTime.split("T")[0];
                         return (
-                            <Link href={`/dashboard/reservations?date=${dateStr}&openRes=${r.id}`} key={r.id}>
+                            <div key={r.id} onClick={() => setSelectedReservation(r)}>
                                 <Card className="p-4 cursor-pointer card-elevated card-hover-lift border-emerald-500/20 dark:border-emerald-500/10 animate-fade-in flex flex-col justify-between h-full hover:bg-emerald-50/50 dark:hover:bg-emerald-500/5 transition-colors">
                                     <div className="flex items-start justify-between mb-3">
                                         <div>
@@ -74,7 +251,7 @@ export function ActiveReservationsWidget({ activeReservations }: { activeReserva
                                         <span className="ml-auto font-bold text-foreground">${r.totalAmount.toLocaleString()}</span>
                                     </div>
                                 </Card>
-                            </Link>
+                            </div>
                         );
                     })}
                 </div>
@@ -85,42 +262,20 @@ export function ActiveReservationsWidget({ activeReservations }: { activeReserva
                 </Card>
             )}
 
-            {paymentReservation && (
-                <PaymentDialog
-                    open={!!paymentReservation}
-                    onOpenChange={(open) => !open && setPaymentReservation(null)}
-                    totalAmount={paymentReservation.totalAmount}
-                    onConfirm={handlePayment}
-                    isPending={isPending}
-                />
-            )}
+            <DashboardReservationModal reservation={selectedReservation} onClose={() => setSelectedReservation(null)} />
         </div>
     );
 }
 
 export function UpcomingReservationsWidget({ upcomingReservations }: { upcomingReservations: any[] }) {
-    const [isPending, startTransition] = useTransition();
-    const router = useRouter();
-
-    const handleStatus = (id: string, status: string) => {
-        startTransition(async () => {
-            try {
-                await changeReservationStatus(id, status);
-                toast.success("Estado actualizado a En Juego");
-                router.refresh();
-            } catch (e: any) {
-                toast.error(e.message);
-            }
-        });
-    };
+    const [selectedReservation, setSelectedReservation] = useState<any | null>(null);
 
     return (
         <div className="space-y-3 stagger-children">
             {upcomingReservations && upcomingReservations.length > 0 ? (
                 upcomingReservations.map((r: any) => {
-                    const dateStr = r.startTime.split("T")[0];
                     return (
-                        <Link href={`/dashboard/reservations?date=${dateStr}&openRes=${r.id}`} key={r.id} className="block group">
+                        <div key={r.id} onClick={() => setSelectedReservation(r)} className="block group cursor-pointer">
                             <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-50 dark:bg-amber-500/5 hover:bg-amber-100/50 dark:hover:bg-amber-500/10 transition-colors animate-fade-in relative overflow-hidden">
                                 <div className="flex items-start gap-3">
                                     <div className="mt-0.5"><Clock className="w-4 h-4 text-amber-500" /></div>
@@ -132,21 +287,8 @@ export function UpcomingReservationsWidget({ upcomingReservations }: { upcomingR
                                         {new Date(r.startTime).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
                                     </span>
                                 </div>
-                                {/* Hover Action */}
-                                <div className="absolute inset-y-0 right-0 p-1.5 bg-gradient-to-l from-amber-50 dark:from-background to-transparent via-amber-50 dark:via-background flex items-center opacity-0 group-hover:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0">
-                                    {r.status === "pending" ? (
-                                        <Button size="sm" className="h-full rounded-lg bg-blue-500 hover:bg-blue-600 text-white" disabled={isPending} onClick={(e) => { e.preventDefault(); handleStatus(r.id, "confirmed"); }}>
-                                            Confirmar
-                                        </Button>
-                                    ) : (
-                                        <Button size="sm" className="h-full rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" disabled={isPending} onClick={(e) => { e.preventDefault(); handleStatus(r.id, "in_game"); }}>
-                                            <Play className="w-3.5 h-3.5 mr-1.5" />
-                                            Check-in
-                                        </Button>
-                                    )}
-                                </div>
                             </div>
-                        </Link>
+                        </div>
                     )
                 })
             ) : (
@@ -155,28 +297,14 @@ export function UpcomingReservationsWidget({ upcomingReservations }: { upcomingR
                     No hay turnos programados para hoy
                 </div>
             )}
+
+            <DashboardReservationModal reservation={selectedReservation} onClose={() => setSelectedReservation(null)} />
         </div>
     );
 }
 
 export function FinishedReservationsWidget({ finishedReservations }: { finishedReservations: any[] }) {
-    const [isPending, startTransition] = useTransition();
-    const [paymentReservation, setPaymentReservation] = useState<any | null>(null);
-    const router = useRouter();
-
-    const handlePayment = (method: string, details?: any) => {
-        if (!paymentReservation) return;
-        startTransition(async () => {
-            try {
-                await payReservation(paymentReservation.id, method, details);
-                toast.success("Cobro registrado exitosamente");
-                setPaymentReservation(null);
-                router.refresh();
-            } catch (e: any) {
-                toast.error(e.message);
-            }
-        });
-    };
+    const [selectedReservation, setSelectedReservation] = useState<any | null>(null);
 
     if (!finishedReservations || finishedReservations.length === 0) return null;
 
@@ -185,9 +313,8 @@ export function FinishedReservationsWidget({ finishedReservations }: { finishedR
             <h2 className="text-xl font-bold text-orange-600 dark:text-orange-400">Pendientes a Cobrar</h2>
             <div className="stagger-children">
                 {finishedReservations.map((r: any) => {
-                    const dateStr = r.startTime.split("T")[0];
                     return (
-                        <Link href={`/dashboard/reservations?date=${dateStr}&openRes=${r.id}`} key={r.id}>
+                        <div key={r.id} onClick={() => setSelectedReservation(r)} className="block">
                             <Card className="p-3.5 mt-2 rounded-xl border border-orange-500/30 bg-orange-50 dark:bg-orange-500/5 hover:bg-orange-100/50 dark:hover:bg-orange-500/10 cursor-pointer flex items-center justify-between shadow-sm transition-colors">
                                 <div className="min-w-0">
                                     <p className="text-sm font-semibold truncate">{r.customerName}</p>
@@ -197,25 +324,17 @@ export function FinishedReservationsWidget({ finishedReservations }: { finishedR
                                         <span className="font-bold text-foreground">${r.totalAmount.toLocaleString()}</span>
                                     </div>
                                 </div>
-                                <Button size="sm" className="shrink-0 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white" disabled={isPending} onClick={(e) => { e.preventDefault(); setPaymentReservation(r); }}>
+                                <Button size="sm" className="shrink-0 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white" disabled>
                                     <DollarSign className="w-3.5 h-3.5 mr-1" />
                                     Cobrar
                                 </Button>
                             </Card>
-                        </Link>
+                        </div>
                     )
                 })}
             </div>
 
-            {paymentReservation && (
-                <PaymentDialog
-                    open={!!paymentReservation}
-                    onOpenChange={(open) => !open && setPaymentReservation(null)}
-                    totalAmount={paymentReservation.totalAmount}
-                    onConfirm={handlePayment}
-                    isPending={isPending}
-                />
-            )}
+            <DashboardReservationModal reservation={selectedReservation} onClose={() => setSelectedReservation(null)} />
         </div>
     );
 }

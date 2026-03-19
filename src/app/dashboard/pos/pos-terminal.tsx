@@ -228,11 +228,15 @@ export function POSTerminal({ categories, products, activeReservations }: any) {
                                 <Select value={selectedReservationId} onValueChange={(v) => setSelectedReservationId(v ?? "")}>
                                     <SelectTrigger><SelectValue placeholder="Seleccionar reserva" /></SelectTrigger>
                                     <SelectContent>
-                                        {activeReservations.map((r: any) => (
-                                            <SelectItem key={r.id} value={r.id}>
-                                                {r.customerName} — {r.court?.name} ({format(new Date(r.startTime), "HH:mm")})
-                                            </SelectItem>
-                                        ))}
+                                        {activeReservations.map((r: any) => {
+                                            const timeString = new Date(r.startTime).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+                                            const label = `${r.customerName} — ${r.court?.name || "Cancha"} (${timeString})`;
+                                            return (
+                                                <SelectItem key={r.id} value={r.id} textValue={label}>
+                                                    {label}
+                                                </SelectItem>
+                                            );
+                                        })}
                                     </SelectContent>
                                 </Select>
                                 {activeReservations.length === 0 && (
