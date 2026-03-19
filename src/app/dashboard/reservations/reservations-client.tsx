@@ -522,7 +522,7 @@ export default function ReservationsClient({
                                 <SelectContent>
                                     {courts.map((court) => (
                                         // @ts-ignore
-                                        <SelectItem key={court.id} value={court.id} textValue={court.name}>
+                                        <SelectItem key={court.id} value={court.id}>
                                             {sportEmoji[court.sportType]} {court.name} — ${court.dayRate.toLocaleString()}/{court.nightRate.toLocaleString()}
                                         </SelectItem>
                                     ))}
