@@ -76,8 +76,8 @@ export async function getDashboardData() {
             id: r.id,
             customerName: r.customerName,
             courtName: r.court?.name,
-            startTime: r.startTime.toISOString(),
-            endTime: r.endTime.toISOString(),
+            startTime: r.startTime.toISOString().replace("Z", ""),
+            endTime: r.endTime.toISOString().replace("Z", ""),
             totalAmount: Number(r.totalAmount),
         })),
         upcomingReservations: upcomingReservations.map(r => ({
@@ -85,14 +85,14 @@ export async function getDashboardData() {
             customerName: r.customerName,
             status: r.status,
             courtName: r.court?.name,
-            startTime: r.startTime.toISOString(),
+            startTime: r.startTime.toISOString().replace("Z", ""),
         })),
         finishedReservations: finishedReservations.map(r => ({
             id: r.id,
             customerName: r.customerName,
             courtName: r.court?.name,
-            startTime: r.startTime.toISOString(),
-            endTime: r.endTime.toISOString(),
+            startTime: r.startTime.toISOString().replace("Z", ""),
+            endTime: r.endTime.toISOString().replace("Z", ""),
             totalAmount: Number(r.totalAmount),
         })),
         topProducts: topProducts.map(tp => ({

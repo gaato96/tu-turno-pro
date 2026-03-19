@@ -65,9 +65,12 @@ export async function getCalendarData(dateStr: string, activeComplexId?: string)
         orderBy: { startTime: "asc" }
     });
 
-    // Serialize Decimal fields for client
+    // Serialize Decimal fields and fix Timezone shift for client
     const serializedReservations = reservations.map((r: any) => ({
         ...r,
+        date: r.date.toISOString().replace("Z", ""),
+        startTime: r.startTime.toISOString().replace("Z", ""),
+        endTime: r.endTime.toISOString().replace("Z", ""),
         courtAmount: Number(r.courtAmount),
         consumptionAmount: Number(r.consumptionAmount),
         discount: Number(r.discount),

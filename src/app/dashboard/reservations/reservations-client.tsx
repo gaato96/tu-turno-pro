@@ -96,13 +96,17 @@ export default function ReservationsClient({
     complexes,
     courts,
     initialReservations,
-    currentDate
+    currentDate,
+    isNew,
+    openResId
 }: {
     complex: any;
     complexes: any[];
     courts: Court[];
     initialReservations: any[];
     currentDate: string;
+    isNew?: boolean;
+    openResId?: string;
 }) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
@@ -114,7 +118,7 @@ export default function ReservationsClient({
         setSelectedDate(new Date(currentDate + "T12:00:00"));
     }, [currentDate]);
 
-    const [showNewReservation, setShowNewReservation] = useState(false);
+    const [showNewReservation, setShowNewReservation] = useState(isNew || false);
     const [selectedSlot, setSelectedSlot] = useState<{ courtId: string; time: string } | null>(null);
     const [reservations, setReservations] = useState(initialReservations);
 
@@ -136,6 +140,16 @@ export default function ReservationsClient({
 
     const [detailReservation, setDetailReservation] = useState<any | null>(null);
     const [paymentReservation, setPaymentReservation] = useState<any | null>(null);
+
+    // Auto-open reservation detail if openResId is passed
+    useEffect(() => {
+        if (openResId && reservations.length > 0) {
+            const resToOpen = reservations.find(r => r.id === openResId);
+            if (resToOpen) {
+                setDetailReservation(resToOpen);
+            }
+        }
+    }, [openResId, reservations]);
 
     const handleSlotClick = (courtId: string, time: string) => {
         // Check if slot is occupied (basic client side validation)

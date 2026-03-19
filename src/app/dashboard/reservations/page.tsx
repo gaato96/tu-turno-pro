@@ -7,7 +7,7 @@ export const revalidate = 0;
 export default async function ReservationsPage({
     searchParams
 }: {
-    searchParams: Promise<{ date?: string, complexId?: string }>
+    searchParams: Promise<{ date?: string, complexId?: string, new?: string, openRes?: string }>
 }) {
     const params = await searchParams;
 
@@ -15,6 +15,8 @@ export default async function ReservationsPage({
     const today = new Date().toISOString().split("T")[0];
     const targetDateStr = params.date || today;
     const targetComplexId = params.complexId;
+    const isNew = params.new === "true";
+    const openResId = params.openRes;
 
     const { complex, complexes, courts, reservations } = await getCalendarData(targetDateStr, targetComplexId);
 
@@ -33,6 +35,8 @@ export default async function ReservationsPage({
             courts={courts}
             initialReservations={reservations}
             currentDate={targetDateStr}
+            isNew={isNew}
+            openResId={openResId}
         />
     );
 }
