@@ -74,8 +74,10 @@ export default async function AdminSubscriptionsPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Inquilino</TableHead>
+                            <TableHead>Negocio</TableHead>
                             <TableHead>Plan</TableHead>
+                            <TableHead className="text-center">Sedes</TableHead>
+                            <TableHead className="text-center">Canchas</TableHead>
                             <TableHead>Estado</TableHead>
                             <TableHead className="text-right">Monto</TableHead>
                             <TableHead>Próx. Facturación</TableHead>
@@ -91,6 +93,8 @@ export default async function AdminSubscriptionsPage() {
                                     <TableCell>
                                         <Badge variant="secondary" className="rounded-full capitalize">{s.plan}</Badge>
                                     </TableCell>
+                                    <TableCell className="text-center">{s.complexes}</TableCell>
+                                    <TableCell className="text-center font-semibold">{s.totalCourts}</TableCell>
                                     <TableCell>
                                         <Badge className={`rounded-full ${statusCfg.color}`}>
                                             <statusCfg.icon className="w-3 h-3 mr-1" />

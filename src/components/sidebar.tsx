@@ -38,7 +38,7 @@ const navigation = [
 ];
 
 const adminNavigation = [
-    { name: "Inquilinos", href: "/admin/tenants", icon: Building2 },
+    { name: "Negocios", href: "/admin/tenants", icon: Building2 },
     { name: "Suscripciones", href: "/admin/subscriptions", icon: Shield },
 ];
 
@@ -82,31 +82,8 @@ export function Sidebar() {
 
             {/* Navigation */}
             <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-                {navigation.map((item) => {
-                    const isActive = pathname === item.href ||
-                        (item.href !== "/dashboard" && pathname.startsWith(item.href));
-                    return (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            onClick={() => setMobileOpen(false)}
-                            className={cn(
-                                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
-                                collapsed && "justify-center px-2",
-                                isActive
-                                    ? "bg-primary text-primary-foreground shadow-md"
-                                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                            )}
-                        >
-                            <item.icon className={cn("w-5 h-5 shrink-0", isActive && "drop-shadow-sm")} />
-                            {!collapsed && <span>{item.name}</span>}
-                        </Link>
-                    );
-                })}
-
-                {isSuperAdmin && (
+                {isSuperAdmin ? (
                     <>
-                        <Separator className="my-3" />
                         <p className={cn(
                             "px-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-2",
                             collapsed && "text-center"
@@ -129,6 +106,30 @@ export function Sidebar() {
                                     )}
                                 >
                                     <item.icon className="w-5 h-5 shrink-0" />
+                                    {!collapsed && <span>{item.name}</span>}
+                                </Link>
+                            );
+                        })}
+                    </>
+                ) : (
+                    <>
+                        {navigation.map((item) => {
+                            const isActive = pathname === item.href ||
+                                (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                            return (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    onClick={() => setMobileOpen(false)}
+                                    className={cn(
+                                        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+                                        collapsed && "justify-center px-2",
+                                        isActive
+                                            ? "bg-primary text-primary-foreground shadow-md"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                                    )}
+                                >
+                                    <item.icon className={cn("w-5 h-5 shrink-0", isActive && "drop-shadow-sm")} />
                                     {!collapsed && <span>{item.name}</span>}
                                 </Link>
                             );

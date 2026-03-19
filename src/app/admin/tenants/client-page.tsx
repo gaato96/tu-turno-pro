@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -13,22 +14,27 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { Search } from "lucide-react";
-import { toggleTenantStatus } from "./actions";
+import { Search, Pencil, Trash2, Users, MoreHorizontal } from "lucide-react";
+import { toggleTenantStatus, deleteTenant } from "./actions";
 import { toast } from "sonner";
-import { CreateTenantDialog } from "./create-tenant-dialog";
+import { EditTenantDialog } from "./edit-tenant-dialog";
+import { ManageUsersDialog } from "./manage-users-dialog";
 
 interface Tenant {
     id: string;
     name: string;
     slug: string;
+    phone: string | null;
     plan: string;
+    calculatedPlan: string;
     planStatus: string;
     modules: string[];
     isActive: boolean;
     complexes: number;
     users: number;
+    totalCourts: number;
     mrr: number;
+    createdAt: string;
 }
 
 const planConfig: Record<string, { label: string; color: string }> = {
@@ -40,17 +46,30 @@ const planConfig: Record<string, { label: string; color: string }> = {
 
 export function AdminTenantsClient({ initialTenants }: { initialTenants: Tenant[] }) {
     const [search, setSearch] = useState("");
+    const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+    const [managingUsersTenant, setManagingUsersTenant] = useState<Tenant | null>(null);
 
     const filtered = initialTenants.filter((t) =>
-        t.name.toLowerCase().includes(search.toLowerCase())
+        t.name.toLowerCase().includes(search.toLowerCase()) ||
+        t.slug.toLowerCase().includes(search.toLowerCase())
     );
 
     const handleToggleStatus = async (id: string, currentlyActive: boolean) => {
         try {
             await toggleTenantStatus(id, !currentlyActive);
-            toast.success(`Inquilino ${currentlyActive ? 'desactivado' : 'activado'}`);
-        } catch (error) {
+            toast.success(`Negocio ${currentlyActive ? 'desactivado' : 'activado'}`);
+        } catch {
             toast.error("Error al actualizar estado");
+        }
+    };
+
+    const handleDelete = async (tenant: Tenant) => {
+        if (!confirm(`¿Eliminar "${tenant.name}" y todos sus datos? Esta acción no se puede deshacer.`)) return;
+        try {
+            await deleteTenant(tenant.id);
+            toast.success("Negocio eliminado");
+        } catch {
+            toast.error("Error al eliminar negocio");
         }
     };
 
@@ -59,7 +78,7 @@ export function AdminTenantsClient({ initialTenants }: { initialTenants: Tenant[
             <div className="relative max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                    placeholder="Buscar inquilinos..."
+                    placeholder="Buscar negocios..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-9 rounded-xl"
@@ -70,14 +89,15 @@ export function AdminTenantsClient({ initialTenants }: { initialTenants: Tenant[
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Inquilino</TableHead>
+                            <TableHead>Negocio</TableHead>
                             <TableHead>Plan</TableHead>
                             <TableHead>Estado</TableHead>
-                            <TableHead className="text-center">Complejos</TableHead>
+                            <TableHead className="text-center">Sedes</TableHead>
+                            <TableHead className="text-center">Canchas</TableHead>
                             <TableHead className="text-center">Usuarios</TableHead>
                             <TableHead className="text-right">MRR</TableHead>
-                            <TableHead className="text-center">Módulos</TableHead>
                             <TableHead className="text-center">Activo</TableHead>
+                            <TableHead className="text-center">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -87,6 +107,7 @@ export function AdminTenantsClient({ initialTenants }: { initialTenants: Tenant[
                                     <div>
                                         <p className="font-semibold">{t.name}</p>
                                         <p className="text-xs text-muted-foreground">{t.slug}</p>
+                                        {t.phone && <p className="text-xs text-muted-foreground">{t.phone}</p>}
                                     </div>
                                 </TableCell>
                                 <TableCell>
@@ -95,31 +116,80 @@ export function AdminTenantsClient({ initialTenants }: { initialTenants: Tenant[
                                     </Badge>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge className={`rounded-full ${t.planStatus === "active" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+                                    <Badge className={`rounded-full ${t.planStatus === "active" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400" : "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400"}`}>
                                         {t.planStatus === "active" ? "Activo" : "Vencido"}
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-center">{t.complexes}</TableCell>
+                                <TableCell className="text-center font-semibold">{t.totalCourts}</TableCell>
                                 <TableCell className="text-center">{t.users}</TableCell>
                                 <TableCell className="text-right font-semibold">${t.mrr.toLocaleString()}</TableCell>
-                                <TableCell className="text-center">
-                                    <div className="flex gap-1 justify-center flex-wrap">
-                                        {t.modules.map((m) => (
-                                            <Badge key={m} variant="secondary" className="text-[9px] px-1.5 rounded-full">{m}</Badge>
-                                        ))}
-                                    </div>
-                                </TableCell>
                                 <TableCell className="text-center">
                                     <Switch
                                         checked={t.isActive}
                                         onCheckedChange={() => handleToggleStatus(t.id, t.isActive)}
                                     />
                                 </TableCell>
+                                <TableCell>
+                                    <div className="flex items-center justify-center gap-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8"
+                                            title="Editar negocio"
+                                            onClick={() => setEditingTenant(t)}
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8"
+                                            title="Gestionar usuarios"
+                                            onClick={() => setManagingUsersTenant(t)}
+                                        >
+                                            <Users className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-destructive hover:text-destructive"
+                                            title="Eliminar negocio"
+                                            onClick={() => handleDelete(t)}
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </TableCell>
                             </TableRow>
                         ))}
+                        {filtered.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                                    No se encontraron negocios
+                                </TableCell>
+                            </TableRow>
+                        )}
                     </TableBody>
                 </Table>
             </Card>
+
+            {/* Edit Dialog */}
+            {editingTenant && (
+                <EditTenantDialog
+                    tenant={editingTenant}
+                    onClose={() => setEditingTenant(null)}
+                />
+            )}
+
+            {/* Manage Users Dialog */}
+            {managingUsersTenant && (
+                <ManageUsersDialog
+                    tenantId={managingUsersTenant.id}
+                    tenantName={managingUsersTenant.name}
+                    onClose={() => setManagingUsersTenant(null)}
+                />
+            )}
         </>
     );
 }

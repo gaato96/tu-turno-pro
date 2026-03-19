@@ -29,11 +29,12 @@ export function CreateTenantDialog() {
     const [formData, setFormData] = useState({
         name: "",
         slug: "",
+        phone: "",
         plan: "starter",
         adminEmail: "",
         adminName: "",
         adminPassword: "",
-        modules: [] as string[],
+        modules: ["reservations"] as string[],
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -50,11 +51,11 @@ export function CreateTenantDialog() {
             });
 
             await createTenant(formDataObj);
-            toast.success("Inquilino creado exitosamente");
+            toast.success("Negocio creado exitosamente");
             setOpen(false);
-            setFormData({ name: "", slug: "", plan: "starter", adminEmail: "", adminName: "", adminPassword: "", modules: [] });
+            setFormData({ name: "", slug: "", phone: "", plan: "starter", adminEmail: "", adminName: "", adminPassword: "", modules: ["reservations"] });
         } catch (error: any) {
-            toast.error(error.message || "Error al crear inquilino");
+            toast.error(error.message || "Error al crear negocio");
         } finally {
             setLoading(false);
         }
@@ -79,15 +80,15 @@ export function CreateTenantDialog() {
                 className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-lg shadow-emerald-500/20 rounded-xl"
             >
                 <Plus className="w-4 h-4 mr-2" />
-                Nuevo Inquilino
+                Nuevo Negocio
             </Button>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Crear Nuevo Inquilino</DialogTitle>
+                    <DialogTitle>Crear Nuevo Negocio</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-6 py-4">
                     <div className="space-y-4">
-                        <h3 className="font-semibold text-sm text-emerald-600">Datos del complejo</h3>
+                        <h3 className="font-semibold text-sm text-emerald-600">Datos del negocio</h3>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>Nombre comercial</Label>
@@ -99,23 +100,32 @@ export function CreateTenantDialog() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Slug (URL amistosa)</Label>
+                                <Label>Slug (URL amigable)</Label>
                                 <Input required value={formData.slug} onChange={(e) => setFormData({ ...formData, slug: e.target.value })} />
                             </div>
                         </div>
-
-                        <div className="space-y-2">
-                            <Label>Plan de Suscripción</Label>
-                            <Select value={formData.plan} onValueChange={(v) => setFormData({ ...formData, plan: v || "starter" })}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="starter">Starter</SelectItem>
-                                    <SelectItem value="pro">Pro</SelectItem>
-                                    <SelectItem value="enterprise">Enterprise</SelectItem>
-                                </SelectContent>
-                            </Select>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Teléfono del negocio</Label>
+                                <Input
+                                    value={formData.phone}
+                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                    placeholder="+54 11 1234-5678"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Plan de Suscripción</Label>
+                                <Select value={formData.plan} onValueChange={(v) => setFormData({ ...formData, plan: v || "starter" })}>
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="starter">Starter (hasta 3 canchas)</SelectItem>
+                                        <SelectItem value="pro">Pro (4-6 canchas)</SelectItem>
+                                        <SelectItem value="enterprise">Enterprise (7+ canchas)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                     </div>
 
@@ -162,7 +172,7 @@ export function CreateTenantDialog() {
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
                         <Button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                            {loading ? "Creando..." : "Crear Inquilino"}
+                            {loading ? "Creando..." : "Crear Negocio"}
                         </Button>
                     </DialogFooter>
                 </form>
