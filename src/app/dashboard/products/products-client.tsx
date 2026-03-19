@@ -14,7 +14,7 @@ import {
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Package, Search, AlertTriangle, Edit, Trash2, Truck, Grid } from "lucide-react";
+import { Plus, Package, Search, AlertTriangle, Edit, Trash2, Truck, Grid, FileText, CheckCircle } from "lucide-react";
 import {
     createProduct, updateProduct, deleteProduct,
     createCategory, updateCategory, deleteCategory,
@@ -34,6 +34,7 @@ export function ProductsClient({ initialProducts, initialCategories, initialSupp
     const [supplierOpen, setSupplierOpen] = useState(false);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<{ id: string, type: 'product' | 'category' | 'supplier' } | null>(null);
+    const [showOrderModal, setShowOrderModal] = useState(false);
 
     // Form states
     const [productForm, setProductForm] = useState<any>({});
@@ -201,67 +202,84 @@ export function ProductsClient({ initialProducts, initialCategories, initialSupp
                                 </Badge>
                             ))}
                         </div>
-                        <Button onClick={() => openProductForm()} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md shrink-0">
-                            <Plus className="w-4 h-4 mr-2" /> Nuevo Producto
-                        </Button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                        {filteredProducts.map((product: any) => (
-                            <Card key={product.id} className="p-4 card-elevated card-hover-lift transition-shadow group">
-                                <div className="flex justify-between items-start mb-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-600">
-                                            <Package className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold">{product.name}</h4>
-                                            <p className="text-xs text-muted-foreground capitalize flex items-center gap-1 mt-0.5">
-                                                <Grid className="w-3 h-3" /> {product.category?.name || "Sin categoria"}
-                                                {product.supplier && <><span className="mx-1">•</span> <Truck className="w-3 h-3" /> {product.supplier.name}</>}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {product.stock <= product.minStock && product.trackStock && (
-                                        <Badge variant="destructive" className="text-[10px] gap-1 px-1.5 py-0 rounded-full flex items-center shrink-0">
-                                            <AlertTriangle className="w-3 h-3" /> Bajo
-                                        </Badge>
-                                    )}
-                                </div>
-                                <div className="grid grid-cols-3 gap-2 text-sm bg-accent/50 dark:bg-accent/20 p-3 rounded-xl border border-border/50">
-                                    <div className="text-center">
-                                        <p className="text-[10px] text-muted-foreground">Costo</p>
-                                        <p className="font-semibold">${product.costPrice.toLocaleString()}</p>
-                                    </div>
-                                    <div className="text-center border-x border-border/50">
-                                        <p className="text-[10px] text-muted-foreground">Venta</p>
-                                        <p className="font-bold text-emerald-600">${product.salePrice.toLocaleString()}</p>
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="text-[10px] text-muted-foreground">Stock</p>
-                                        <p className={`font-semibold ${product.trackStock && product.stock <= product.minStock ? 'text-destructive' : ''}`}>
-                                            {product.trackStock ? product.stock : "∞"}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="mt-3 flex gap-2">
-                                    <Button variant="outline" size="sm" className="flex-1 rounded-lg h-8 px-2 text-xs" onClick={() => openProductForm(product)}>
-                                        <Edit className="w-3.5 h-3.5 mr-1.5" /> Editar
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg shrink-0" onClick={() => { setDeleteTarget({ id: product.id, type: 'product' }); setDeleteConfirmOpen(true); }}>
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </Button>
-                                </div>
-                            </Card>
-                        ))}
-                    </div>
-
-                    {filteredProducts.length === 0 && (
-                        <div className="py-16 text-center border border-dashed rounded-2xl bg-card">
-                            <Package className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
-                            <p className="text-muted-foreground font-medium">No se encontraron productos.</p>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            <Button variant="outline" onClick={() => setShowOrderModal(true)} className="border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-500/30 dark:text-amber-400 dark:hover:bg-amber-500/10 rounded-xl shadow-sm shrink-0">
+                                <AlertTriangle className="w-4 h-4 mr-2" /> Stock Bajo / Pedir
+                            </Button>
+                            <Button onClick={() => openProductForm()} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md shrink-0">
+                                <Plus className="w-4 h-4 mr-2" /> Nuevo Producto
+                            </Button>
                         </div>
-                    )}
+                    </div>
+
+                    <Card className="rounded-2xl border-border/50 overflow-hidden shadow-sm">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="text-xs text-muted-foreground bg-muted/50 border-b border-border">
+                                    <tr>
+                                        <th className="px-4 py-3 font-semibold">Producto</th>
+                                        <th className="px-4 py-3 font-semibold">Categoría/Proveedor</th>
+                                        <th className="px-4 py-3 font-semibold text-right">Costo</th>
+                                        <th className="px-4 py-3 font-semibold text-right">Venta</th>
+                                        <th className="px-4 py-3 font-semibold text-center">Stock</th>
+                                        <th className="px-4 py-3 font-semibold text-right">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredProducts.map((product: any) => (
+                                        <tr key={product.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+                                                        <Package className="w-4 h-4" />
+                                                    </div>
+                                                    <span className="font-semibold">{product.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 capitalize">
+                                                <div className="flex flex-col">
+                                                    <span>{product.category?.name || "Sin categoria"}</span>
+                                                    <span className="text-[10px] text-muted-foreground">
+                                                        {product.supplier?.name || "Sin Proveedor"}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">${product.costPrice.toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-right font-bold text-emerald-600">${product.salePrice.toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-center">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <span className={`font-semibold ${product.trackStock && product.stock <= product.minStock ? 'text-destructive' : ''}`}>
+                                                        {product.trackStock ? product.stock : "∞"}
+                                                    </span>
+                                                    {product.stock <= product.minStock && product.trackStock && (
+                                                        <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="flex justify-end gap-1">
+                                                    <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-muted-foreground hover:text-emerald-600" onClick={() => openProductForm(product)}>
+                                                        <Edit className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-muted-foreground hover:text-destructive" onClick={() => { setDeleteTarget({ type: 'product', id: product.id }); setDeleteConfirmOpen(true); }}>
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {filteredProducts.length === 0 && (
+                                        <tr>
+                                            <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                                                <Package className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
+                                                <p className="font-medium">No se encontraron productos.</p>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
                 </TabsContent>
 
                 {/* --- CATEGORÍAS --- */}
@@ -271,29 +289,54 @@ export function ProductsClient({ initialProducts, initialCategories, initialSupp
                             <Plus className="w-4 h-4 mr-2" /> Nueva Categoría
                         </Button>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {initialCategories.map((cat: any) => (
-                            <Card key={cat.id} className="p-4 flex items-center justify-between rounded-xl hover:shadow-sm transition-shadow">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-600">
-                                        <Grid className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold capitalize">{cat.name}</h4>
-                                        <p className="text-xs text-muted-foreground">{cat._count?.products || 0} productos</p>
-                                    </div>
-                                </div>
-                                <div className="flex gap-1">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => openCategoryForm(cat)}>
-                                        <Edit className="w-4 h-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg" onClick={() => { setDeleteTarget({ id: cat.id, type: 'category' }); setDeleteConfirmOpen(true); }}>
-                                        <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                </div>
-                            </Card>
-                        ))}
-                    </div>
+                    <Card className="rounded-2xl border-border/50 overflow-hidden shadow-sm">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="text-xs text-muted-foreground bg-muted/50 border-b border-border">
+                                    <tr>
+                                        <th className="px-4 py-3 font-semibold">Categoría</th>
+                                        <th className="px-4 py-3 font-semibold text-center">Productos Asociados</th>
+                                        <th className="px-4 py-3 font-semibold text-right">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {initialCategories.map((cat: any) => (
+                                        <tr key={cat.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-500/10 flex items-center justify-center text-blue-600">
+                                                        <Grid className="w-4 h-4" />
+                                                    </div>
+                                                    <span className="font-semibold capitalize">{cat.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-center text-muted-foreground">
+                                                {cat._count?.products || 0}
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="flex justify-end gap-1">
+                                                    <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-muted-foreground hover:text-blue-600" onClick={() => openCategoryForm(cat)}>
+                                                        <Edit className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="w-8 h-8 rounded-lg text-muted-foreground hover:text-destructive" onClick={() => { setDeleteTarget({ id: cat.id, type: 'category' }); setDeleteConfirmOpen(true); }}>
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {initialCategories.length === 0 && (
+                                        <tr>
+                                            <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
+                                                <Grid className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
+                                                <p className="font-medium">No se encontraron categorías.</p>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
                 </TabsContent>
 
                 {/* --- PROVEEDORES --- */}
@@ -467,6 +510,77 @@ export function ProductsClient({ initialProducts, initialCategories, initialSupp
                         <Button type="button" variant="outline" className="rounded-xl" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>
                         <Button type="button" variant="destructive" className="rounded-xl" onClick={handleDelete} disabled={isPending}>
                             Eliminar Permanentemente
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Order/Low Stock Modal */}
+            <Dialog open={showOrderModal} onOpenChange={setShowOrderModal}>
+                <DialogContent className="sm:max-w-[600px] rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-emerald-600" />
+                            Generador de Pedidos (Stock Bajo)
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <p className="text-sm text-muted-foreground mb-4">
+                            Los siguientes productos han alcanzado su límite de stock mínimo y requieren reposición.
+                        </p>
+                        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                            {initialSuppliers.map((supplier: any) => {
+                                const productsToOrder = initialProducts.filter(p => p.supplierId === supplier.id && p.trackStock && p.stock <= p.minStock);
+                                if (productsToOrder.length === 0) return null;
+
+                                return (
+                                    <Card key={supplier.id} className="p-4 border-emerald-500/20 bg-emerald-50/30 dark:bg-emerald-500/5">
+                                        <h3 className="font-bold flex items-center gap-2 mb-2 text-emerald-800 dark:text-emerald-400">
+                                            <Truck className="w-4 h-4" /> {supplier.name}
+                                        </h3>
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="border-b border-border/50 text-xs text-muted-foreground">
+                                                    <th className="py-2 text-left">Producto</th>
+                                                    <th className="py-2 text-center">Stock Actual</th>
+                                                    <th className="py-2 text-center">Min</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {productsToOrder.map((prod: any) => (
+                                                    <tr key={prod.id} className="border-b border-border/30 last:border-0">
+                                                        <td className="py-2 font-medium">{prod.name}</td>
+                                                        <td className="py-2 text-center text-destructive font-bold">{prod.stock}</td>
+                                                        <td className="py-2 text-center text-muted-foreground">{prod.minStock}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </Card>
+                                );
+                            })}
+
+                            {initialProducts.filter(p => p.trackStock && p.stock <= p.minStock).length === 0 && (
+                                <div className="text-center py-8">
+                                    <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-3 text-emerald-600">
+                                        <CheckCircle className="w-6 h-6" />
+                                    </div>
+                                    <p className="font-medium text-emerald-600 dark:text-emerald-400">¡Todo en orden!</p>
+                                    <p className="text-sm text-muted-foreground">No hay productos con stock por debajo del mínimo.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowOrderModal(false)} className="rounded-xl">Cerrar</Button>
+                        <Button
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
+                            onClick={() => {
+                                toast.success("Pedido copiado al portapapeles", { description: "Ahora puedes pegarlo en WhatsApp o por mail a tus proveedores." });
+                            }}
+                        >
+                            <FileText className="w-4 h-4 mr-2" />
+                            Copiar para WhatsApp
                         </Button>
                     </DialogFooter>
                 </DialogContent>

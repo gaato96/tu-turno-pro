@@ -202,8 +202,6 @@ export async function changeReservationStatus(reservationId: string, newStatus: 
     return { success: true };
 }
 
-// ── Pay Reservation ──
-
 export async function payReservation(reservationId: string, paymentMethod: string, paymentDetails?: any) {
     const session = await auth();
     const tenantId = getTenantId(session);
@@ -212,6 +210,10 @@ export async function payReservation(reservationId: string, paymentMethod: strin
         where: { id: reservationId, tenantId }
     });
     if (!reservation) throw new Error("Reservation not found");
+
+    const cashSession = await prisma.cashSession.findFirst({
+        where: { tenantId, status: "open" }
+    });
 
     await prisma.$transaction(async (tx) => {
         // 1. Mark reservation as paid
@@ -224,19 +226,50 @@ export async function payReservation(reservationId: string, paymentMethod: strin
             }
         });
 
-        // 2. Clear any on_tab sales linked to this reservation
+        // 2. Clear any on_tab sales linked to this reservation and attach to active cash session
         await tx.sale.updateMany({
             where: { reservationId, status: "on_tab" },
             data: {
                 status: "completed",
                 paymentMethod,
                 paymentDetails: paymentDetails ? JSON.parse(JSON.stringify(paymentDetails)) : undefined,
+                cashSessionId: cashSession?.id || null, // Link to active session at payment time
             }
         });
+
+        // 3. Create a Sale for the court amount to reflect in cash register
+        if (Number(reservation.courtAmount) > 0) {
+            // Generate sequential invoice number roughly for this sale
+            const now = new Date();
+            const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
+            const todaySalesCount = await tx.sale.count({
+                where: {
+                    tenantId,
+                    createdAt: { gte: new Date(now.toISOString().slice(0, 10) + "T00:00:00") }
+                }
+            });
+            const invoiceNumber = `R${dateStr}-${(todaySalesCount + 1).toString().padStart(4, "0")}`;
+
+            await tx.sale.create({
+                data: {
+                    tenantId,
+                    reservationId,
+                    cashSessionId: cashSession?.id || null,
+                    invoiceNumber,
+                    subtotal: reservation.courtAmount,
+                    total: reservation.courtAmount, // minus discount if global discount applied? simple for now
+                    status: "completed",
+                    paymentMethod,
+                    paymentDetails: paymentDetails ? JSON.parse(JSON.stringify(paymentDetails)) : undefined,
+                    // No SaleItems needed for Court rent because it's distinct
+                }
+            });
+        }
     });
 
     revalidatePath("/dashboard/reservations");
     revalidatePath("/dashboard");
+    revalidatePath("/dashboard/cash");
     return { success: true };
 }
 

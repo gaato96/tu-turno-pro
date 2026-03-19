@@ -40,6 +40,7 @@ import {
     MessageCircle,
     RotateCcw,
     ShoppingCart,
+    Link as LinkIcon,
 } from "lucide-react";
 import { format, addDays, subDays, isToday } from "date-fns";
 import { es } from "date-fns/locale";
@@ -479,7 +480,9 @@ export default function ReservationsClient({
                             <Label>Cancha</Label>
                             <Select value={newRes.courtId} onValueChange={(v) => v && setNewRes({ ...newRes, courtId: v })}>
                                 <SelectTrigger className="mt-1.5 rounded-xl">
-                                    <SelectValue placeholder="Seleccionar cancha" />
+                                    <SelectValue placeholder="Seleccionar cancha">
+                                        {newRes.courtId ? courts.find(c => c.id === newRes.courtId)?.name : "Seleccionar cancha"}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {courts.map((court) => (
