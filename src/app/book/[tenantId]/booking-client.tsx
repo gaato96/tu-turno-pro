@@ -167,18 +167,19 @@ export function BookingClient({ tenantId, tenantName, tenantPhone, complexes }: 
                     </div>
 
                     <div className="flex flex-col gap-3">
-                        {tenantPhone && (
+                        {(activeComplex?.phone || tenantPhone) && (
                             <Button
                                 onClick={() => {
+                                    const targetPhone = activeComplex?.phone || tenantPhone;
                                     const dateStr = format(new Date(successData.date), "EEEE d 'de' MMMM", { locale: es });
                                     const timeStr = format(new Date(successData.startTime), "HH:mm");
                                     const msg = encodeURIComponent(`Hola, realicé una reserva en ${successData.complexName}.\n\n📅 *Día:* ${dateStr}\n⏰ *Hora:* ${timeStr}hs\n🏟️ *Cancha:* ${successData.courtName}\n👤 *Nombre:* ${customerName}\n\nFavor de confirmar. ¡Gracias!`);
-                                    window.open(`https://wa.me/${tenantPhone.replace(/\D/g, "")}?text=${msg}`, "_blank");
+                                    window.open(`https://wa.me/${targetPhone.replace(/\D/g, "")}?text=${msg}`, "_blank");
                                 }}
                                 className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-md flex items-center justify-center gap-2 h-12"
                             >
                                 <MessageCircle className="w-5 h-5" />
-                                Notificar por WhatsApp
+                                Enviar comprobante al {activeComplex?.name ? 'Complejo' : 'Encargado'}
                             </Button>
                         )}
                         <Button variant="outline" onClick={() => window.location.reload()} className="w-full rounded-xl h-12 border-border/50">
