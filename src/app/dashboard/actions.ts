@@ -152,15 +152,15 @@ export async function getDashboardData() {
         courtAmount: Number(r.courtAmount),
         consumptionAmount: Number(r.consumptionAmount),
         totalAmount: Number(r.totalAmount),
-        sales: r.sales.map((s: any) => ({
+        sales: r.sales?.map((s: any) => ({
             id: s.id,
             total: Number(s.total),
-            items: s.items.map((it: any) => ({
+            items: s.items?.map((it: any) => ({
                 quantity: it.quantity,
                 subtotal: Number(it.subtotal),
-                product: { name: it.product.name }
-            }))
-        }))
+                product: { name: it.product?.name }
+            })) || []
+        })) || []
     });
 
     return {

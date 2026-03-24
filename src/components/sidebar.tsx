@@ -127,6 +127,11 @@ export function Sidebar({ activeComplexName, userRoleProp }: { activeComplexName
                 ) : (
                     <>
                         {navigation.map((item) => {
+                            // Hide "Complejos" and "Configuración" for staff (Encargado)
+                            if (userRole !== "admin" && (item.name === "Complejos" || item.name === "Configuración")) {
+                                return null;
+                            }
+
                             const isActive = pathname === item.href ||
                                 (item.href !== "/dashboard" && pathname.startsWith(item.href));
                             return (
