@@ -1,4 +1,5 @@
 import { getDashboardData } from "./actions";
+import { auth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -75,9 +76,12 @@ export const revalidate = 0;
 export default async function DashboardPage({
     searchParams
 }: {
-    searchParams: { complexId?: string }
+    searchParams: Promise<{ complexId?: string }>
 }) {
-    const { complexId } = searchParams;
+    const params = await searchParams;
+    const { complexId } = params;
+    const session = await auth();
+    const userRole = (session?.user as any)?.role || "staff";
     let data;
     try {
         data = await getDashboardData(complexId);
@@ -110,7 +114,7 @@ export default async function DashboardPage({
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-                    <ComplexSelector complexes={data?.complexes ?? []} />
+                    <ComplexSelector complexes={data?.complexes ?? []} userRole={userRole} />
 
                     <div className="flex flex-wrap items-center gap-2">
                         <Link href={`/dashboard/reservations?new=true${complexId ? `&complexId=${complexId}` : ""}`}>

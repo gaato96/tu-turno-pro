@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { createReservation, changeReservationStatus, payReservation } from "./actions";
+import { createReservation, changeReservationStatus, payReservation, getAvailableSlots } from "./actions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -93,7 +93,8 @@ export default function ReservationsClient({
     initialReservations,
     currentDate,
     isNew,
-    openResId
+    openResId,
+    userRole
 }: {
     complex: any;
     complexes: any[];
@@ -102,6 +103,7 @@ export default function ReservationsClient({
     currentDate: string;
     isNew?: boolean;
     openResId?: string;
+    userRole?: string;
 }) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
@@ -315,7 +317,7 @@ export default function ReservationsClient({
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {complexes && complexes.length > 1 && (
+                    {complexes && complexes.length > 1 && userRole !== "staff" && (
                         <Select value={complex.id} onValueChange={(v) => router.push(`/dashboard/reservations?date=${currentDate}&complexId=${v}`)}>
                             <SelectTrigger className="w-[200px] h-10 rounded-xl bg-card border-border/50">
                                 <SelectValue placeholder="Seleccionar sede">{complex.name}</SelectValue>
@@ -538,9 +540,20 @@ export default function ReservationsClient({
                                         <SelectValue>{newRes.startTime || "10:00"}</SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {timeSlots.filter((t) => t.endsWith(":00")).map((t) => (
-                                            <SelectItem key={t} value={t}>{t}</SelectItem>
-                                        ))}
+                                        {timeSlots.filter((t) => t.endsWith(":00")).map((t) => {
+                                            // Check if this slot is occupied for the selected court
+                                            const isOccupied = newRes.courtId ? reservations.some((r) => {
+                                                if (r.courtId !== newRes.courtId || r.status === "cancelled") return false;
+                                                const rStart = format(new Date(r.startTime), "HH:mm");
+                                                const rEnd = format(new Date(r.endTime), "HH:mm");
+                                                return t >= rStart && t < rEnd;
+                                            }) : false;
+                                            return (
+                                                <SelectItem key={t} value={t} disabled={isOccupied}>
+                                                    {isOccupied ? `🔴 ${t} — Ocupado` : t}
+                                                </SelectItem>
+                                            );
+                                        })}
                                     </SelectContent>
                                 </Select>
                             </div>

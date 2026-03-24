@@ -1,5 +1,6 @@
 import { getCalendarData } from "./actions";
 import ReservationsClient from "./reservations-client";
+import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -17,6 +18,9 @@ export default async function ReservationsPage({
     const targetComplexId = params.complexId;
     const isNew = params.new === "true";
     const openResId = params.openRes;
+
+    const session = await auth();
+    const userRole = (session?.user as any)?.role || "staff";
 
     const { complex, complexes, courts, reservations } = await getCalendarData(targetDateStr, targetComplexId);
 
@@ -37,6 +41,7 @@ export default async function ReservationsPage({
             currentDate={targetDateStr}
             isNew={isNew}
             openResId={openResId}
+            userRole={userRole}
         />
     );
 }

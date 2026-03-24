@@ -17,17 +17,26 @@ function getTenantId(session: any): string {
 export async function getCalendarData(dateStr: string, activeComplexId?: string) {
     const session = await auth();
     const tenantId = getTenantId(session);
+    const userRole = (session?.user as any)?.role;
+    const userComplexId = (session?.user as any)?.complexId;
 
-    // Get all complexes for the selector
+    // Get complexes filtered by role
     const allComplexes = await prisma.complex.findMany({
-        where: { tenantId, isActive: true },
+        where: {
+            tenantId,
+            isActive: true,
+            ...(userRole === "staff" && userComplexId ? { id: userComplexId } : {})
+        },
         select: { id: true, name: true }
     });
 
     if (allComplexes.length === 0) return { complex: null, complexes: [], courts: [], reservations: [] };
 
     let complexIdToUse = activeComplexId;
-    if (!complexIdToUse || !allComplexes.find(c => c.id === complexIdToUse)) {
+    // Staff users are forced to their assigned complex
+    if (userRole === "staff" && userComplexId) {
+        complexIdToUse = userComplexId;
+    } else if (!complexIdToUse || !allComplexes.find(c => c.id === complexIdToUse)) {
         complexIdToUse = allComplexes[0].id;
     }
 
@@ -98,6 +107,38 @@ export async function getCalendarData(dateStr: string, activeComplexId?: string)
         courts: serializedCourts,
         reservations: serializedReservations
     };
+}
+
+// ── Get Available Slots (lightweight) ──
+
+export async function getAvailableSlots(dateStr: string, complexId: string) {
+    const session = await auth();
+    const tenantId = getTenantId(session);
+
+    const reservations = await prisma.reservation.findMany({
+        where: {
+            tenantId,
+            complexId,
+            date: new Date(dateStr + "T00:00:00"),
+            status: { notIn: ["cancelled"] }
+        },
+        select: {
+            courtId: true,
+            startTime: true,
+            endTime: true,
+            customerName: true,
+            status: true,
+        },
+        orderBy: { startTime: "asc" }
+    });
+
+    return reservations.map(r => ({
+        courtId: r.courtId,
+        startTime: r.startTime.toISOString().replace("Z", ""),
+        endTime: r.endTime.toISOString().replace("Z", ""),
+        customerName: r.customerName,
+        status: r.status,
+    }));
 }
 
 // ── Create Reservation ──

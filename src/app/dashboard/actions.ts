@@ -37,7 +37,7 @@ export async function getDashboardData(complexId?: string) {
             where: { tenantId, complexId: targetComplexId, date: { gte: startOfDay, lte: endOfDay }, status: { notIn: ["cancelled"] } }
         }),
         prisma.reservation.findMany({
-            where: { tenantId, complexId: targetComplexId, status: "in_game" },
+            where: { tenantId, complexId: targetComplexId, status: "in_game", date: { gte: startOfDay, lte: endOfDay } },
             include: {
                 court: { select: { name: true } },
                 sales: {
@@ -67,7 +67,7 @@ export async function getDashboardData(complexId?: string) {
             orderBy: { createdAt: "desc" }
         }),
         prisma.reservation.findMany({
-            where: { tenantId, complexId: targetComplexId, status: "finished" },
+            where: { tenantId, complexId: targetComplexId, status: "finished", date: { gte: startOfDay, lte: endOfDay } },
             include: {
                 court: { select: { name: true } },
                 sales: {
