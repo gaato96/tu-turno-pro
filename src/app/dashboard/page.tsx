@@ -22,8 +22,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { ActiveReservationsWidget, UpcomingReservationsWidget, FinishedReservationsWidget, PendingReservationsAlert } from "./dashboard-widgets";
-import { ComplexSelector } from "./complex-selector";
-
 function KPICard({
     title,
     value,
@@ -73,18 +71,12 @@ function KPICard({
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function DashboardPage({
-    searchParams
-}: {
-    searchParams: Promise<{ complexId?: string }>
-}) {
-    const params = await searchParams;
-    const { complexId } = params;
+export default async function DashboardPage() {
     const session = await auth();
     const userRole = (session?.user as any)?.role || "staff";
     let data;
     try {
-        data = await getDashboardData(complexId);
+        data = await getDashboardData();
     } catch {
         data = null;
     }
@@ -114,10 +106,8 @@ export default async function DashboardPage({
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-                    <ComplexSelector complexes={data?.complexes ?? []} userRole={userRole} />
-
                     <div className="flex flex-wrap items-center gap-2">
-                        <Link href={`/dashboard/reservations?new=true${complexId ? `&complexId=${complexId}` : ""}`}>
+                        <Link href={`/dashboard/reservations?new=true`}>
                             <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 rounded-xl">
                                 <Plus className="w-4 h-4 mr-2" />
                                 Nueva Reserva

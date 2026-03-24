@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { getActiveComplexOrRedirect } from "@/lib/active-complex";
 
 function getTenantId(session: any): string {
     const tid = session?.user?.tenantId;
@@ -14,8 +15,11 @@ export async function getCashData() {
     const session = await auth();
     const tenantId = getTenantId(session);
 
+    const targetComplexId = await getActiveComplexOrRedirect();
+    if (!targetComplexId) throw new Error("No active complex");
+
     const openSession = await prisma.cashSession.findFirst({
-        where: { tenantId, status: "open" },
+        where: { tenantId, complexId: targetComplexId, status: "open" },
         include: {
             openedBy: { select: { name: true } },
             sales: {
@@ -26,7 +30,7 @@ export async function getCashData() {
     });
 
     const history = await prisma.cashSession.findMany({
-        where: { tenantId, status: "closed" },
+        where: { tenantId, complexId: targetComplexId, status: "closed" },
         include: { openedBy: { select: { name: true } }, closedBy: { select: { name: true } } },
         orderBy: { closingDate: "desc" },
         take: 10
@@ -85,17 +89,20 @@ export async function openCashSession(openingBalance: number) {
     const tenantId = getTenantId(session);
     const userId = (session?.user as any)?.id;
 
-    // Check no open session exists
-    const existing = await prisma.cashSession.findFirst({ where: { tenantId, status: "open" } });
-    if (existing) throw new Error("Ya hay una caja abierta");
+    const targetComplexId = await getActiveComplexOrRedirect();
+    if (!targetComplexId) throw new Error("No active complex");
 
-    const complex = await prisma.complex.findFirst({ where: { tenantId } });
+    // Check no open session exists for this complex
+    const existing = await prisma.cashSession.findFirst({ where: { tenantId, complexId: targetComplexId, status: "open" } });
+    if (existing) throw new Error("Ya hay una caja abierta en este complejo");
+
+    const complex = await prisma.complex.findFirst({ where: { id: targetComplexId } });
     if (!complex) throw new Error("No complex found");
 
     await prisma.cashSession.create({
         data: {
             tenantId,
-            complexId: complex.id,
+            complexId: targetComplexId,
             openedById: userId,
             openingBalance,
         }
@@ -109,8 +116,11 @@ export async function closeCashSession(closingBalance: number, notes?: string) {
     const tenantId = getTenantId(session);
     const userId = (session?.user as any)?.id;
 
+    const targetComplexId = await getActiveComplexOrRedirect();
+    if (!targetComplexId) throw new Error("No active complex");
+
     const openSession = await prisma.cashSession.findFirst({
-        where: { tenantId, status: "open" },
+        where: { tenantId, complexId: targetComplexId, status: "open" },
         include: { sales: { where: { status: "completed" } } }
     });
     if (!openSession) throw new Error("No hay caja abierta");

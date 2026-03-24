@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { getActiveComplexOrRedirect } from "@/lib/active-complex";
 
 // ── Helpers ──
 
@@ -14,7 +15,7 @@ function getTenantId(session: any): string {
 
 // ── Calendar Data ──
 
-export async function getCalendarData(dateStr: string, activeComplexId?: string) {
+export async function getCalendarData(dateStr: string) {
     const session = await auth();
     const tenantId = getTenantId(session);
     const userRole = (session?.user as any)?.role;
@@ -32,12 +33,10 @@ export async function getCalendarData(dateStr: string, activeComplexId?: string)
 
     if (allComplexes.length === 0) return { complex: null, complexes: [], courts: [], reservations: [] };
 
-    let complexIdToUse = activeComplexId;
-    // Staff users are forced to their assigned complex
-    if (userRole === "staff" && userComplexId) {
-        complexIdToUse = userComplexId;
-    } else if (!complexIdToUse || !allComplexes.find(c => c.id === complexIdToUse)) {
-        complexIdToUse = allComplexes[0].id;
+    const complexIdToUse = await getActiveComplexOrRedirect();
+
+    if (!complexIdToUse) {
+        throw new Error("No active complex");
     }
 
     const complex = await prisma.complex.findFirst({

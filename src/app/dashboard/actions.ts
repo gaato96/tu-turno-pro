@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { getActiveComplexOrRedirect } from "@/lib/active-complex";
 
 function getTenantId(session: any): string {
     const tid = session?.user?.tenantId;
@@ -9,17 +10,13 @@ function getTenantId(session: any): string {
     return tid;
 }
 
-export async function getDashboardData(complexId?: string) {
+export async function getDashboardData() {
     const session = await auth();
     const tenantId = getTenantId(session);
 
-    const userRole = (session?.user as any)?.role;
-    const userComplexId = (session?.user as any)?.complexId;
-
-    // Enforce complexId for staff
-    let targetComplexId = complexId;
-    if (userRole === "staff" && userComplexId) {
-        targetComplexId = userComplexId;
+    const targetComplexId = await getActiveComplexOrRedirect();
+    if (!targetComplexId) {
+        throw new Error("No active complex");
     }
 
     const now = new Date();
@@ -111,7 +108,7 @@ export async function getDashboardData(complexId?: string) {
             take: 5
         }),
         prisma.complex.findMany({
-            where: { tenantId, id: userRole === "staff" ? userComplexId : undefined },
+            where: { tenantId, id: targetComplexId },
             select: { id: true, name: true }
         })
     ]);

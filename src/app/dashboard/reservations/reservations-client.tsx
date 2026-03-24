@@ -88,22 +88,18 @@ const sportEmoji: Record<string, string> = {
 
 export default function ReservationsClient({
     complex,
-    complexes,
     courts,
     initialReservations,
     currentDate,
     isNew,
     openResId,
-    userRole
 }: {
     complex: any;
-    complexes: any[];
     courts: Court[];
     initialReservations: any[];
     currentDate: string;
     isNew?: boolean;
     openResId?: string;
-    userRole?: string;
 }) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
@@ -317,448 +313,438 @@ export default function ReservationsClient({
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {complexes && complexes.length > 1 && userRole !== "staff" && (
-                        <Select value={complex.id} onValueChange={(v) => router.push(`/dashboard/reservations?date=${currentDate}&complexId=${v}`)}>
-                            <SelectTrigger className="w-[200px] h-10 rounded-xl bg-card border-border/50">
-                                <SelectValue placeholder="Seleccionar sede">{complex.name}</SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                                {complexes.map(c => (
-                                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    )}
-                    <Button
-                        onClick={() => {
-                            setNewRes({ customerName: "", customerPhone: "", courtId: "", startTime: "10:00", endTime: "11:00", duration: "60", isRecurring: false });
-                            setShowNewReservation(true);
-                        }}
-                        className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-lg shadow-emerald-500/20 rounded-xl"
-                    >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Nueva Reserva
-                    </Button>
-                </div>
-            </div>
-
-            {/* Date Navigation */}
-            <Card className="p-4 card-elevated border-border/50">
-                <div className="flex items-center justify-between">
-                    <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/reservations?date=${format(subDays(selectedDate, 1), "yyyy-MM-dd")}`)} className="rounded-xl">
-                        <ChevronLeft className="w-5 h-5" />
-                    </Button>
-                    <div className="text-center">
-                        <p className="text-xl font-bold capitalize">
-                            {format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}
-                        </p>
-                        {currentDate === format(new Date(), "yyyy-MM-dd") && (
-                            <Badge className="mt-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 rounded-full">
-                                Hoy
-                            </Badge>
-                        )}
-                    </div>
-                    <div className="flex gap-2">
-                        {currentDate !== format(new Date(), "yyyy-MM-dd") && (
-                            <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/reservations`)} className="rounded-xl text-xs">
-                                Hoy
-                            </Button>
-                        )}
-                        <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/reservations?date=${format(addDays(selectedDate, 1), "yyyy-MM-dd")}`)} className="rounded-xl">
-                            <ChevronRight className="w-5 h-5" />
+                    <div className="flex items-center gap-3">
+                        <Button
+                            onClick={() => {
+                                setNewRes({ customerName: "", customerPhone: "", courtId: "", startTime: "10:00", endTime: "11:00", duration: "60", isRecurring: false });
+                                setShowNewReservation(true);
+                            }}
+                            className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-lg shadow-emerald-500/20 rounded-xl"
+                        >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Nueva Reserva
                         </Button>
                     </div>
                 </div>
-            </Card>
 
-            {/* Calendar Grid */}
-            <Card className={`card-elevated border-border/50 overflow-hidden ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
-                <div className="overflow-x-auto">
-                    <div className="min-w-[700px] md:min-w-0">
-                        {/* Column Headers (Courts) */}
-                        <div className="grid sticky top-0 z-10 bg-card border-b border-border" style={{ gridTemplateColumns: `80px repeat(${courts.length}, 1fr)` }}>
-                            <div className="p-3 text-xs font-semibold text-muted-foreground border-r border-border flex items-center">
-                                <Clock className="w-3.5 h-3.5 mr-1" />
-                                Hora
-                            </div>
-                            {courts.map((court) => (
-                                <div key={court.id} className="p-3 text-center border-r border-border last:border-r-0">
-                                    <p className="text-sm font-bold">{court.name}</p>
-                                    <div className="flex items-center justify-center gap-1 mt-1">
-                                        <span className="text-[10px]">{sportEmoji[court.sportType]}</span>
-                                        <span className="text-[10px] text-muted-foreground">
-                                            ${court.dayRate.toLocaleString()} / ${court.nightRate.toLocaleString()}
-                                        </span>
-                                    </div>
-                                    {court.parentCourtId && (
-                                        <Badge variant="secondary" className="mt-1 text-[9px] px-1.5 py-0 rounded-full">
-                                            Vinculada
-                                        </Badge>
-                                    )}
-                                </div>
-                            ))}
+                {/* Date Navigation */}
+                <Card className="p-4 card-elevated border-border/50">
+                    <div className="flex items-center justify-between">
+                        <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/reservations?date=${format(subDays(selectedDate, 1), "yyyy-MM-dd")}`)} className="rounded-xl">
+                            <ChevronLeft className="w-5 h-5" />
+                        </Button>
+                        <div className="text-center">
+                            <p className="text-xl font-bold capitalize">
+                                {format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}
+                            </p>
+                            {currentDate === format(new Date(), "yyyy-MM-dd") && (
+                                <Badge className="mt-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 rounded-full">
+                                    Hoy
+                                </Badge>
+                            )}
                         </div>
+                        <div className="flex gap-2">
+                            {currentDate !== format(new Date(), "yyyy-MM-dd") && (
+                                <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/reservations`)} className="rounded-xl text-xs">
+                                    Hoy
+                                </Button>
+                            )}
+                            <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/reservations?date=${format(addDays(selectedDate, 1), "yyyy-MM-dd")}`)} className="rounded-xl">
+                                <ChevronRight className="w-5 h-5" />
+                            </Button>
+                        </div>
+                    </div>
+                </Card>
 
-                        {/* Time Rows */}
-                        {timeSlots.map((time) => {
-                            const isHour = time.endsWith(":00");
-                            const hour = parseInt(time.split(":")[0]);
-                            const isNightStart = hour >= 19 || hour < 6;
-
-                            return (
-                                <div
-                                    key={time}
-                                    className="grid border-b border-border/50 last:border-b-0"
-                                    style={{ gridTemplateColumns: `80px repeat(${courts.length}, 1fr)` }}
-                                >
-                                    {/* Time label */}
-                                    <div className={`p-2 text-xs border-r border-border flex items-center justify-center ${isHour ? "font-semibold" : "text-muted-foreground text-[10px]"} ${isNightStart ? "bg-indigo-50/50 dark:bg-indigo-500/5" : ""}`}>
-                                        {time}
-                                        {isNightStart && isHour && <span className="ml-1 text-[9px]">🌙</span>}
+                {/* Calendar Grid */}
+                <Card className={`card-elevated border-border/50 overflow-hidden ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div className="overflow-x-auto">
+                        <div className="min-w-[700px] md:min-w-0">
+                            {/* Column Headers (Courts) */}
+                            <div className="grid sticky top-0 z-10 bg-card border-b border-border" style={{ gridTemplateColumns: `80px repeat(${courts.length}, 1fr)` }}>
+                                <div className="p-3 text-xs font-semibold text-muted-foreground border-r border-border flex items-center">
+                                    <Clock className="w-3.5 h-3.5 mr-1" />
+                                    Hora
+                                </div>
+                                {courts.map((court) => (
+                                    <div key={court.id} className="p-3 text-center border-r border-border last:border-r-0">
+                                        <p className="text-sm font-bold">{court.name}</p>
+                                        <div className="flex items-center justify-center gap-1 mt-1">
+                                            <span className="text-[10px]">{sportEmoji[court.sportType]}</span>
+                                            <span className="text-[10px] text-muted-foreground">
+                                                ${court.dayRate.toLocaleString()} / ${court.nightRate.toLocaleString()}
+                                            </span>
+                                        </div>
+                                        {court.parentCourtId && (
+                                            <Badge variant="secondary" className="mt-1 text-[9px] px-1.5 py-0 rounded-full">
+                                                Vinculada
+                                            </Badge>
+                                        )}
                                     </div>
+                                ))}
+                            </div>
 
-                                    {/* Court cells */}
-                                    {courts.map((court) => {
-                                        const reservation = getReservationForSlot(court.id, time);
-                                        const isStart = reservation && isSlotStart(court.id, time);
-                                        const span = reservation && isStart ? getSlotSpan(reservation) : 0;
-                                        const isNight = hour >= parseInt(court.nightRateStartTime.split(":")[0]);
+                            {/* Time Rows */}
+                            {timeSlots.map((time) => {
+                                const isHour = time.endsWith(":00");
+                                const hour = parseInt(time.split(":")[0]);
+                                const isNightStart = hour >= 19 || hour < 6;
 
-                                        if (reservation && !isStart) {
-                                            return <div key={court.id} className="border-r border-border/30 last:border-r-0" />;
-                                        }
+                                return (
+                                    <div
+                                        key={time}
+                                        className="grid border-b border-border/50 last:border-b-0"
+                                        style={{ gridTemplateColumns: `80px repeat(${courts.length}, 1fr)` }}
+                                    >
+                                        {/* Time label */}
+                                        <div className={`p-2 text-xs border-r border-border flex items-center justify-center ${isHour ? "font-semibold" : "text-muted-foreground text-[10px]"} ${isNightStart ? "bg-indigo-50/50 dark:bg-indigo-500/5" : ""}`}>
+                                            {time}
+                                            {isNightStart && isHour && <span className="ml-1 text-[9px]">🌙</span>}
+                                        </div>
 
-                                        if (reservation && isStart) {
-                                            const statusCfg = statusConfig[reservation.status];
+                                        {/* Court cells */}
+                                        {courts.map((court) => {
+                                            const reservation = getReservationForSlot(court.id, time);
+                                            const isStart = reservation && isSlotStart(court.id, time);
+                                            const span = reservation && isStart ? getSlotSpan(reservation) : 0;
+                                            const isNight = hour >= parseInt(court.nightRateStartTime.split(":")[0]);
+
+                                            if (reservation && !isStart) {
+                                                return <div key={court.id} className="border-r border-border/30 last:border-r-0" />;
+                                            }
+
+                                            if (reservation && isStart) {
+                                                const statusCfg = statusConfig[reservation.status];
+                                                return (
+                                                    <div
+                                                        key={court.id}
+                                                        className={`border-r border-border/30 last:border-r-0 p-1`}
+                                                        style={{ gridRow: `span ${span}` }}
+                                                    >
+                                                        <div
+                                                            className={`h-full rounded-xl p-2.5 ${statusCfg.class} cursor-pointer group relative transition-all duration-200 hover:shadow-md`}
+                                                            onClick={() => setDetailReservation(reservation)}
+                                                        >
+                                                            <div className="flex items-start justify-between">
+                                                                <div className="min-w-0 text-white">
+                                                                    <p className="text-xs font-bold truncate">{reservation.customerName}</p>
+                                                                    <p className="text-[10px] opacity-75">
+                                                                        {format(new Date(reservation.startTime), "HH:mm")} — {format(new Date(reservation.endTime), "HH:mm")}
+                                                                    </p>
+                                                                </div>
+                                                                <Badge className="text-[9px] px-1.5 py-0 rounded-full shrink-0 ml-1 bg-white/20 border-white/20 text-white" variant="outline">
+                                                                    {statusCfg.label}
+                                                                </Badge>
+                                                            </div>
+                                                            {reservation.isRecurring && (
+                                                                <div className="absolute top-1 right-1">
+                                                                    <RotateCcw className="w-3 h-3 text-white/50" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+
                                             return (
                                                 <div
                                                     key={court.id}
-                                                    className={`border-r border-border/30 last:border-r-0 p-1`}
-                                                    style={{ gridRow: `span ${span}` }}
+                                                    className={`border-r border-border/30 last:border-r-0 p-0.5 calendar-slot ${isNight ? "bg-indigo-50/30 dark:bg-indigo-500/3" : ""}`}
+                                                    onClick={() => handleSlotClick(court.id, time)}
                                                 >
-                                                    <div
-                                                        className={`h-full rounded-xl p-2.5 ${statusCfg.class} cursor-pointer group relative transition-all duration-200 hover:shadow-md`}
-                                                        onClick={() => setDetailReservation(reservation)}
-                                                    >
-                                                        <div className="flex items-start justify-between">
-                                                            <div className="min-w-0 text-white">
-                                                                <p className="text-xs font-bold truncate">{reservation.customerName}</p>
-                                                                <p className="text-[10px] opacity-75">
-                                                                    {format(new Date(reservation.startTime), "HH:mm")} — {format(new Date(reservation.endTime), "HH:mm")}
-                                                                </p>
-                                                            </div>
-                                                            <Badge className="text-[9px] px-1.5 py-0 rounded-full shrink-0 ml-1 bg-white/20 border-white/20 text-white" variant="outline">
-                                                                {statusCfg.label}
-                                                            </Badge>
-                                                        </div>
-                                                        {reservation.isRecurring && (
-                                                            <div className="absolute top-1 right-1">
-                                                                <RotateCcw className="w-3 h-3 text-white/50" />
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                    <div className="h-full w-full rounded-lg hover:bg-emerald-100/50 dark:hover:bg-emerald-500/10 min-h-[28px] transition-colors" />
                                                 </div>
                                             );
-                                        }
-
-                                        return (
-                                            <div
-                                                key={court.id}
-                                                className={`border-r border-border/30 last:border-r-0 p-0.5 calendar-slot ${isNight ? "bg-indigo-50/30 dark:bg-indigo-500/3" : ""}`}
-                                                onClick={() => handleSlotClick(court.id, time)}
-                                            >
-                                                <div className="h-full w-full rounded-lg hover:bg-emerald-100/50 dark:hover:bg-emerald-500/10 min-h-[28px] transition-colors" />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            </Card>
-
-            {/* New Reservation Dialog */}
-            <Dialog open={showNewReservation} onOpenChange={setShowNewReservation}>
-                <DialogContent className="sm:max-w-[480px] rounded-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-bold">Nueva Reserva</DialogTitle>
-                    </DialogHeader>
-
-                    <div className="space-y-4 py-2">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="col-span-2">
-                                <Label>Nombre del Cliente</Label>
-                                <Input
-                                    placeholder="Nombre completo"
-                                    value={newRes.customerName}
-                                    onChange={(e) => setNewRes({ ...newRes, customerName: e.target.value })}
-                                    className="mt-1.5 rounded-xl"
-                                />
-                            </div>
-                            <div className="col-span-2">
-                                <Label>Teléfono</Label>
-                                <Input
-                                    placeholder="+54 11 xxxx-xxxx"
-                                    value={newRes.customerPhone}
-                                    onChange={(e) => setNewRes({ ...newRes, customerPhone: e.target.value })}
-                                    className="mt-1.5 rounded-xl"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <Label>Cancha</Label>
-                            <Select value={newRes.courtId} onValueChange={(v) => v && setNewRes({ ...newRes, courtId: v })}>
-                                <SelectTrigger className="mt-1.5 rounded-xl">
-                                    <SelectValue placeholder="Seleccionar cancha">
-                                        {newRes.courtId ? courts.find(c => c.id === newRes.courtId)?.name : "Seleccionar cancha"}
-                                    </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {courts.map((court) => (
-                                        <SelectItem key={court.id} value={court.id}>
-                                            {sportEmoji[court.sportType]} {court.name} — ${court.dayRate.toLocaleString()}/{court.nightRate.toLocaleString()}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-3">
-                            <div>
-                                <Label>Hora Inicio</Label>
-                                <Select value={newRes.startTime} onValueChange={(v) => {
-                                    if (!v) return;
-                                    const [h, m] = v.split(":").map(Number);
-                                    const endMinutes = h * 60 + m + parseInt(newRes.duration);
-                                    const endH = Math.floor(endMinutes / 60);
-                                    const endM = endMinutes % 60;
-                                    setNewRes({ ...newRes, startTime: v, endTime: `${endH.toString().padStart(2, "0")}:${endM.toString().padStart(2, "0")}` });
-                                }}>
-                                    <SelectTrigger className="mt-1.5 rounded-xl">
-                                        <SelectValue>{newRes.startTime || "10:00"}</SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {timeSlots.filter((t) => t.endsWith(":00")).map((t) => {
-                                            // Check if this slot is occupied for the selected court
-                                            const isOccupied = newRes.courtId ? reservations.some((r) => {
-                                                if (r.courtId !== newRes.courtId || r.status === "cancelled") return false;
-                                                const rStart = format(new Date(r.startTime), "HH:mm");
-                                                const rEnd = format(new Date(r.endTime), "HH:mm");
-                                                return t >= rStart && t < rEnd;
-                                            }) : false;
-                                            return (
-                                                <SelectItem key={t} value={t} disabled={isOccupied}>
-                                                    {isOccupied ? `🔴 ${t} — Ocupado` : t}
-                                                </SelectItem>
-                                            );
                                         })}
-                                    </SelectContent>
-                                </Select>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </Card>
+
+                {/* New Reservation Dialog */}
+                <Dialog open={showNewReservation} onOpenChange={setShowNewReservation}>
+                    <DialogContent className="sm:max-w-[480px] rounded-2xl">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-bold">Nueva Reserva</DialogTitle>
+                        </DialogHeader>
+
+                        <div className="space-y-4 py-2">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <Label>Nombre del Cliente</Label>
+                                    <Input
+                                        placeholder="Nombre completo"
+                                        value={newRes.customerName}
+                                        onChange={(e) => setNewRes({ ...newRes, customerName: e.target.value })}
+                                        className="mt-1.5 rounded-xl"
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <Label>Teléfono</Label>
+                                    <Input
+                                        placeholder="+54 11 xxxx-xxxx"
+                                        value={newRes.customerPhone}
+                                        onChange={(e) => setNewRes({ ...newRes, customerPhone: e.target.value })}
+                                        className="mt-1.5 rounded-xl"
+                                    />
+                                </div>
                             </div>
+
                             <div>
-                                <Label>Duración</Label>
-                                <Select value={newRes.duration} onValueChange={(v) => v && handleDurationChange(v)}>
+                                <Label>Cancha</Label>
+                                <Select value={newRes.courtId} onValueChange={(v) => v && setNewRes({ ...newRes, courtId: v })}>
                                     <SelectTrigger className="mt-1.5 rounded-xl">
-                                        <SelectValue>{newRes.duration === "120" ? "2 horas" : newRes.duration === "90" ? "1.5 horas" : "1 hora"}</SelectValue>
+                                        <SelectValue placeholder="Seleccionar cancha">
+                                            {newRes.courtId ? courts.find(c => c.id === newRes.courtId)?.name : "Seleccionar cancha"}
+                                        </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="60">1 hora</SelectItem>
-                                        <SelectItem value="90">1.5 horas</SelectItem>
-                                        <SelectItem value="120">2 horas</SelectItem>
+                                        {courts.map((court) => (
+                                            <SelectItem key={court.id} value={court.id}>
+                                                {sportEmoji[court.sportType]} {court.name} — ${court.dayRate.toLocaleString()}/{court.nightRate.toLocaleString()}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div>
-                                <Label>Hora Fin</Label>
-                                <Input value={newRes.endTime} readOnly className="mt-1.5 rounded-xl bg-muted" />
-                            </div>
-                        </div>
 
-                        <Separator />
-
-                        <div className="flex items-center gap-3">
-                            <input
-                                type="checkbox"
-                                id="recurring"
-                                checked={newRes.isRecurring}
-                                onChange={(e) => setNewRes({ ...newRes, isRecurring: e.target.checked })}
-                                className="rounded"
-                            />
-                            <Label htmlFor="recurring" className="cursor-pointer">
-                                <span className="font-semibold">Es Fijo (Recurrente)</span>
-                                <br />
-                                <span className="text-xs text-muted-foreground">Crea 4 reservas semanales</span>
-                            </Label>
-                        </div>
-
-                        {newRes.courtId && newRes.startTime && (
-                            <Card className="p-3 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 rounded-xl">
-                                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-                                    💰 Tarifa estimada: ${(() => {
-                                        const court = courts.find((c) => c.id === newRes.courtId);
-                                        if (!court) return 0;
-                                        const startHour = parseInt(newRes.startTime.split(":")[0]);
-                                        const isNight = startHour >= parseInt(court.nightRateStartTime.split(":")[0]);
-                                        const rate = isNight ? court.nightRate : court.dayRate;
-                                        return (rate * Number(newRes.duration) / 60).toLocaleString();
-                                    })()}
-                                </p>
-                            </Card>
-                        )}
-                    </div>
-
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowNewReservation(false)} className="rounded-xl" disabled={isPending}>
-                            Cancelar
-                        </Button>
-                        <Button
-                            onClick={handleCreateReservation}
-                            disabled={!newRes.customerName || !newRes.courtId || isPending}
-                            className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-xl"
-                        >
-                            {isPending ? "Creando..." : "Crear Reserva"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Reservation Detail Modal */}
-            <Dialog open={!!detailReservation} onOpenChange={(open) => !open && setDetailReservation(null)}>
-                <DialogContent className="sm:max-w-[420px] rounded-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-bold flex items-center justify-between">
-                            <span>Detalle de Reserva</span>
-                            {detailReservation && (
-                                <Badge className={`${statusConfig[detailReservation.status]?.class} rounded-full`}>
-                                    {statusConfig[detailReservation.status]?.label}
-                                </Badge>
-                            )}
-                        </DialogTitle>
-                    </DialogHeader>
-
-                    {detailReservation && (
-                        <div className="space-y-6 py-2">
-                            {/* Summary Card */}
-                            <Card className={`p-4 rounded-xl border-dashed ${statusConfig[detailReservation.status]?.class}`}>
-                                <h3 className="text-lg font-bold mb-1">{detailReservation.customerName}</h3>
-                                {detailReservation.customerPhone && (
-                                    <p className="text-sm font-medium mb-3 opacity-90">{detailReservation.customerPhone}</p>
-                                )}
-
-                                <div className="grid grid-cols-2 gap-4 mt-4">
-                                    <div>
-                                        <p className="text-xs opacity-75 mb-1">Cancha</p>
-                                        <p className="font-semibold text-sm">
-                                            {courts.find(c => c.id === detailReservation.courtId)?.name || 'Desconocida'}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-75 mb-1">Horario</p>
-                                        <p className="font-semibold text-sm flex items-center">
-                                            <Clock className="w-3.5 h-3.5 mr-1" />
-                                            {format(new Date(detailReservation.startTime), "HH:mm")} - {format(new Date(detailReservation.endTime), "HH:mm")}
-                                        </p>
-                                    </div>
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <Label>Hora Inicio</Label>
+                                    <Select value={newRes.startTime} onValueChange={(v) => {
+                                        if (!v) return;
+                                        const [h, m] = v.split(":").map(Number);
+                                        const endMinutes = h * 60 + m + parseInt(newRes.duration);
+                                        const endH = Math.floor(endMinutes / 60);
+                                        const endM = endMinutes % 60;
+                                        setNewRes({ ...newRes, startTime: v, endTime: `${endH.toString().padStart(2, "0")}:${endM.toString().padStart(2, "0")}` });
+                                    }}>
+                                        <SelectTrigger className="mt-1.5 rounded-xl">
+                                            <SelectValue>{newRes.startTime || "10:00"}</SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {timeSlots.filter((t) => t.endsWith(":00")).map((t) => {
+                                                // Check if this slot is occupied for the selected court
+                                                const isOccupied = newRes.courtId ? reservations.some((r) => {
+                                                    if (r.courtId !== newRes.courtId || r.status === "cancelled") return false;
+                                                    const rStart = format(new Date(r.startTime), "HH:mm");
+                                                    const rEnd = format(new Date(r.endTime), "HH:mm");
+                                                    return t >= rStart && t < rEnd;
+                                                }) : false;
+                                                return (
+                                                    <SelectItem key={t} value={t} disabled={isOccupied}>
+                                                        {isOccupied ? `🔴 ${t} — Ocupado` : t}
+                                                    </SelectItem>
+                                                );
+                                            })}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
-                            </Card>
-
-                            {/* Financial Summary */}
-                            <div className="flex justify-between items-center px-2">
-                                <span className="text-sm text-muted-foreground">Total a pagar</span>
-                                <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                                    ${Number(detailReservation.totalAmount).toLocaleString()}
-                                </span>
+                                <div>
+                                    <Label>Duración</Label>
+                                    <Select value={newRes.duration} onValueChange={(v) => v && handleDurationChange(v)}>
+                                        <SelectTrigger className="mt-1.5 rounded-xl">
+                                            <SelectValue>{newRes.duration === "120" ? "2 horas" : newRes.duration === "90" ? "1.5 horas" : "1 hora"}</SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="60">1 hora</SelectItem>
+                                            <SelectItem value="90">1.5 horas</SelectItem>
+                                            <SelectItem value="120">2 horas</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <Label>Hora Fin</Label>
+                                    <Input value={newRes.endTime} readOnly className="mt-1.5 rounded-xl bg-muted" />
+                                </div>
                             </div>
 
-                            {/* Consumptions List */}
-                            {detailReservation.sales && detailReservation.sales.length > 0 && (
-                                <div className="space-y-2 px-2">
-                                    <h4 className="text-sm font-bold flex items-center gap-2">
-                                        <ShoppingCart className="w-4 h-4" /> Consumos
-                                    </h4>
-                                    <div className="bg-muted/50 rounded-xl p-3 space-y-2 border border-border/50">
-                                        {detailReservation.sales.flatMap((s: any) => s.items).map((item: any, idx: number) => (
-                                            <div key={idx} className="flex justify-between text-xs">
-                                                <span>{item.quantity}x {item.product?.name || "Producto"}</span>
-                                                <span className="font-semibold">${Number(item.subtotal).toLocaleString()}</span>
-                                            </div>
-                                        ))}
-                                        <div className="pt-2 border-t flex justify-between text-[11px] text-muted-foreground uppercase font-bold tracking-tighter">
-                                            <span>Subtotal Consumo</span>
-                                            <span className="text-emerald-600 dark:text-emerald-400">
-                                                ${Number(detailReservation.consumptionAmount).toLocaleString()}
-                                            </span>
+                            <Separator />
+
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="checkbox"
+                                    id="recurring"
+                                    checked={newRes.isRecurring}
+                                    onChange={(e) => setNewRes({ ...newRes, isRecurring: e.target.checked })}
+                                    className="rounded"
+                                />
+                                <Label htmlFor="recurring" className="cursor-pointer">
+                                    <span className="font-semibold">Es Fijo (Recurrente)</span>
+                                    <br />
+                                    <span className="text-xs text-muted-foreground">Crea 4 reservas semanales</span>
+                                </Label>
+                            </div>
+
+                            {newRes.courtId && newRes.startTime && (
+                                <Card className="p-3 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 rounded-xl">
+                                    <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                                        💰 Tarifa estimada: ${(() => {
+                                            const court = courts.find((c) => c.id === newRes.courtId);
+                                            if (!court) return 0;
+                                            const startHour = parseInt(newRes.startTime.split(":")[0]);
+                                            const isNight = startHour >= parseInt(court.nightRateStartTime.split(":")[0]);
+                                            const rate = isNight ? court.nightRate : court.dayRate;
+                                            return (rate * Number(newRes.duration) / 60).toLocaleString();
+                                        })()}
+                                    </p>
+                                </Card>
+                            )}
+                        </div>
+
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setShowNewReservation(false)} className="rounded-xl" disabled={isPending}>
+                                Cancelar
+                            </Button>
+                            <Button
+                                onClick={handleCreateReservation}
+                                disabled={!newRes.customerName || !newRes.courtId || isPending}
+                                className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-xl"
+                            >
+                                {isPending ? "Creando..." : "Crear Reserva"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Reservation Detail Modal */}
+                <Dialog open={!!detailReservation} onOpenChange={(open) => !open && setDetailReservation(null)}>
+                    <DialogContent className="sm:max-w-[420px] rounded-2xl">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-bold flex items-center justify-between">
+                                <span>Detalle de Reserva</span>
+                                {detailReservation && (
+                                    <Badge className={`${statusConfig[detailReservation.status]?.class} rounded-full`}>
+                                        {statusConfig[detailReservation.status]?.label}
+                                    </Badge>
+                                )}
+                            </DialogTitle>
+                        </DialogHeader>
+
+                        {detailReservation && (
+                            <div className="space-y-6 py-2">
+                                {/* Summary Card */}
+                                <Card className={`p-4 rounded-xl border-dashed ${statusConfig[detailReservation.status]?.class}`}>
+                                    <h3 className="text-lg font-bold mb-1">{detailReservation.customerName}</h3>
+                                    {detailReservation.customerPhone && (
+                                        <p className="text-sm font-medium mb-3 opacity-90">{detailReservation.customerPhone}</p>
+                                    )}
+
+                                    <div className="grid grid-cols-2 gap-4 mt-4">
+                                        <div>
+                                            <p className="text-xs opacity-75 mb-1">Cancha</p>
+                                            <p className="font-semibold text-sm">
+                                                {courts.find(c => c.id === detailReservation.courtId)?.name || 'Desconocida'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-75 mb-1">Horario</p>
+                                            <p className="font-semibold text-sm flex items-center">
+                                                <Clock className="w-3.5 h-3.5 mr-1" />
+                                                {format(new Date(detailReservation.startTime), "HH:mm")} - {format(new Date(detailReservation.endTime), "HH:mm")}
+                                            </p>
                                         </div>
                                     </div>
+                                </Card>
+
+                                {/* Financial Summary */}
+                                <div className="flex justify-between items-center px-2">
+                                    <span className="text-sm text-muted-foreground">Total a pagar</span>
+                                    <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                                        ${Number(detailReservation.totalAmount).toLocaleString()}
+                                    </span>
                                 </div>
-                            )}
 
-                            {/* Actions Grouped by Status */}
-                            <div className="grid grid-cols-2 gap-2 mt-4">
-                                {detailReservation.status === "pending" && (
-                                    <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-12" onClick={() => updateStatus(detailReservation.id, "confirmed")} disabled={isPending}>
-                                        <Check className="w-4 h-4 mr-2" /> Confirmar
-                                    </Button>
+                                {/* Consumptions List */}
+                                {detailReservation.sales && detailReservation.sales.length > 0 && (
+                                    <div className="space-y-2 px-2">
+                                        <h4 className="text-sm font-bold flex items-center gap-2">
+                                            <ShoppingCart className="w-4 h-4" /> Consumos
+                                        </h4>
+                                        <div className="bg-muted/50 rounded-xl p-3 space-y-2 border border-border/50">
+                                            {detailReservation.sales.flatMap((s: any) => s.items).map((item: any, idx: number) => (
+                                                <div key={idx} className="flex justify-between text-xs">
+                                                    <span>{item.quantity}x {item.product?.name || "Producto"}</span>
+                                                    <span className="font-semibold">${Number(item.subtotal).toLocaleString()}</span>
+                                                </div>
+                                            ))}
+                                            <div className="pt-2 border-t flex justify-between text-[11px] text-muted-foreground uppercase font-bold tracking-tighter">
+                                                <span>Subtotal Consumo</span>
+                                                <span className="text-emerald-600 dark:text-emerald-400">
+                                                    ${Number(detailReservation.consumptionAmount).toLocaleString()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 )}
-                                {detailReservation.status === "confirmed" && (
-                                    <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-12" onClick={() => updateStatus(detailReservation.id, "in_game")} disabled={isPending}>
-                                        <Play className="w-4 h-4 mr-2" /> Iniciar (Check-in)
-                                    </Button>
-                                )}
-                                {detailReservation.status === "in_game" && (
-                                    <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white rounded-xl h-12" onClick={() => updateStatus(detailReservation.id, "finished")} disabled={isPending}>
-                                        <Square className="w-4 h-4 mr-2" /> Finalizar Turno
-                                    </Button>
-                                )}
-                                {(detailReservation.status === "pending" || detailReservation.status === "confirmed") && (
-                                    <Button variant="outline" className="w-full rounded-xl h-12 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30" onClick={() => updateStatus(detailReservation.id, "cancelled")} disabled={isPending}>
-                                        Cancelar Turno
+
+                                {/* Actions Grouped by Status */}
+                                <div className="grid grid-cols-2 gap-2 mt-4">
+                                    {detailReservation.status === "pending" && (
+                                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-12" onClick={() => updateStatus(detailReservation.id, "confirmed")} disabled={isPending}>
+                                            <Check className="w-4 h-4 mr-2" /> Confirmar
+                                        </Button>
+                                    )}
+                                    {detailReservation.status === "confirmed" && (
+                                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-12" onClick={() => updateStatus(detailReservation.id, "in_game")} disabled={isPending}>
+                                            <Play className="w-4 h-4 mr-2" /> Iniciar (Check-in)
+                                        </Button>
+                                    )}
+                                    {detailReservation.status === "in_game" && (
+                                        <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white rounded-xl h-12" onClick={() => updateStatus(detailReservation.id, "finished")} disabled={isPending}>
+                                            <Square className="w-4 h-4 mr-2" /> Finalizar Turno
+                                        </Button>
+                                    )}
+                                    {(detailReservation.status === "pending" || detailReservation.status === "confirmed") && (
+                                        <Button variant="outline" className="w-full rounded-xl h-12 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30" onClick={() => updateStatus(detailReservation.id, "cancelled")} disabled={isPending}>
+                                            Cancelar Turno
+                                        </Button>
+                                    )}
+
+                                    {detailReservation.customerPhone && (
+                                        <Button variant="outline" className="w-full rounded-xl h-12 border-emerald-500/30 text-emerald-600 hover:bg-emerald-50" onClick={() => handleWhatsApp(detailReservation.customerPhone, detailReservation.customerName)}>
+                                            <MessageCircle className="w-4 h-4 mr-2" /> WhatsApp
+                                        </Button>
+                                    )}
+                                </div>
+
+                                {/* Giant Pay Button if Finished */}
+                                {detailReservation.status === "finished" && (
+                                    <Button
+                                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-14 mt-2 text-lg font-bold"
+                                        onClick={() => setPaymentReservation(detailReservation)}
+                                        disabled={isPending}
+                                    >
+                                        <DollarSign className="w-5 h-5 mr-2" /> Cobrar Turno
                                     </Button>
                                 )}
 
-                                {detailReservation.customerPhone && (
-                                    <Button variant="outline" className="w-full rounded-xl h-12 border-emerald-500/30 text-emerald-600 hover:bg-emerald-50" onClick={() => handleWhatsApp(detailReservation.customerPhone, detailReservation.customerName)}>
-                                        <MessageCircle className="w-4 h-4 mr-2" /> WhatsApp
+                                {detailReservation.status !== "cancelled" && (
+                                    <Button
+                                        variant="outline"
+                                        className="w-full mt-2 rounded-xl h-12 border-blue-500/30 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                        onClick={() => {
+                                            router.push(`/dashboard/pos?reservationId=${detailReservation.id}`);
+                                        }}
+                                    >
+                                        <ShoppingCart className="w-4 h-4 mr-2" /> Agregar Consumo
                                     </Button>
                                 )}
                             </div>
+                        )}
+                    </DialogContent>
+                </Dialog>
 
-                            {/* Giant Pay Button if Finished */}
-                            {detailReservation.status === "finished" && (
-                                <Button
-                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-14 mt-2 text-lg font-bold"
-                                    onClick={() => setPaymentReservation(detailReservation)}
-                                    disabled={isPending}
-                                >
-                                    <DollarSign className="w-5 h-5 mr-2" /> Cobrar Turno
-                                </Button>
-                            )}
-
-                            {detailReservation.status !== "cancelled" && (
-                                <Button
-                                    variant="outline"
-                                    className="w-full mt-2 rounded-xl h-12 border-blue-500/30 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                                    onClick={() => {
-                                        router.push(`/dashboard/pos?reservationId=${detailReservation.id}`);
-                                    }}
-                                >
-                                    <ShoppingCart className="w-4 h-4 mr-2" /> Agregar Consumo
-                                </Button>
-                            )}
-                        </div>
-                    )}
-                </DialogContent>
-            </Dialog>
-
-            <PaymentDialog
-                open={!!paymentReservation}
-                onOpenChange={(open) => !open && setPaymentReservation(null)}
-                totalAmount={paymentReservation?.totalAmount || 0}
-                onConfirm={handlePayment}
-                isPending={isPending}
-            />
+                <PaymentDialog
+                    open={!!paymentReservation}
+                    onOpenChange={(open) => !open && setPaymentReservation(null)}
+                    totalAmount={paymentReservation?.totalAmount || 0}
+                    onConfirm={handlePayment}
+                    isPending={isPending}
+                />
+            </div>
         </div>
     );
 }

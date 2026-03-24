@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { getActiveComplexOrRedirect } from "@/lib/active-complex";
 
 function getTenantId(session: any): string {
     const tid = session?.user?.tenantId;
@@ -14,15 +15,18 @@ export async function getPOSData() {
     const session = await auth();
     const tenantId = getTenantId(session);
 
+    const targetComplexId = await getActiveComplexOrRedirect();
+    if (!targetComplexId) throw new Error("No active complex");
+
     const [categories, products, activeReservations] = await Promise.all([
-        prisma.category.findMany({ where: { tenantId, isActive: true }, orderBy: { name: "asc" } }),
+        prisma.category.findMany({ where: { tenantId, complexId: targetComplexId, isActive: true }, orderBy: { name: "asc" } }),
         prisma.product.findMany({
-            where: { tenantId, isActive: true },
+            where: { tenantId, complexId: targetComplexId, isActive: true },
             include: { category: { select: { name: true } } },
             orderBy: { name: "asc" }
         }),
         prisma.reservation.findMany({
-            where: { tenantId, status: { in: ["confirmed", "in_game"] } },
+            where: { tenantId, complexId: targetComplexId, status: { in: ["confirmed", "in_game"] } },
             include: { court: { select: { name: true } } },
             orderBy: { startTime: "asc" }
         })
@@ -47,6 +51,9 @@ export async function processSale(data: {
     const session = await auth();
     const tenantId = getTenantId(session);
 
+    const targetComplexId = await getActiveComplexOrRedirect();
+    if (!targetComplexId) throw new Error("No active complex");
+
     const subtotal = data.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
     const total = subtotal;
     const isOnTab = !!data.reservationId;
@@ -64,7 +71,7 @@ export async function processSale(data: {
 
     // Find active cash session
     const cashSession = await prisma.cashSession.findFirst({
-        where: { tenantId, status: "open" }
+        where: { tenantId, complexId: targetComplexId, status: "open" }
     });
 
     const sale = await prisma.sale.create({

@@ -43,13 +43,14 @@ const adminNavigation = [
     { name: "Suscripciones", href: "/admin/subscriptions", icon: Shield },
 ];
 
-export function Sidebar() {
+export function Sidebar({ activeComplexName, userRoleProp }: { activeComplexName?: string, userRoleProp?: string }) {
     const pathname = usePathname();
     const { data: session } = useSession();
     const { theme, toggleTheme } = useTheme();
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     const isSuperAdmin = session?.user?.role === "super_admin";
+    const userRole = userRoleProp || session?.user?.role;
 
     const initials = session?.user?.name
         ? session.user.name.split(" ").map((n) => n[0]).join("").toUpperCase()
@@ -73,11 +74,22 @@ export function Sidebar() {
                 )}
             </div>
 
-            {/* Tenant info */}
-            {!collapsed && session?.user?.tenantName && (
-                <div className="px-4 py-3 border-b border-border">
-                    <p className="text-xs font-medium text-muted-foreground">Complejo</p>
-                    <p className="text-sm font-semibold truncate">{session.user.tenantName}</p>
+            {/* Active Complex info */}
+            {!collapsed && activeComplexName && (
+                <div className="px-4 py-3 border-b border-border flex justify-between items-center bg-emerald-50/50 dark:bg-emerald-950/20">
+                    <div className="min-w-0 pr-2">
+                        <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Complejo Activo</p>
+                        <p className="text-sm font-bold truncate text-foreground">{activeComplexName}</p>
+                    </div>
+                    {userRole === "admin" && (
+                        <Link
+                            href="/dashboard/select-complex"
+                            className="shrink-0 p-1.5 rounded-md hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 transition-colors"
+                            title="Cambiar Complejo"
+                        >
+                            <Building2 className="w-4 h-4" />
+                        </Link>
+                    )}
                 </div>
             )}
 

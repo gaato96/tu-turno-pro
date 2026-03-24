@@ -82,6 +82,9 @@ model Complex {
   cashSessions CashSession[]
   schedules    ComplexSchedule[]
   staff        User[]    @relation("StaffMembers")
+  products     Product[]
+  categories   Category[]
+  suppliers    Supplier[]
 }
 
 model ComplexSchedule {
@@ -180,6 +183,8 @@ model Supplier {
   id        String   @id @default(cuid())
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  complexId String?
+  complex   Complex? @relation(fields: [complexId], references: [id])
   name      String
   contact   String?
   phone     String?
@@ -192,12 +197,14 @@ model Supplier {
 }
 
 model Category {
-  id       String  @id @default(cuid())
-  tenantId String
-  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name     String
-  icon     String? // lucide icon name
-  isActive Boolean @default(true)
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  complexId String?
+  complex   Complex? @relation(fields: [complexId], references: [id])
+  name      String
+  icon      String? // lucide icon name
+  isActive  Boolean  @default(true)
 
   products Product[]
 }
@@ -206,6 +213,8 @@ model Product {
   id          String    @id @default(cuid())
   tenantId    String
   tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  complexId   String?
+  complex     Complex?  @relation(fields: [complexId], references: [id])
   categoryId  String
   category    Category  @relation(fields: [categoryId], references: [id])
   supplierId  String?

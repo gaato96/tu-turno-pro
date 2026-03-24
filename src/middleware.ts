@@ -19,6 +19,9 @@ export default NextAuth(authConfig).auth((req) => {
 
     if (isLoggedIn) {
         const userRole = (req.auth?.user as any)?.role;
+        const activeComplexId = req.cookies.get('activeComplexId')?.value;
+        const isDashboardRoute = nextUrl.pathname.startsWith('/dashboard');
+        const isSelectComplexRoute = nextUrl.pathname.startsWith('/dashboard/select-complex');
 
         // Redirect logged-in users away from login
         if (isLoginPage) {
@@ -35,8 +38,13 @@ export default NextAuth(authConfig).auth((req) => {
         }
 
         // Prevent super_admin from accessing standard dashboard
-        if (nextUrl.pathname.startsWith("/dashboard") && userRole === "super_admin") {
+        if (isDashboardRoute && userRole === "super_admin") {
             return NextResponse.redirect(new URL("/admin/tenants", nextUrl));
+        }
+
+        // Enforce complex selection for admins on dashboard routes
+        if (isDashboardRoute && userRole === "admin" && !isSelectComplexRoute && !activeComplexId) {
+            return NextResponse.redirect(new URL("/dashboard/select-complex", nextUrl));
         }
     }
 
