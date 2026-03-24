@@ -155,6 +155,12 @@ type DashboardData = {
 
 export default function DashboardClient({ initialData, greeting }: { initialData: DashboardData | null; greeting: string }) {
     const [data, setData] = useState<DashboardData | null>(initialData);
+
+    // Auto-sync wrapper state when Next.js server actions trigger router.refresh() 
+    useEffect(() => {
+        if (initialData) setData(initialData);
+    }, [initialData]);
+
     const [lastRefresh, setLastRefresh] = useState(new Date());
     const [isRefreshing, setIsRefreshing] = useState(false);
     const router = useRouter();

@@ -26,7 +26,7 @@ export async function getPOSData() {
             orderBy: { name: "asc" }
         }),
         prisma.reservation.findMany({
-            where: { tenantId, complexId: targetComplexId, status: { in: ["confirmed", "in_game"] } },
+            where: { tenantId, complexId: targetComplexId, status: { in: ["pending", "confirmed", "in_game"] } },
             include: { court: { select: { name: true } } },
             orderBy: { startTime: "asc" }
         })
