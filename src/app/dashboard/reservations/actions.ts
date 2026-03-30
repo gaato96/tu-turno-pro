@@ -223,7 +223,7 @@ export async function createReservation(formData: FormData) {
             userId: (session?.user as any)?.id || null,
             customerName,
             customerPhone,
-            customer: customerId ? { connect: { id: customerId } } : undefined,
+            customerId: customerId || null,
             date,
 
             startTime,
