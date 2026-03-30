@@ -25,11 +25,27 @@ export async function getPOSData() {
             include: { category: { select: { name: true } } },
             orderBy: { name: "asc" }
         }),
-        prisma.reservation.findMany({
-            where: { tenantId, complexId: targetComplexId, status: { in: ["pending", "confirmed", "in_game"] } },
-            include: { court: { select: { name: true } } },
-            orderBy: { startTime: "asc" }
-        })
+        // Calculate today boundaries
+        (async () => {
+            const now = new Date();
+            const tzOffset = -180; // Argentina timezone
+            const localTime = new Date(now.getTime() + (tzOffset + now.getTimezoneOffset()) * 60000);
+            const startOfDay = new Date(localTime);
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date(localTime);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            return prisma.reservation.findMany({
+                where: {
+                    tenantId,
+                    complexId: targetComplexId,
+                    date: { gte: startOfDay, lte: endOfDay },
+                    status: { in: ["in_game", "finished"] }
+                },
+                include: { court: { select: { name: true } } },
+                orderBy: { startTime: "asc" }
+            });
+        })()
     ]);
 
     return {

@@ -479,7 +479,7 @@ export default function ReservationsClient({
 
 
                                     <SelectTrigger className="w-[180px] h-8 text-xs rounded-lg">
-                                        <SelectValue />
+                                        <SelectValue>{courts.find(c => c.id === selectedCourtForWeek)?.name || "Seleccionar Cancha"}</SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
                                         {courts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}

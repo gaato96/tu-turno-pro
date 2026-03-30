@@ -38,9 +38,6 @@ export async function getDashboardData() {
                 tenantId,
                 complexId: targetComplexId,
                 status: "in_game",
-                // Permitir turnos que empezaron ayer pero siguen activos (por si cruza medianoche)
-                startTime: { lte: now },
-                endTime: { gte: now }
             },
 
             include: {

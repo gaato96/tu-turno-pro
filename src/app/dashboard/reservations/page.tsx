@@ -23,7 +23,8 @@ export default async function ReservationsPage({
     let calendarData: any;
     try {
         calendarData = await getCalendarData(targetDateStr);
-    } catch {
+    } catch (e) {
+        console.error("RESERVATIONS FETCH ERROR:", e);
         calendarData = { complex: null, complexes: [], courts: [], reservations: [] };
     }
     const { complex, complexes, courts, reservations } = calendarData;
