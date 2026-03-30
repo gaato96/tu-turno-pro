@@ -3,7 +3,13 @@ import { POSTerminal } from "./pos-terminal";
 import { Suspense } from "react";
 
 export default async function POSPage() {
-    const { categories, products, activeReservations } = await getPOSData();
+    let categories: any[] = [], products: any[] = [], activeReservations: any[] = [];
+    try {
+        const data = await getPOSData();
+        categories = data.categories;
+        products = data.products;
+        activeReservations = data.activeReservations;
+    } catch { /* mostrar vacío si no hay sesión o complejo */ }
 
     return (
         <div className="h-[calc(100vh-6rem)] flex flex-col">

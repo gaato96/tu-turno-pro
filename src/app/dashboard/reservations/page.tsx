@@ -20,7 +20,13 @@ export default async function ReservationsPage({
     const session = await auth();
     const userRole = (session?.user as any)?.role || "staff";
 
-    const { complex, complexes, courts, reservations } = await getCalendarData(targetDateStr);
+    let calendarData: any;
+    try {
+        calendarData = await getCalendarData(targetDateStr);
+    } catch {
+        calendarData = { complex: null, complexes: [], courts: [], reservations: [] };
+    }
+    const { complex, complexes, courts, reservations } = calendarData;
 
     if (!complex) {
         return (

@@ -2,7 +2,13 @@ import { getCashData } from "./actions";
 import { CashPanel } from "./cash-panel";
 
 export default async function CashPage() {
-    const { openSession, history } = await getCashData();
+    let data;
+    try {
+        data = await getCashData();
+    } catch {
+        data = { openSession: null, history: [] };
+    }
+    const { openSession, history } = data;
 
     return (
         <div className="space-y-6">
