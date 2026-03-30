@@ -85,14 +85,8 @@ export function CustomerSelector({ onSelect, initialValue }: CustomerSelectorPro
             {!showCreateForm ? (
                 <Popover open={open} onOpenChange={setOpen}>
                     <PopoverTrigger
-                        render={
-                            <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={open}
-                                className="w-full justify-between h-11 rounded-xl"
-                            />
-                        }
+                        className="flex items-center justify-between w-full h-11 px-3 py-2 text-sm border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        aria-expanded={open}
                     >
                         {selectedCustomer
                             ? selectedCustomer.name
