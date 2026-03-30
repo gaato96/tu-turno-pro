@@ -39,9 +39,18 @@ export async function getCashData() {
     if (openSession) {
         // Calculate X Report data
         const sales = openSession.sales.filter(s => s.status === "completed");
+        
+        // Separation of Reservation vs Kiosk income
+        const reservationSales = sales.filter(s => s.reservationId !== null);
+        const kioskSales = sales.filter(s => s.reservationId === null);
+
+        const resTotal = reservationSales.reduce((sum, s) => sum + Number(s.total), 0);
+        const kioskTotal = kioskSales.reduce((sum, s) => sum + Number(s.total), 0);
+
         const cashTotal = sales.filter(s => s.paymentMethod === "cash").reduce((sum, s) => sum + Number(s.total), 0);
         const cardTotal = sales.filter(s => s.paymentMethod === "card").reduce((sum, s) => sum + Number(s.total), 0);
         const transferTotal = sales.filter(s => s.paymentMethod === "transfer").reduce((sum, s) => sum + Number(s.total), 0);
+        
         const salesTotal = cashTotal + cardTotal + transferTotal;
         const expectedBalance = Number(openSession.openingBalance) + cashTotal;
 
@@ -50,12 +59,15 @@ export async function getCashData() {
                 ...openSession,
                 openingBalance: Number(openSession.openingBalance),
                 salesCount: sales.length,
+                resTotal,
+                kioskTotal,
                 cashTotal,
                 cardTotal,
                 transferTotal,
                 salesTotal,
                 expectedBalance,
             },
+
             history: history.map(h => ({
                 ...h,
                 openingBalance: Number(h.openingBalance),

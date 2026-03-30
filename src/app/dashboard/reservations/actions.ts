@@ -153,12 +153,16 @@ export async function createReservation(formData: FormData) {
     const dateStr = formData.get("date") as string;
     const startTimeStr = formData.get("startTime") as string;
     const endTimeStr = formData.get("endTime") as string;
+    const customerId = formData.get("customerId") as string || null;
     const notes = formData.get("notes") as string || null;
 
-    // Build full datetime objects
-    const date = new Date(dateStr + "T00:00:00");
+
+    // Use a fixed reference for "today" in local time to avoid UTC shifts
+    // Normalized to 12:00 to keep the date invariant during basic math
+    const date = new Date(dateStr + "T12:00:00");
     const startTime = new Date(dateStr + "T" + startTimeStr + ":00");
     const endTime = new Date(dateStr + "T" + endTimeStr + ":00");
+
 
     // Verify ownership
     const complex = await prisma.complex.findFirst({ where: { id: complexId, tenantId } });
@@ -219,7 +223,9 @@ export async function createReservation(formData: FormData) {
             userId: (session?.user as any)?.id || null,
             customerName,
             customerPhone,
+            customer: customerId ? { connect: { id: customerId } } : undefined,
             date,
+
             startTime,
             endTime,
             status: "confirmed",
@@ -229,6 +235,7 @@ export async function createReservation(formData: FormData) {
             notes,
         }
     });
+
 
     revalidatePath("/dashboard/reservations");
     revalidatePath("/dashboard");

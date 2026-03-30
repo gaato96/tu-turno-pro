@@ -94,6 +94,14 @@ export function CashPanel({ openSession, history }: { openSession: any, history:
                             <Card className="p-4 text-center">
                                 <p className="text-xs text-muted-foreground mb-1">Desglose</p>
                                 <div className="space-y-1 text-xs text-left mt-1">
+                                    <div className="flex justify-between border-b pb-1 mb-1">
+                                        <span className="font-medium">Reservas</span>
+                                        <span className="font-bold text-emerald-600">${openSession.resTotal.toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b pb-1 mb-1">
+                                        <span className="font-medium">Kiosco</span>
+                                        <span className="font-bold text-blue-600">${openSession.kioskTotal.toLocaleString()}</span>
+                                    </div>
                                     <div className="flex justify-between">
                                         <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" />Efectivo</span>
                                         <span className="font-semibold">${openSession.cashTotal.toLocaleString()}</span>
@@ -108,6 +116,7 @@ export function CashPanel({ openSession, history }: { openSession: any, history:
                                     </div>
                                 </div>
                             </Card>
+
                         </div>
                     </Card>
                 </>
@@ -193,10 +202,13 @@ export function CashPanel({ openSession, history }: { openSession: any, history:
                         {openSession && (
                             <div className="p-4 bg-accent/50 rounded-xl border space-y-2 text-sm">
                                 <div className="flex justify-between"><span className="text-muted-foreground">Apertura:</span><span className="font-semibold">${openSession.openingBalance.toLocaleString()}</span></div>
-                                <div className="flex justify-between"><span className="text-muted-foreground">Ventas Efectivo:</span><span className="font-semibold">${openSession.cashTotal.toLocaleString()}</span></div>
+                                <div className="flex justify-between"><span className="text-muted-foreground">Ingresos Reservas:</span><span className="font-semibold text-emerald-600">${openSession.resTotal.toLocaleString()}</span></div>
+                                <div className="flex justify-between"><span className="text-muted-foreground">Ingresos Kiosco:</span><span className="font-semibold text-blue-600">${openSession.kioskTotal.toLocaleString()}</span></div>
+                                <div className="flex justify-between border-t pt-2"><span className="text-muted-foreground">Ventas Efectivo:</span><span className="font-semibold">${openSession.cashTotal.toLocaleString()}</span></div>
                                 <div className="flex justify-between"><span className="text-muted-foreground">Ventas Tarjeta:</span><span className="font-semibold">${openSession.cardTotal.toLocaleString()}</span></div>
                                 <div className="flex justify-between"><span className="text-muted-foreground">Ventas Transf.:</span><span className="font-semibold">${openSession.transferTotal.toLocaleString()}</span></div>
                                 <div className="flex justify-between border-t pt-2"><span className="font-bold">Esperado en Caja:</span><span className="font-bold text-emerald-600">${openSession.expectedBalance.toLocaleString()}</span></div>
+
                             </div>
                         )}
 

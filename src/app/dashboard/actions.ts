@@ -34,7 +34,15 @@ export async function getDashboardData() {
             where: { tenantId, complexId: targetComplexId, date: { gte: startOfDay, lte: endOfDay }, status: { notIn: ["cancelled"] } }
         }),
         prisma.reservation.findMany({
-            where: { tenantId, complexId: targetComplexId, status: "in_game", date: { gte: startOfDay, lte: endOfDay } },
+            where: {
+                tenantId,
+                complexId: targetComplexId,
+                status: "in_game",
+                // Permitir turnos que empezaron ayer pero siguen activos (por si cruza medianoche)
+                startTime: { lte: now },
+                endTime: { gte: now }
+            },
+
             include: {
                 court: { select: { name: true } },
                 sales: {

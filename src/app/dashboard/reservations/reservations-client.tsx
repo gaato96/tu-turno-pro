@@ -42,8 +42,12 @@ import {
     ShoppingCart,
     Link as LinkIcon,
 } from "lucide-react";
-import { format, addDays, subDays, isToday } from "date-fns";
+import { format, addDays, subDays, isToday, startOfWeek, eachDayOfInterval } from "date-fns";
 import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { CustomerSelector } from "@/components/dashboard/customer-selector";
+
+
 
 // Types
 interface Court {
@@ -111,7 +115,12 @@ export default function ReservationsClient({
         setSelectedDate(new Date(currentDate + "T12:00:00"));
     }, [currentDate]);
 
+    const [viewType, setViewType] = useState<"day" | "week">("day");
+    const [selectedCourtForWeek, setSelectedCourtForWeek] = useState<string>(courts[0]?.id || "");
     const [showNewReservation, setShowNewReservation] = useState(isNew || false);
+
+
+
     const [selectedSlot, setSelectedSlot] = useState<{ courtId: string; time: string } | null>(null);
     const [reservations, setReservations] = useState(initialReservations);
 
@@ -124,12 +133,15 @@ export default function ReservationsClient({
     const [newRes, setNewRes] = useState({
         customerName: "",
         customerPhone: "",
+        customerId: "" as string | undefined,
         courtId: "",
+        date: currentDate,
         startTime: "",
         endTime: "",
         duration: "60",
         isRecurring: false,
     });
+
 
     // Dynamic Time Slots generation
     const timeSlots = (() => {
@@ -193,7 +205,9 @@ export default function ReservationsClient({
         setNewRes({
             customerName: "",
             customerPhone: "",
+            customerId: undefined,
             courtId,
+            date: currentDate,
             startTime: time,
             endTime,
             duration: "60",
@@ -201,6 +215,7 @@ export default function ReservationsClient({
         });
         setSelectedSlot({ courtId, time });
         setShowNewReservation(true);
+
     };
 
     const handleCreateReservation = () => {
@@ -213,9 +228,11 @@ export default function ReservationsClient({
                 formData.append("courtId", newRes.courtId);
                 formData.append("customerName", newRes.customerName);
                 if (newRes.customerPhone) formData.append("customerPhone", newRes.customerPhone);
-                formData.append("date", currentDate);
+                if (newRes.customerId) formData.append("customerId", newRes.customerId);
+                formData.append("date", newRes.date); // Use selected date in form
                 formData.append("startTime", newRes.startTime);
                 formData.append("endTime", newRes.endTime);
+
 
                 await createReservation(formData);
                 toast.success("Reserva creada exitosamente");
@@ -268,18 +285,26 @@ export default function ReservationsClient({
         window.open(`https://wa.me/${phone.replace(/\D/g, "")}?text=${message}`, "_blank");
     };
 
-    const getReservationForSlot = (courtId: string, time: string): any | undefined => {
+    const getReservationForSlot = (courtId: string, time: string, dateStr?: string): any | undefined => {
         return reservations.find((r) => {
             if (r.courtId !== courtId) return false;
+            if (dateStr && r.date.split("T")[0] !== dateStr) return false;
+
+            // To fix timezone shifts, we treat everything as local time strings
             const rStart = format(new Date(r.startTime), "HH:mm");
             const rEnd = format(new Date(r.endTime), "HH:mm");
             return time >= rStart && time < rEnd;
         });
     };
 
-    const isSlotStart = (courtId: string, time: string): boolean => {
-        return reservations.some((r) => r.courtId === courtId && format(new Date(r.startTime), "HH:mm") === time);
+    const isSlotStart = (courtId: string, time: string, dateStr?: string): boolean => {
+        return reservations.some((r) => {
+            if (r.courtId !== courtId) return false;
+            if (dateStr && r.date.split("T")[0] !== dateStr) return false;
+            return format(new Date(r.startTime), "HH:mm") === time;
+        });
     };
+
 
     const getSlotSpan = (reservation: any): number => {
         const sh = new Date(reservation.startTime).getHours();
@@ -313,9 +338,27 @@ export default function ReservationsClient({
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <div className="flex bg-muted p-1 rounded-xl mr-2">
+                        <Button
+                            variant={viewType === "day" ? "secondary" : "ghost"}
+                            size="sm"
+                            className="rounded-lg text-xs"
+                            onClick={() => setViewType("day")}
+                        >
+                            Día
+                        </Button>
+                        <Button
+                            variant={viewType === "week" ? "secondary" : "ghost"}
+                            size="sm"
+                            className="rounded-lg text-xs"
+                            onClick={() => setViewType("week")}
+                        >
+                            Semana
+                        </Button>
+                    </div>
                     <Button
                         onClick={() => {
-                            setNewRes({ customerName: "", customerPhone: "", courtId: "", startTime: "10:00", endTime: "11:00", duration: "60", isRecurring: false });
+                            setNewRes({ ...newRes, customerName: "", customerPhone: "", customerId: undefined, courtId: courts[0]?.id || "", date: currentDate, startTime: "10:00", endTime: "11:00", duration: "60", isRecurring: false });
                             setShowNewReservation(true);
                         }}
                         className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-lg shadow-emerald-500/20 rounded-xl"
@@ -325,6 +368,7 @@ export default function ReservationsClient({
                     </Button>
                 </div>
             </div>
+
 
             {/* Date Navigation */}
             <Card className="p-4 card-elevated border-border/50">
@@ -357,110 +401,163 @@ export default function ReservationsClient({
 
             {/* Calendar Grid */}
             <Card className={`card-elevated border-border/50 overflow-hidden ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
-                <div className="overflow-x-auto">
-                    <div className="min-w-[700px] md:min-w-0">
-                        {/* Column Headers (Courts) */}
-                        <div className="grid sticky top-0 z-10 bg-card border-b border-border" style={{ gridTemplateColumns: `80px repeat(${courts.length}, 1fr)` }}>
-                            <div className="p-3 text-xs font-semibold text-muted-foreground border-r border-border flex items-center">
-                                <Clock className="w-3.5 h-3.5 mr-1" />
-                                Hora
-                            </div>
-                            {courts.map((court) => (
-                                <div key={court.id} className="p-3 text-center border-r border-border last:border-r-0">
-                                    <p className="text-sm font-bold">{court.name}</p>
-                                    <div className="flex items-center justify-center gap-1 mt-1">
-                                        <span className="text-[10px]">{sportEmoji[court.sportType]}</span>
-                                        <span className="text-[10px] text-muted-foreground">
-                                            ${court.dayRate.toLocaleString()} / ${court.nightRate.toLocaleString()}
-                                        </span>
-                                    </div>
-                                    {court.parentCourtId && (
-                                        <Badge variant="secondary" className="mt-1 text-[9px] px-1.5 py-0 rounded-full">
-                                            Vinculada
-                                        </Badge>
-                                    )}
+                {viewType === "day" ? (
+                    <div className="overflow-x-auto">
+                        <div className="min-w-[700px] md:min-w-0">
+                            {/* Column Headers (Courts) */}
+                            <div className="grid sticky top-0 z-10 bg-card border-b border-border" style={{ gridTemplateColumns: `80px repeat(${courts.length}, 1fr)` }}>
+                                <div className="p-3 text-xs font-semibold text-muted-foreground border-r border-border flex items-center">
+                                    <Clock className="w-3.5 h-3.5 mr-1" />
+                                    Hora
                                 </div>
-                            ))}
-                        </div>
-
-                        {/* Time Rows */}
-                        {timeSlots.map((time) => {
-                            const isHour = time.endsWith(":00");
-                            const hour = parseInt(time.split(":")[0]);
-                            const isNightStart = hour >= 19 || hour < 6;
-
-                            return (
-                                <div
-                                    key={time}
-                                    className="grid border-b border-border/50 last:border-b-0"
-                                    style={{ gridTemplateColumns: `80px repeat(${courts.length}, 1fr)` }}
-                                >
-                                    {/* Time label */}
-                                    <div className={`p-2 text-xs border-r border-border flex items-center justify-center ${isHour ? "font-semibold" : "text-muted-foreground text-[10px]"} ${isNightStart ? "bg-indigo-50/50 dark:bg-indigo-500/5" : ""}`}>
-                                        {time}
-                                        {isNightStart && isHour && <span className="ml-1 text-[9px]">🌙</span>}
+                                {courts.map((court) => (
+                                    <div key={court.id} className="p-3 text-center border-r border-border last:border-r-0">
+                                        <p className="text-sm font-bold">{court.name}</p>
+                                        <div className="flex items-center justify-center gap-1 mt-1">
+                                            <span className="text-[10px]">{sportEmoji[court.sportType]}</span>
+                                            <span className="text-[10px] text-muted-foreground">
+                                                ${court.dayRate.toLocaleString()} / ${court.nightRate.toLocaleString()}
+                                            </span>
+                                        </div>
                                     </div>
+                                ))}
+                            </div>
 
-                                    {/* Court cells */}
-                                    {courts.map((court) => {
-                                        const reservation = getReservationForSlot(court.id, time);
-                                        const isStart = reservation && isSlotStart(court.id, time);
-                                        const span = reservation && isStart ? getSlotSpan(reservation) : 0;
-                                        const isNight = hour >= parseInt(court.nightRateStartTime.split(":")[0]);
+                            {/* Time Rows */}
+                            {timeSlots.map((time) => {
+                                const isHour = time.endsWith(":00");
+                                const hour = parseInt(time.split(":")[0]);
+                                const isNightStart = hour >= 19 || hour < 6;
 
-                                        if (reservation && !isStart) {
-                                            return <div key={court.id} className="border-r border-border/30 last:border-r-0" />;
-                                        }
+                                return (
+                                    <div
+                                        key={time}
+                                        className="grid border-b border-border/50 last:border-b-0"
+                                        style={{ gridTemplateColumns: `80px repeat(${courts.length}, 1fr)` }}
+                                    >
+                                        <div className={`p-2 text-xs border-r border-border flex items-center justify-center ${isHour ? "font-semibold" : "text-muted-foreground text-[10px]"} ${isNightStart ? "bg-indigo-50/50 dark:bg-indigo-500/5" : ""}`}>
+                                            {time}
+                                        </div>
 
-                                        if (reservation && isStart) {
-                                            const statusCfg = statusConfig[reservation.status];
-                                            return (
-                                                <div
-                                                    key={court.id}
-                                                    className={`border-r border-border/30 last:border-r-0 p-1`}
-                                                    style={{ gridRow: `span ${span}` }}
-                                                >
-                                                    <div
-                                                        className={`h-full rounded-xl p-2.5 ${statusCfg.class} cursor-pointer group relative transition-all duration-200 hover:shadow-md`}
-                                                        onClick={() => setDetailReservation(reservation)}
-                                                    >
-                                                        <div className="flex items-start justify-between">
-                                                            <div className="min-w-0 text-white">
-                                                                <p className="text-xs font-bold truncate">{reservation.customerName}</p>
-                                                                <p className="text-[10px] opacity-75">
-                                                                    {format(new Date(reservation.startTime), "HH:mm")} — {format(new Date(reservation.endTime), "HH:mm")}
-                                                                </p>
-                                                            </div>
-                                                            <Badge className="text-[9px] px-1.5 py-0 rounded-full shrink-0 ml-1 bg-white/20 border-white/20 text-white" variant="outline">
-                                                                {statusCfg.label}
-                                                            </Badge>
+                                        {courts.map((court) => {
+                                            const reservation = getReservationForSlot(court.id, time);
+                                            const isStart = reservation && isSlotStart(court.id, time);
+                                            const span = reservation && isStart ? getSlotSpan(reservation) : 0;
+                                            const isNight = hour >= parseInt(court.nightRateStartTime.split(":")[0]);
+
+                                            if (reservation && !isStart) return <div key={court.id} className="border-r border-border/30 last:border-r-0" />;
+
+                                            if (reservation && isStart) {
+                                                const statusCfg = statusConfig[reservation.status];
+                                                return (
+                                                    <div key={court.id} className="border-r border-border/30 last:border-r-0 p-1" style={{ gridRow: `span ${span}` }}>
+                                                        <div className={`h-full rounded-xl p-2.5 ${statusCfg.class} cursor-pointer group relative transition-all duration-200 hover:shadow-md`} onClick={() => setDetailReservation(reservation)}>
+                                                            <p className="text-xs font-bold truncate text-white">{reservation.customerName}</p>
+                                                            <p className="text-[10px] opacity-75 text-white">{format(new Date(reservation.startTime), "HH:mm")} — {format(new Date(reservation.endTime), "HH:mm")}</p>
                                                         </div>
-                                                        {reservation.isRecurring && (
-                                                            <div className="absolute top-1 right-1">
-                                                                <RotateCcw className="w-3 h-3 text-white/50" />
-                                                            </div>
-                                                        )}
                                                     </div>
+                                                );
+                                            }
+
+                                            return (
+                                                <div key={court.id} className={`border-r border-border/30 last:border-r-0 p-0.5 calendar-slot ${isNight ? "bg-indigo-50/30 dark:bg-indigo-500/3" : ""}`} onClick={() => handleSlotClick(court.id, time)}>
+                                                    <div className="h-full w-full rounded-lg hover:bg-emerald-100/50 dark:hover:bg-emerald-500/10 min-h-[28px] transition-colors" />
                                                 </div>
                                             );
-                                        }
-
-                                        return (
-                                            <div
-                                                key={court.id}
-                                                className={`border-r border-border/30 last:border-r-0 p-0.5 calendar-slot ${isNight ? "bg-indigo-50/30 dark:bg-indigo-500/3" : ""}`}
-                                                onClick={() => handleSlotClick(court.id, time)}
-                                            >
-                                                <div className="h-full w-full rounded-lg hover:bg-emerald-100/50 dark:hover:bg-emerald-500/10 min-h-[28px] transition-colors" />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            );
-                        })}
+                                        })}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="flex flex-col">
+                        <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Label className="text-xs">Cancha:</Label>
+                                <Select value={selectedCourtForWeek} onValueChange={(v: string | null) => { if (v) setSelectedCourtForWeek(v); }}>
+
+
+                                    <SelectTrigger className="w-[180px] h-8 text-xs rounded-lg">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {courts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <p className="text-xs text-muted-foreground">Vista de 7 días (Lunes a Domingo)</p>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <div className="min-w-[800px]">
+                                {/* Week Days Header */}
+                                {(() => {
+                                    const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+                                    const weekDays = eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) });
+
+                                    return (
+                                        <>
+                                            <div className="grid sticky top-0 z-10 bg-card border-b border-border" style={{ gridTemplateColumns: `80px repeat(7, 1fr)` }}>
+                                                <div className="p-3 text-xs font-semibold text-muted-foreground border-r border-border" />
+                                                {weekDays.map((day) => (
+                                                    <div key={day.toString()} className={cn("p-3 text-center border-r border-border last:border-r-0", isToday(day) && "bg-emerald-50/50 dark:bg-emerald-500/5")}>
+
+                                                        <p className="text-[10px] uppercase font-medium text-muted-foreground">{format(day, "eee", { locale: es })}</p>
+                                                        <p className="text-sm font-bold">{format(day, "d")}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            {timeSlots.map((time) => {
+                                                const isHour = time.endsWith(":00");
+                                                return (
+                                                    <div key={time} className="grid border-b border-border/40" style={{ gridTemplateColumns: `80px repeat(7, 1fr)` }}>
+                                                        <div className={`p-2 text-[10px] border-r border-border flex items-center justify-center ${isHour ? "font-semibold" : "text-muted-foreground"}`}>
+                                                            {time}
+                                                        </div>
+                                                        {weekDays.map((day) => {
+                                                            const dStr = format(day, "yyyy-MM-dd");
+                                                            const reservation = getReservationForSlot(selectedCourtForWeek, time, dStr);
+                                                            const isStart = reservation && isSlotStart(selectedCourtForWeek, time, dStr);
+                                                            const span = reservation && isStart ? getSlotSpan(reservation) : 0;
+
+                                                            if (reservation && !isStart) return <div key={day.toString()} className="border-r border-border/30 last:border-r-0" />;
+
+                                                            if (reservation && isStart) {
+                                                                const statusCfg = statusConfig[reservation.status];
+                                                                return (
+                                                                    <div key={day.toString()} className="border-r border-border/30 last:border-r-0 p-1" style={{ gridRow: `span ${span}` }}>
+                                                                        <div className={`h-full rounded-lg p-1.5 ${statusCfg.class} cursor-pointer transition-all hover:brightness-110`} onClick={() => setDetailReservation(reservation)}>
+                                                                            <p className="text-[9px] font-bold truncate text-white">{reservation.customerName}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            }
+
+                                                            return (
+                                                                <div
+                                                                    key={day.toString()}
+                                                                    className={cn("border-r border-border/30 last:border-r-0 p-0.5 min-h-[32px] hover:bg-muted/30 cursor-pointer", isToday(day) && "bg-emerald-50/20")}
+                                                                    onClick={() => {
+
+                                                                        // Custom handleSlotClick for week view
+                                                                        router.push(`/dashboard/reservations?date=${dStr}&new=true`);
+                                                                    }}
+                                                                >
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                );
+                                            })}
+                                        </>
+                                    );
+                                })()}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </Card>
+
 
             {/* New Reservation Dialog */}
             <Dialog open={showNewReservation} onOpenChange={setShowNewReservation}>
@@ -472,24 +569,23 @@ export default function ReservationsClient({
                     <div className="space-y-4 py-2">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="col-span-2">
-                                <Label>Nombre del Cliente</Label>
-                                <Input
-                                    placeholder="Nombre completo"
-                                    value={newRes.customerName}
-                                    onChange={(e) => setNewRes({ ...newRes, customerName: e.target.value })}
-                                    className="mt-1.5 rounded-xl"
+                                <Label>Buscar o Registrar Cliente</Label>
+                                <CustomerSelector
+                                    onSelect={(c) => setNewRes({ ...newRes, customerName: c.name, customerPhone: c.phone, customerId: c.id })}
+                                    initialValue={newRes.customerName}
                                 />
                             </div>
                             <div className="col-span-2">
-                                <Label>Teléfono</Label>
+                                <Label>Fecha de la Reserva</Label>
                                 <Input
-                                    placeholder="+54 11 xxxx-xxxx"
-                                    value={newRes.customerPhone}
-                                    onChange={(e) => setNewRes({ ...newRes, customerPhone: e.target.value })}
+                                    type="date"
+                                    value={newRes.date}
+                                    onChange={(e) => setNewRes({ ...newRes, date: e.target.value })}
                                     className="mt-1.5 rounded-xl"
                                 />
                             </div>
                         </div>
+
 
                         <div>
                             <Label>Cancha</Label>

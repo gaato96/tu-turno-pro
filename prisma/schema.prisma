@@ -37,7 +37,9 @@ model Tenant {
   sales        Sale[]
   cashSessions CashSession[]
   suppliers    Supplier[]
+  customers    Customer[]
 }
+
 
 model User {
   id             String   @id @default(cuid())
@@ -138,6 +140,9 @@ model Reservation {
   customerPhone String?
   customerEmail String?
 
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
   // Time
   date      DateTime @db.Date
   startTime DateTime @db.Timestamptz
@@ -173,7 +178,30 @@ model Reservation {
   @@index([complexId, date])
   @@index([courtId, date])
   @@index([status])
+  @@index([customerId])
 }
+
+// ============================================
+// CUSTOMERS
+// ============================================
+
+model Customer {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name  String
+  phone String? @unique
+  email String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reservations Reservation[]
+
+  @@index([tenantId])
+}
+
 
 // ============================================
 // POS & INVENTORY
