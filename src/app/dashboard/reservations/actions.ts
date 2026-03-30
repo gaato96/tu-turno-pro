@@ -36,7 +36,7 @@ export async function getCalendarData(dateStr: string) {
     const complexIdToUse = await getActiveComplexOrRedirect();
 
     if (!complexIdToUse) {
-        throw new Error("No active complex");
+        return { complex: null, complexes: allComplexes, courts: [], reservations: [] };
     }
 
     const complex = await prisma.complex.findFirst({

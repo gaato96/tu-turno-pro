@@ -16,7 +16,7 @@ export async function getPOSData() {
     const tenantId = getTenantId(session);
 
     const targetComplexId = await getActiveComplexOrRedirect();
-    if (!targetComplexId) throw new Error("No active complex");
+    if (!targetComplexId) return { categories: [], products: [], activeReservations: [] };
 
     const [categories, products, activeReservations] = await Promise.all([
         prisma.category.findMany({ where: { tenantId, complexId: targetComplexId, isActive: true }, orderBy: { name: "asc" } }),
