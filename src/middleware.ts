@@ -7,7 +7,7 @@ export default NextAuth(authConfig).auth((req) => {
     const isLoggedIn = !!req.auth;
     const isLoginPage = nextUrl.pathname === "/login";
     const isApiRoute = nextUrl.pathname.startsWith("/api");
-    const isPublicRoute = nextUrl.pathname === "/" || nextUrl.pathname === "/test" || nextUrl.pathname.startsWith("/_next");
+    const isPublicRoute = nextUrl.pathname === "/" || nextUrl.pathname.startsWith("/_next");
 
     // Allow API routes and public routes
     if (isApiRoute || isPublicRoute) return NextResponse.next();
