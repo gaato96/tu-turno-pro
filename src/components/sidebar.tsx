@@ -34,6 +34,7 @@ const navigation = [
     { name: "Complejos", href: "/dashboard/complexes", icon: Building2 },
     { name: "Reservas", href: "/dashboard/reservations", icon: CalendarDays },
     { name: "Eventos", href: "/dashboard/events", icon: Trophy },
+    { name: "Torneos", href: "/dashboard/tournaments", icon: Trophy },
     { name: "Clientes", href: "/dashboard/customers", icon: Users },
     { name: "Kiosko (POS)", href: "/dashboard/pos", icon: ShoppingCart },
     { name: "Productos", href: "/dashboard/products", icon: Package },
