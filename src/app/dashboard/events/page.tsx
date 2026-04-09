@@ -10,7 +10,7 @@ export default async function EventsPage() {
         redirect("/login");
     }
 
-    const tenantId = await getTenantId(session);
+    const tenantId = getTenantId(session);
 
     const events = await prisma.event.findMany({
         where: { tenantId },

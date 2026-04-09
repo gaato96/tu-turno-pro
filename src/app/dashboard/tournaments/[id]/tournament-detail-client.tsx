@@ -2,14 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { format } from "date-fns";
-import { Trophy, Users, CalendarDays, Plus, Trash, PlayCircle, Settings, Edit3 } from "lucide-react";
+import { Trophy, Users, CalendarDays, Plus, Trash, PlayCircle, Edit3, UserPlus, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { addTeam, removeTeam, generateFixture, updateMatchResult } from "./actions";
+import { addTeam, removeTeam, generateFixture, updateMatchResult, addPlayer, removePlayer, updatePlayerStats } from "./actions";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -21,9 +21,15 @@ export default function TournamentDetailClient({ initialTournament }: { initialT
     const [showAddTeam, setShowAddTeam] = useState(false);
     const [newTeamName, setNewTeamName] = useState("");
 
-    const [showResultDialog, setShowResultDialog] = useState<any>(null); // match object
+    const [showResultDialog, setShowResultDialog] = useState<any>(null);
     const [homeGoals, setHomeGoals] = useState("");
     const [awayGoals, setAwayGoals] = useState("");
+
+    // Player management state
+    const [showPlayers, setShowPlayers] = useState<string | null>(null); // teamId
+    const [newPlayerName, setNewPlayerName] = useState("");
+    const [editingPlayer, setEditingPlayer] = useState<any>(null);
+    const [playerStats, setPlayerStats] = useState({ goals: 0, yellowCards: 0, redCards: 0 });
 
     const handleAddTeam = () => {
         if (!newTeamName) return;
@@ -74,6 +80,46 @@ export default function TournamentDetailClient({ initialTournament }: { initialT
                 toast.success("Resultado guardado correctamente");
                 setShowResultDialog(null);
                 setTimeout(() => window.location.reload(), 1000);
+            } catch (e: any) {
+                toast.error(e.message || "Error");
+            }
+        });
+    };
+
+    const handleAddPlayer = (teamId: string) => {
+        if (!newPlayerName.trim()) return;
+        startTransition(async () => {
+            try {
+                await addPlayer(teamId, tour.id, newPlayerName);
+                toast.success("Jugador agregado");
+                setNewPlayerName("");
+                setTimeout(() => window.location.reload(), 800);
+            } catch (e: any) {
+                toast.error(e.message || "Error");
+            }
+        });
+    };
+
+    const handleRemovePlayer = (playerId: string) => {
+        startTransition(async () => {
+            try {
+                await removePlayer(playerId, tour.id);
+                toast.success("Jugador eliminado");
+                setTimeout(() => window.location.reload(), 800);
+            } catch (e: any) {
+                toast.error(e.message || "Error");
+            }
+        });
+    };
+
+    const handleSavePlayerStats = () => {
+        if (!editingPlayer) return;
+        startTransition(async () => {
+            try {
+                await updatePlayerStats(editingPlayer.id, tour.id, playerStats.goals, playerStats.yellowCards, playerStats.redCards);
+                toast.success("Estadísticas guardadas");
+                setEditingPlayer(null);
+                setTimeout(() => window.location.reload(), 800);
             } catch (e: any) {
                 toast.error(e.message || "Error");
             }
@@ -176,17 +222,62 @@ export default function TournamentDetailClient({ initialTournament }: { initialT
                             <Plus className="w-4 h-4 mr-2" /> Inscribir Equipo
                         </Button>
                     )}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                         {tour.teams.map((t: any) => (
-                            <Card key={t.id} className="p-4 flex items-center justify-between rounded-2xl border-border/50 shadow-sm hover:border-emerald-500/50 transition-colors">
-                                <div className="font-bold flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center border text-xs">🛡️</div>
-                                    {t.name}
+                            <Card key={t.id} className="p-4 rounded-2xl border-border/50 shadow-sm">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="font-bold flex items-center gap-2 text-base">
+                                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center border text-xs">🛡️</div>
+                                        {t.name}
+                                        <span className="text-xs text-muted-foreground font-normal">({t.players?.length || 0} jugadores)</span>
+                                    </div>
+                                    <div className="flex gap-1">
+                                        <Button variant="ghost" size="sm" className="rounded-lg text-emerald-600 text-xs" onClick={() => setShowPlayers(showPlayers === t.id ? null : t.id)}>
+                                            <UserPlus className="w-3.5 h-3.5 mr-1" /> Jugadores
+                                        </Button>
+                                        {tour.status === "registration" && (
+                                            <Button variant="ghost" size="icon" onClick={() => handleRemoveTeam(t.id)} className="text-red-500 hover:text-red-700 w-8 h-8">
+                                                <Trash className="w-3.5 h-3.5" />
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
-                                {tour.status === "registration" && (
-                                    <Button variant="ghost" size="icon" onClick={() => handleRemoveTeam(t.id)} className="text-red-500 hover:text-red-700">
-                                        <Trash className="w-4 h-4" />
-                                    </Button>
+
+                                {/* Players panel */}
+                                {showPlayers === t.id && (
+                                    <div className="mt-3 border-t pt-3 space-y-2">
+                                        {t.players?.length === 0 && (
+                                            <p className="text-xs text-muted-foreground text-center py-2">No hay jugadores inscritos</p>
+                                        )}
+                                        {t.players?.map((p: any) => (
+                                            <div key={p.id} className="flex items-center justify-between text-sm bg-muted/40 rounded-lg px-3 py-2">
+                                                <span className="font-medium truncate flex-1">{p.name}</span>
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
+                                                    <span className="flex items-center gap-0.5">⚽ {p.goals}</span>
+                                                    <span className="w-3 h-4 bg-yellow-400 rounded-sm inline-block" title="Amarillas"></span>{p.yellowCards}
+                                                    <span className="w-3 h-4 bg-red-500 rounded-sm inline-block" title="Rojas"></span>{p.redCards}
+                                                    <Button variant="ghost" size="icon" className="w-6 h-6 text-blue-500" onClick={() => { setEditingPlayer(p); setPlayerStats({ goals: p.goals, yellowCards: p.yellowCards, redCards: p.redCards }); }}>
+                                                        <Edit3 className="w-3 h-3" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="w-6 h-6 text-red-500" onClick={() => handleRemovePlayer(p.id)}>
+                                                        <Trash className="w-3 h-3" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        <div className="flex gap-2 pt-2">
+                                            <Input
+                                                placeholder="Nombre del jugador"
+                                                value={newPlayerName}
+                                                onChange={e => setNewPlayerName(e.target.value)}
+                                                onKeyDown={e => e.key === "Enter" && handleAddPlayer(t.id)}
+                                                className="h-8 rounded-lg text-sm"
+                                            />
+                                            <Button size="sm" className="h-8 rounded-lg bg-emerald-600 text-white" onClick={() => handleAddPlayer(t.id)} disabled={isPending}>
+                                                <Plus className="w-3.5 h-3.5" />
+                                            </Button>
+                                        </div>
+                                    </div>
                                 )}
                             </Card>
                         ))}
@@ -288,6 +379,31 @@ export default function TournamentDetailClient({ initialTournament }: { initialT
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShowResultDialog(null)} className="rounded-xl w-full">Cancelar</Button>
                         <Button onClick={handleSaveResult} disabled={isPending || homeGoals === "" || awayGoals === ""} className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-xl w-full">Guardar Resultado</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Player Stats Dialog */}
+            <Dialog open={!!editingPlayer} onOpenChange={(open) => !open && setEditingPlayer(null)}>
+                <DialogContent className="rounded-3xl sm:max-w-[380px]">
+                    <DialogHeader><DialogTitle>Estadísticas: {editingPlayer?.name}</DialogTitle></DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div>
+                            <Label>⚽ Goles</Label>
+                            <Input type="number" min="0" value={playerStats.goals} onChange={e => setPlayerStats({...playerStats, goals: Number(e.target.value)})} className="mt-1.5 rounded-xl" />
+                        </div>
+                        <div>
+                            <Label>🟨 Tarjetas Amarillas</Label>
+                            <Input type="number" min="0" value={playerStats.yellowCards} onChange={e => setPlayerStats({...playerStats, yellowCards: Number(e.target.value)})} className="mt-1.5 rounded-xl" />
+                        </div>
+                        <div>
+                            <Label>🟥 Tarjetas Rojas</Label>
+                            <Input type="number" min="0" value={playerStats.redCards} onChange={e => setPlayerStats({...playerStats, redCards: Number(e.target.value)})} className="mt-1.5 rounded-xl" />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditingPlayer(null)} className="rounded-xl">Cancelar</Button>
+                        <Button onClick={handleSavePlayerStats} disabled={isPending} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl">Guardar</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

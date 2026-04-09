@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { createEvent, deleteEvent } from "./actions";
+import Link from "next/link";
+import { Settings } from "lucide-react";
 
 export default function EventsClient({ initialEvents, complexes, tenantId }: { initialEvents: any[], complexes: any[], tenantId: string }) {
     const [events, setEvents] = useState(initialEvents);
@@ -84,14 +86,21 @@ export default function EventsClient({ initialEvents, complexes, tenantId }: { i
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {events.map(event => (
                     <Card key={event.id} className="p-5 space-y-4">
-                        <div className="flex justify-between items-start">
+                        <div className="flex items-start justify-between">
                             <div>
                                 <h3 className="font-bold text-lg">{event.name}</h3>
-                                <p className="text-sm text-emerald-600 font-semibold">{event.status}</p>
+                                <p className="text-sm text-emerald-600 font-semibold capitalize">{event.status}</p>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(event.id)} className="text-red-500 hover:text-red-700">
-                                <Trash className="w-4 h-4" />
-                            </Button>
+                            <div className="flex gap-1">
+                                <Link href={`/dashboard/events/${event.id}`}>
+                                    <Button variant="ghost" size="icon" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
+                                        <Settings className="w-4 h-4" />
+                                    </Button>
+                                </Link>
+                                <Button variant="ghost" size="icon" onClick={() => handleDelete(event.id)} className="text-red-500 hover:text-red-700">
+                                    <Trash className="w-4 h-4" />
+                                </Button>
+                            </div>
                         </div>
                         <div className="text-sm text-muted-foreground space-y-2">
                             <div className="flex items-center gap-2"><MapPin className="w-4 h-4" /> {event.complex.name}</div>
@@ -119,7 +128,9 @@ export default function EventsClient({ initialEvents, complexes, tenantId }: { i
                         <div className="col-span-2">
                             <Label>Sede / Complejo</Label>
                             <Select value={newEvent.complexId} onValueChange={v => setNewEvent({...newEvent, complexId: v})}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Seleccionar complejo" />
+                                </SelectTrigger>
                                 <SelectContent>
                                     {complexes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                                 </SelectContent>

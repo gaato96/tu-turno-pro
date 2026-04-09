@@ -7,10 +7,12 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 const connectionString = `${process.env.DATABASE_URL}`;
+// In production (Vercel serverless), we limit connections to avoid saturating
+// Supabase's session-mode pool. Each lambda gets at most 1 connection.
 const pool = new Pool({
     connectionString,
-    max: 5,
-    idleTimeoutMillis: 30_000,
+    max: process.env.NODE_ENV === "production" ? 1 : 5,
+    idleTimeoutMillis: 10_000,
     connectionTimeoutMillis: 10_000,
 });
 const adapter = new PrismaPg(pool as any);

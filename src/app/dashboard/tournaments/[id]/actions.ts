@@ -213,3 +213,29 @@ async function applyTeamStats(tx: any, homeTeamId: string, awayTeamId: string, h
         }
     });
 }
+
+// ── Player Management ──
+
+export async function addPlayer(teamId: string, tournamentId: string, name: string) {
+    if (!name.trim()) throw new Error("El nombre del jugador es requerido.");
+    await prisma.tournamentPlayer.create({
+        data: { teamId, name: name.trim() }
+    });
+    revalidatePath(`/dashboard/tournaments/${tournamentId}`);
+    return { success: true };
+}
+
+export async function removePlayer(playerId: string, tournamentId: string) {
+    await prisma.tournamentPlayer.delete({ where: { id: playerId } });
+    revalidatePath(`/dashboard/tournaments/${tournamentId}`);
+    return { success: true };
+}
+
+export async function updatePlayerStats(playerId: string, tournamentId: string, goals: number, yellowCards: number, redCards: number) {
+    await prisma.tournamentPlayer.update({
+        where: { id: playerId },
+        data: { goals, yellowCards, redCards }
+    });
+    revalidatePath(`/dashboard/tournaments/${tournamentId}`);
+    return { success: true };
+}

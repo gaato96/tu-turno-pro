@@ -2,9 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import PublicTournamentClient from "./public-tournament-client";
 
-export default async function PublicTournamentPage({ params }: { params: { slug: string } }) {
+export default async function PublicTournamentPage({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = await params;
     const tournament = await prisma.tournament.findUnique({
-        where: { publicSlug: params.slug },
+        where: { publicSlug: slug },
         include: {
             complex: true,
             teams: {

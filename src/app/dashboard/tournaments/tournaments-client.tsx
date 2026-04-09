@@ -26,7 +26,8 @@ export default function TournamentsClient({ initialTournaments, complexes, tenan
     const [newTour, setNewTour] = useState({
         complexId: complexes.length > 0 ? complexes[0].id : "",
         name: "",
-        sportType: "futbol",
+        sportType: "futbol5",
+        customSport: "",
         maxTeams: "16",
         inscriptionFee: "",
     });
@@ -42,7 +43,7 @@ export default function TournamentsClient({ initialTournaments, complexes, tenan
                     tenantId,
                     complexId: newTour.complexId,
                     name: newTour.name,
-                    sportType: newTour.sportType,
+                    sportType: newTour.sportType === "otro" ? (newTour.customSport || "Otro") : newTour.sportType,
                     maxTeams: Number(newTour.maxTeams) || 16,
                     inscriptionFee: Number(newTour.inscriptionFee) || 0,
                 });
@@ -130,7 +131,7 @@ export default function TournamentsClient({ initialTournaments, complexes, tenan
                         <div className="col-span-2">
                             <Label>Complejo de Sede</Label>
                             <Select value={newTour.complexId} onValueChange={v => setNewTour({...newTour, complexId: v || ""})}>
-                                <SelectTrigger className="rounded-xl mt-1.5"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="rounded-xl mt-1.5"><SelectValue placeholder="Seleccionar complejo" /></SelectTrigger>
                                 <SelectContent>
                                     {complexes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                                 </SelectContent>
@@ -138,15 +139,26 @@ export default function TournamentsClient({ initialTournaments, complexes, tenan
                         </div>
                         <div>
                             <Label>Deporte</Label>
-                            <Select value={newTour.sportType} onValueChange={v => setNewTour({...newTour, sportType: v || "futbol"})}>
-                                <SelectTrigger className="rounded-xl mt-1.5"><SelectValue /></SelectTrigger>
+                            <Select value={newTour.sportType} onValueChange={v => setNewTour({...newTour, sportType: v || "futbol5"})}>
+                                <SelectTrigger className="rounded-xl mt-1.5"><SelectValue placeholder="Seleccionar deporte" /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="futbol">Fútbol</SelectItem>
+                                    <SelectItem value="futbol5">Fútbol 5</SelectItem>
+                                    <SelectItem value="futbol7">Fútbol 7</SelectItem>
+                                    <SelectItem value="futbol11">Fútbol 11</SelectItem>
+                                    <SelectItem value="futbolMixto">Fútbol Mixto</SelectItem>
                                     <SelectItem value="padel">Pádel</SelectItem>
                                     <SelectItem value="tenis">Tenis</SelectItem>
-                                    <SelectItem value="basquet">Básquet</SelectItem>
+                                    <SelectItem value="otro">Otro</SelectItem>
                                 </SelectContent>
                             </Select>
+                            {newTour.sportType === "otro" && (
+                                <Input
+                                    className="rounded-xl mt-2"
+                                    placeholder="Nombre del deporte"
+                                    value={newTour.customSport}
+                                    onChange={e => setNewTour({...newTour, customSport: e.target.value})}
+                                />
+                            )}
                         </div>
                         <div>
                             <Label>Límite de Equipos</Label>
