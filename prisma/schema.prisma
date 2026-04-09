@@ -20,7 +20,7 @@ model Tenant {
   slug      String   @unique
   phone     String?
   logo      String?
-  modules   String[] @default(["reservations"]) // enabled features: reservations, inventory, reports, pos
+  modules   String[] @default(["reservations"]) // reservations, inventory, reports, pos, tournaments, school, events
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -38,6 +38,10 @@ model Tenant {
   cashSessions CashSession[]
   suppliers    Supplier[]
   customers    Customer[]
+  expenseCategories ExpenseCategory[]
+  expenses          Expense[]
+  events            Event[]
+  tournaments       Tournament[]
 }
 
 
@@ -76,6 +80,14 @@ model Complex {
   closingTime String   @default("23:00")
   sportTypes  String[] @default(["futbol"]) // futbol, padel, tenis
   isActive    Boolean  @default(true)
+
+  // Deposit settings
+  requiresDeposit   Boolean @default(false)
+  depositAmount     Decimal? @db.Decimal(10, 2)
+  depositPercentage Int?
+  bankAccountInfo   String?
+  depositExpiryHours Int @default(2)
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -87,6 +99,9 @@ model Complex {
   products     Product[]
   categories   Category[]
   suppliers    Supplier[]
+  events       Event[]
+  expenses     Expense[]
+  tournaments  Tournament[]
 }
 
 model ComplexSchedule {
@@ -149,7 +164,8 @@ model Reservation {
   endTime   DateTime @db.Timestamptz
 
   // Status & Source
-  status String @default("pending") // pending, confirmed, in_game, finished, paid, cancelled
+  status String @default("pending") // pending, pending_deposit, confirmed, in_game, finished, paid, cancelled
+  reservationType String @default("casual") // casual, fixed, tournament, school, event
   source String @default("backoffice") // web, backoffice
 
   // Financials
@@ -157,6 +173,9 @@ model Reservation {
   consumptionAmount Decimal @default(0) @db.Decimal(10, 2)
   discount          Decimal @default(0) @db.Decimal(10, 2)
   totalAmount       Decimal @default(0) @db.Decimal(10, 2)
+  depositAmount     Decimal @default(0) @db.Decimal(10, 2)
+  paidAmount        Decimal @default(0) @db.Decimal(10, 2)
+  activeForConsumption Boolean @default(false)
 
   // Payment
   paymentMethod  String? // cash, card, transfer, mixed
@@ -173,7 +192,8 @@ model Reservation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  sales Sale[]
+  sales    Sale[]
+  payments Payment[]
 
   @@index([complexId, date])
   @@index([courtId, date])
@@ -194,12 +214,43 @@ model Customer {
   phone String? @unique
   email String? @unique
 
+  balance Decimal @default(0) @db.Decimal(10, 2)
+  notes   String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   reservations Reservation[]
+  payments     Payment[]
 
   @@index([tenantId])
+}
+
+// ============================================
+// PAYMENTS
+// ============================================
+
+model Payment {
+  id            String       @id @default(cuid())
+  tenantId      String
+  reservationId String?
+  reservation   Reservation? @relation(fields: [reservationId], references: [id])
+  eventId       String?
+  event         Event?       @relation(fields: [eventId], references: [id])
+  customerId    String?
+  customer      Customer?    @relation(fields: [customerId], references: [id])
+  cashSessionId String?
+  cashSession   CashSession? @relation(fields: [cashSessionId], references: [id])
+  
+  amount        Decimal      @db.Decimal(10, 2)
+  paymentMethod String       // cash, card, transfer
+  concept       String       @default("court") // court, consumption, deposit, balance, event
+  notes         String?
+  createdAt     DateTime     @default(now())
+
+  @@index([reservationId])
+  @@index([customerId])
+  @@index([eventId])
 }
 
 
@@ -267,6 +318,8 @@ model Sale {
   tenant        Tenant       @relation(fields: [tenantId], references: [id])
   reservationId String?
   reservation   Reservation? @relation(fields: [reservationId], references: [id])
+  eventId       String?
+  event         Event?       @relation(fields: [eventId], references: [id])
   cashSessionId String?
   cashSession   CashSession? @relation(fields: [cashSessionId], references: [id])
 
@@ -276,6 +329,8 @@ model Sale {
   status         String  @default("completed") // on_tab, completed, cancelled
   paymentMethod  String? // cash, card, transfer, mixed
   paymentDetails Json? // For mixed: { cash: 2000, card: 1500 }
+  isStaffConsumption Boolean @default(false)
+
 
   items     SaleItem[]
   createdAt DateTime   @default(now())
@@ -327,6 +382,147 @@ model CashSession {
   notes  String?
 
   sales Sale[]
+  payments Payment[]
+  expenses Expense[]
 
   @@index([tenantId, status])
 }
+
+// ============================================
+// EVENTS
+// ============================================
+
+model Event {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  complexId   String
+  complex     Complex  @relation(fields: [complexId], references: [id])
+  name        String
+  description String?
+  date        DateTime @db.Date
+  startTime   DateTime @db.Timestamptz
+  endTime     DateTime @db.Timestamptz
+  totalAmount   Decimal @default(0) @db.Decimal(10, 2)
+  depositPaid   Decimal @default(0) @db.Decimal(10, 2)
+  paidAmount    Decimal @default(0) @db.Decimal(10, 2)
+  status        String  @default("pending") // pending, confirmed, in_progress, completed, cancelled
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  payments Payment[]
+  sales    Sale[]
+
+  @@index([complexId, date])
+}
+
+// ============================================
+// EXPENSES
+// ============================================
+
+model ExpenseCategory {
+  id       String  @id @default(cuid())
+  tenantId String
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name     String
+  isActive Boolean @default(true)
+
+  expenses Expense[]
+  @@index([tenantId])
+}
+
+model Expense {
+  id          String          @id @default(cuid())
+  tenantId    String
+  tenant      Tenant          @relation(fields: [tenantId], references: [id])
+  complexId   String
+  complex     Complex         @relation(fields: [complexId], references: [id])
+  categoryId  String
+  category    ExpenseCategory @relation(fields: [categoryId], references: [id])
+  amount      Decimal         @db.Decimal(10, 2)
+  description String
+  date        DateTime        @db.Date
+  cashSessionId String?
+  cashSession   CashSession?  @relation(fields: [cashSessionId], references: [id])
+  createdAt   DateTime        @default(now())
+
+  @@index([complexId, date])
+  @@index([tenantId])
+}
+
+
+// ============================================
+// TOURNAMENTS
+// ============================================
+
+model Tournament {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  complexId   String
+  complex     Complex  @relation(fields: [complexId], references: [id])
+  name        String
+  sportType   String   @default("futbol")
+  status      String   @default("registration") // registration, in_progress, finished
+  startDate   DateTime? @db.Date
+  endDate     DateTime? @db.Date
+  maxTeams    Int      @default(16)
+  inscriptionFee Decimal? @db.Decimal(10, 2)
+  rules       String?
+  isPublic    Boolean  @default(true)
+  publicSlug  String?  @unique // URL pública: /torneos/{slug}
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  teams       TournamentTeam[]
+  matches     TournamentMatch[]
+
+  @@index([complexId])
+}
+
+model TournamentTeam {
+  id           String     @id @default(cuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  name         String
+  points       Int        @default(0)
+  gamesPlayed  Int        @default(0)
+  wins         Int        @default(0)
+  draws        Int        @default(0)
+  losses       Int        @default(0)
+  goalsFor     Int        @default(0)
+  goalsAgainst Int        @default(0)
+
+  players      TournamentPlayer[]
+  homeMatches  TournamentMatch[] @relation("HomeTeam")
+  awayMatches  TournamentMatch[] @relation("AwayTeam")
+}
+
+model TournamentPlayer {
+  id     String         @id @default(cuid())
+  teamId String
+  team   TournamentTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  name   String
+  goals         Int @default(0)
+  yellowCards   Int @default(0)
+  redCards      Int @default(0)
+}
+
+model TournamentMatch {
+  id           String          @id @default(cuid())
+  tournamentId String
+  tournament   Tournament      @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  matchDay     Int             // fecha/jornada
+  homeTeamId   String
+  homeTeam     TournamentTeam  @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeamId   String
+  awayTeam     TournamentTeam  @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  homeGoals    Int?
+  awayGoals    Int?
+  date         DateTime?       @db.Date
+  time         String?
+  status       String          @default("scheduled") // scheduled, played, cancelled
+  notes        String?
+}
+

@@ -13,7 +13,17 @@ export async function getTenantInfo(tenantId: string) {
 
     const complexes = await prisma.complex.findMany({
         where: { tenantId, isActive: true },
-        include: {
+        select: {
+            id: true,
+            name: true,
+            address: true,
+            openingTime: true,
+            closingTime: true,
+            requiresDeposit: true,
+            depositAmount: true,
+            depositPercentage: true,
+            bankAccountInfo: true,
+            depositExpiryHours: true,
             courts: {
                 where: { isActive: true }
             }
@@ -30,6 +40,20 @@ export async function getAvailableSlots(tenantId: string, courtId: string, date:
     const court = await prisma.court.findFirst({ where: { id: courtId, isActive: true } });
     if (!court) return { court: null, reservations: [] };
 
+    // PASSIVE CLEANUP: auto-expire unpaid web reservations older than 2 hours
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    await prisma.reservation.updateMany({
+        where: {
+            tenantId,
+            status: "pending",
+            source: "web",
+            createdAt: { lt: twoHoursAgo }
+        },
+        data: {
+            status: "cancelled",
+        }
+    });
+
     const selectedDate = new Date(date + "T00:00:00");
     const startOfDay = new Date(selectedDate);
     startOfDay.setHours(0, 0, 0, 0);
@@ -37,7 +61,12 @@ export async function getAvailableSlots(tenantId: string, courtId: string, date:
     endOfDay.setHours(23, 59, 59, 999);
 
     const reservations = await prisma.reservation.findMany({
-        where: { tenantId, courtId, date: { gte: startOfDay, lte: endOfDay }, status: { in: ["confirmed", "in_game"] } }
+        where: { 
+            tenantId, 
+            courtId, 
+            date: { gte: startOfDay, lte: endOfDay }, 
+            status: { in: ["confirmed", "in_game", "pending"] } 
+        }
     });
 
     const mapped = reservations.map(r => ({
@@ -46,7 +75,17 @@ export async function getAvailableSlots(tenantId: string, courtId: string, date:
         endTime: r.endTime.toISOString().replace("Z", ""),
     }));
 
-    return { court, reservations: mapped };
+    const events = await prisma.event.findMany({
+        where: { tenantId, complexId: court.complexId, date: { gte: startOfDay, lte: endOfDay }, status: { notIn: ["cancelled"] } }
+    });
+
+    const mappedEvents = events.map(e => ({
+         id: e.id,
+         startTime: e.startTime.toISOString().replace("Z", ""),
+         endTime: e.endTime.toISOString().replace("Z", ""),
+    }));
+
+    return { court, reservations: [...mapped, ...mappedEvents] };
 }
 
 export async function createPublicReservation(data: any) {
@@ -74,7 +113,7 @@ export async function createPublicReservation(data: any) {
             tenantId: data.tenantId,
             courtId: data.courtId,
             date: parsedDate,
-            status: { in: ["confirmed", "in_game"] },
+            status: { in: ["confirmed", "in_game", "pending"] },
             OR: [
                 { startTime: { lt: parsedEndTime }, endTime: { gt: parsedStartTime } }
             ]
@@ -85,9 +124,23 @@ export async function createPublicReservation(data: any) {
         throw new Error("Este horario ya no está disponible. Por favor elige otro.");
     }
 
-    // Determine price
     const court = await prisma.court.findFirst({ where: { id: data.courtId } });
     if (!court) throw new Error("Cancha no encontrada");
+
+    const overlappingEvents = await prisma.event.findMany({
+        where: {
+            tenantId: data.tenantId,
+            complexId: court.complexId,
+            status: { notIn: ["cancelled"] },
+            AND: [
+                { startTime: { lt: parsedEndTime }, endTime: { gt: parsedStartTime } }
+            ]
+        }
+    });
+
+    if (overlappingEvents.length > 0) {
+        throw new Error("Hay un evento especial que bloquea las canchas en este horario.");
+    }
 
     let courtAmount = 0;
     const nightStartHour = parseInt(court.nightRateStartTime.split(":")[0]);

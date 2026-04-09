@@ -47,10 +47,10 @@ export function DashboardReservationModal({ reservation, onClose }: { reservatio
         });
     };
 
-    const handlePayment = (method: string, details?: any) => {
+    const handlePayment = (method: string, amount: number, leaveOnAccount: boolean, details?: any) => {
         startTransition(async () => {
             try {
-                await payReservation(reservation.id, method, details);
+                await payReservation(reservation.id, method, amount, leaveOnAccount, details);
                 toast.success("Cobro registrado exitosamente");
                 setPaymentOpen(false);
                 router.refresh();
@@ -204,11 +204,11 @@ export function ActiveReservationsWidget({ activeReservations }: { activeReserva
         });
     };
 
-    const handlePayment = (method: string, details?: any) => {
+    const handlePayment = (method: string, amount: number, leaveOnAccount: boolean, details?: any) => {
         if (!paymentReservation) return;
         startTransition(async () => {
             try {
-                await payReservation(paymentReservation.id, method, details);
+                await payReservation(paymentReservation.id, method, amount, leaveOnAccount, details);
                 toast.success("Cobro registrado exitosamente");
                 setPaymentReservation(null);
                 router.refresh();

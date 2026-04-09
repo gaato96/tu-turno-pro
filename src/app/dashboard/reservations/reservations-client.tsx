@@ -139,6 +139,8 @@ export default function ReservationsClient({
         startTime: "",
         endTime: "",
         duration: "60",
+        depositAmount: "",
+        paymentMethod: "cash",
         isRecurring: false,
     });
 
@@ -211,6 +213,8 @@ export default function ReservationsClient({
             startTime: time,
             endTime,
             duration: "60",
+            depositAmount: "",
+            paymentMethod: "cash",
             isRecurring: false,
         });
         setSelectedSlot({ courtId, time });
@@ -232,6 +236,11 @@ export default function ReservationsClient({
                 formData.append("date", newRes.date); // Use selected date in form
                 formData.append("startTime", newRes.startTime);
                 formData.append("endTime", newRes.endTime);
+                
+                if (Number(newRes.depositAmount) > 0) {
+                    formData.append("depositAmount", newRes.depositAmount);
+                    formData.append("paymentMethod", newRes.paymentMethod);
+                }
 
 
                 await createReservation(formData);
@@ -259,19 +268,17 @@ export default function ReservationsClient({
         });
     };
 
-    const handlePayment = (method: string, details?: any) => {
+    const handlePayment = (method: string, amount: number, leaveOnAccount: boolean, details?: any) => {
         if (!paymentReservation) return;
         startTransition(async () => {
             try {
-                await payReservation(paymentReservation.id, method, details);
+                await payReservation(paymentReservation.id, method, amount, leaveOnAccount, details);
                 toast.success("Cobro registrado exitosamente");
 
-                // Update detail modal if it's open
-                if (detailReservation?.id === paymentReservation.id) {
-                    setDetailReservation({ ...detailReservation, status: "paid" });
-                }
-
                 setPaymentReservation(null);
+                
+                // We reload to get the latest updated fields like paidAmount and status
+                window.location.reload();
             } catch (error: any) {
                 toast.error(error.message || "Error al registrar el cobro");
             }
@@ -656,6 +663,32 @@ export default function ReservationsClient({
                             </div>
                         </div>
 
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Label>Seña / Abono Inicial (Opcional)</Label>
+                                <Input 
+                                    type="number" 
+                                    placeholder="0" 
+                                    value={newRes.depositAmount} 
+                                    onChange={(e) => setNewRes({ ...newRes, depositAmount: e.target.value })} 
+                                    className="mt-1.5 rounded-xl"
+                                />
+                            </div>
+                            <div>
+                                <Label>Método de Pago</Label>
+                                <Select value={newRes.paymentMethod} onValueChange={(v) => v && setNewRes({ ...newRes, paymentMethod: v })}>
+                                    <SelectTrigger className="mt-1.5 rounded-xl">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="cash">Efectivo</SelectItem>
+                                        <SelectItem value="card">Tarjeta / Mercadopago</SelectItem>
+                                        <SelectItem value="transfer">Transferencia</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
                         <Separator />
 
                         <div className="flex items-center gap-3">
@@ -745,11 +778,30 @@ export default function ReservationsClient({
                             </Card>
 
                             {/* Financial Summary */}
-                            <div className="flex justify-between items-center px-2">
-                                <span className="text-sm text-muted-foreground">Total a pagar</span>
-                                <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                                    ${Number(detailReservation.totalAmount).toLocaleString()}
-                                </span>
+                            {/* Financial Summary */}
+                            <div className="flex flex-col gap-2 px-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-muted-foreground">Total de la reserva</span>
+                                    <span className={`text-xl font-bold ${Number(detailReservation.paidAmount) === 0 ? "text-emerald-600 dark:text-emerald-400 text-2xl" : ""}`}>
+                                        ${Number(detailReservation.totalAmount).toLocaleString()}
+                                    </span>
+                                </div>
+                                {Number(detailReservation.paidAmount) > 0 && (
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-muted-foreground">Monto abonado</span>
+                                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                            - ${Number(detailReservation.paidAmount).toLocaleString()}
+                                        </span>
+                                    </div>
+                                )}
+                                {Number(detailReservation.paidAmount) > 0 && Number(detailReservation.totalAmount) - Number(detailReservation.paidAmount) > 0 && (
+                                    <div className="flex justify-between items-center pt-2 border-t border-border/50">
+                                        <span className="text-sm font-semibold">Restante a pagar</span>
+                                        <span className="text-2xl font-bold text-destructive">
+                                            ${Math.max(0, Number(detailReservation.totalAmount) - Number(detailReservation.paidAmount)).toLocaleString()}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Consumptions List */}
