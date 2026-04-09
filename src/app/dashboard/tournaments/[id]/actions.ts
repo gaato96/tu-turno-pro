@@ -97,14 +97,24 @@ export async function generateFixture(tournamentId: string) {
     return { success: true };
 }
 
-export async function updateMatchResult(matchId: string, tournamentId: string, homeGoals: number, awayGoals: number) {
+export async function updateMatchResult(
+    matchId: string, 
+    tournamentId: string, 
+    homeGoals: number, 
+    awayGoals: number, 
+    complexId?: string, 
+    playerStats?: any[]
+) {
     await prisma.$transaction(async (tx) => {
         const match = await tx.tournamentMatch.findUnique({ where: { id: matchId } });
         if (!match) throw new Error("Partido no encontrado");
 
-        // Si el partido ya fue jugado, revertir estadísticas previas
+        // Si el partido ya fue jugado, revertir estadísticas previas de equipos y JUGADORES
         if (match.status === "played") {
             await revertTeamStats(tx, match);
+            if (match.playerStats) {
+                await revertPlayerStats(tx, match.playerStats as any[]);
+            }
         }
 
         // Actualizar partido
@@ -113,16 +123,49 @@ export async function updateMatchResult(matchId: string, tournamentId: string, h
             data: {
                 homeGoals,
                 awayGoals,
+                complexId: complexId || null,
+                playerStats: playerStats || null,
                 status: "played"
             }
         });
 
-        // Aplicar nuevas estadísticas
+        // Aplicar nuevas estadísticas de equipos
         await applyTeamStats(tx, match.homeTeamId, match.awayTeamId, homeGoals, awayGoals);
+        
+        // Aplicar nuevas estadísticas de jugadores si existen
+        if (playerStats && playerStats.length > 0) {
+            await applyPlayerStats(tx, playerStats);
+        }
     });
 
     revalidatePath(`/dashboard/tournaments/${tournamentId}`);
     return { success: true };
+}
+
+async function revertPlayerStats(tx: any, stats: any[]) {
+    for (const s of stats) {
+        await tx.tournamentPlayer.update({
+            where: { id: s.playerId },
+            data: {
+                goals: { decrement: s.goals || 0 },
+                yellowCards: { decrement: s.yellowCards || 0 },
+                redCards: { decrement: s.redCards || 0 }
+            }
+        });
+    }
+}
+
+async function applyPlayerStats(tx: any, stats: any[]) {
+    for (const s of stats) {
+        await tx.tournamentPlayer.update({
+            where: { id: s.playerId },
+            data: {
+                goals: { increment: s.goals || 0 },
+                yellowCards: { increment: s.yellowCards || 0 },
+                redCards: { increment: s.redCards || 0 }
+            }
+        });
+    }
 }
 
 async function revertTeamStats(tx: any, match: any) {

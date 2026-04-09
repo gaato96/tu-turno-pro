@@ -17,9 +17,14 @@ export async function createEvent(data: {
 }) {
     const { tenantId, complexId, name, description, date, startTime, endTime, totalAmount, depositPaid, notes } = data;
 
-    const parsedDate = new Date(date + "T12:00:00");
-    const parsedStartTime = new Date(date + "T" + startTime + ":00");
-    const parsedEndTime = new Date(date + "T" + endTime + ":00");
+    if (!complexId || complexId === "") {
+        throw new Error("Debes seleccionar un complejo válido.");
+    }
+
+    // Force UTC suffix (Z) with exact times to avoid server guessing timezones
+    const parsedDate = new Date(`${date}T00:00:00.000Z`);
+    const parsedStartTime = new Date(`${date}T${startTime}:00.000Z`);
+    const parsedEndTime = new Date(`${date}T${endTime}:00.000Z`);
 
     await prisma.event.create({
         data: {

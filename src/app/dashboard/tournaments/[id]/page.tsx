@@ -28,16 +28,21 @@ export default async function TournamentDetailPage({ params }: { params: Promise
             matches: {
                 include: {
                     homeTeam: true,
-                    awayTeam: true
+                    awayTeam: true,
+                    complex: true
                 },
                 orderBy: { matchDay: 'asc' }
             }
         }
     });
 
+    const complexes = await prisma.complex.findMany({
+        where: { tenantId }
+    });
+
     if (!tournament) {
         redirect("/dashboard/tournaments");
     }
 
-    return <TournamentDetailClient initialTournament={tournament} />;
+    return <TournamentDetailClient initialTournament={tournament} complexes={complexes} />;
 }

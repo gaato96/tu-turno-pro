@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { format } from "date-fns";
-import { Trophy, Users, CalendarDays, Plus, Trash, PlayCircle, Edit3, UserPlus, Star } from "lucide-react";
+import { Trophy, Users, CalendarDays, Plus, Trash, PlayCircle, Edit3, UserPlus, Star, ChevronRight, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,25 +11,81 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { addTeam, removeTeam, generateFixture, updateMatchResult, addPlayer, removePlayer, updatePlayerStats } from "./actions";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+} from "@/components/ui/select";
+import { useRouter } from "next/navigation";
 
-export default function TournamentDetailClient({ initialTournament }: { initialTournament: any }) {
+export default function TournamentDetailClient({ initialTournament, complexes }: { initialTournament: any, complexes: any[] }) {
+    const router = useRouter();
     const [tour, setTour] = useState(initialTournament);
-    const [activeTab, setActiveTab] = useState<"posiciones" | "fixture" | "equipos">("posiciones");
+    const [activeTab, setActiveTab] = useState<"posiciones" | "fixture" | "equipos" | "goleadores">("posiciones");
     const [isPending, startTransition] = useTransition();
+
+    // Persist active tab
+    useEffect(() => {
+        const savedTab = sessionStorage.getItem(`tour_tab_${tour.id}`);
+        if (savedTab) setActiveTab(savedTab as any);
+    }, [tour.id]);
+
+    const handleTabChange = (tab: any) => {
+        setActiveTab(tab);
+        sessionStorage.setItem(`tour_tab_${tour.id}`, tab);
+    };
 
     const [showAddTeam, setShowAddTeam] = useState(false);
     const [newTeamName, setNewTeamName] = useState("");
 
     const [showResultDialog, setShowResultDialog] = useState<any>(null);
+    const [resultStep, setResultStep] = useState(1);
     const [homeGoals, setHomeGoals] = useState("");
     const [awayGoals, setAwayGoals] = useState("");
+    const [matchComplexId, setMatchComplexId] = useState("");
+    const [matchPlayerStats, setMatchPlayerStats] = useState<any[]>([]); // { playerId, name, teamId, goals, yellowCards, redCards }
 
     // Player management state
     const [showPlayers, setShowPlayers] = useState<string | null>(null); // teamId
     const [newPlayerName, setNewPlayerName] = useState("");
     const [editingPlayer, setEditingPlayer] = useState<any>(null);
     const [playerStats, setPlayerStats] = useState({ goals: 0, yellowCards: 0, redCards: 0 });
+
+    const handleSaveResult = () => {
+        startTransition(async () => {
+            try {
+                // Filter out players with no stats to save space/payload
+                const filteredStats = matchPlayerStats.filter(p => p.goals > 0 || p.yellowCards > 0 || p.redCards > 0)
+                    .map(p => ({
+                        playerId: p.playerId,
+                        goals: p.goals,
+                        yellowCards: p.yellowCards,
+                        redCards: p.redCards
+                    }));
+
+                await updateMatchResult(
+                    showResultDialog.id, 
+                    tour.id, 
+                    parseInt(homeGoals), 
+                    parseInt(awayGoals), 
+                    matchComplexId, 
+                    filteredStats
+                );
+                
+                toast.success("Resultado y estadísticas guardadas correctamente");
+                setShowResultDialog(null);
+                setResultStep(1);
+                setHomeGoals("");
+                setAwayGoals("");
+                setMatchPlayerStats([]);
+                router.refresh();
+            } catch (e: any) {
+                toast.error(e.message || "Error");
+            }
+        });
+    };
 
     const handleAddTeam = () => {
         if (!newTeamName) return;
@@ -39,7 +95,7 @@ export default function TournamentDetailClient({ initialTournament }: { initialT
                  toast.success("Equipo agregado");
                  setShowAddTeam(false);
                  setNewTeamName("");
-                 setTimeout(() => window.location.reload(), 1000); // Para actualizar el estado completo más fácil
+                 router.refresh();
              } catch (e: any) {
                  toast.error(e.message || "Error al agregar equipo");
              }
@@ -52,7 +108,7 @@ export default function TournamentDetailClient({ initialTournament }: { initialT
             try {
                 await removeTeam(teamId, tour.id);
                 toast.success("Equipo eliminado");
-                setTimeout(() => window.location.reload(), 1000);
+                router.refresh();
             } catch (e: any) {
                 toast.error(e.message || "Error");
             }
@@ -65,7 +121,7 @@ export default function TournamentDetailClient({ initialTournament }: { initialT
             try {
                 await generateFixture(tour.id);
                 toast.success("Torneo iniciado y fixture generado!");
-                setTimeout(() => window.location.reload(), 1000);
+                router.refresh();
             } catch (e: any) {
                 toast.error(e.message || "Error");
             }
@@ -79,7 +135,9 @@ export default function TournamentDetailClient({ initialTournament }: { initialT
                 await updateMatchResult(showResultDialog.id, tour.id, parseInt(homeGoals), parseInt(awayGoals));
                 toast.success("Resultado guardado correctamente");
                 setShowResultDialog(null);
-                setTimeout(() => window.location.reload(), 1000);
+                setHomeGoals("");
+                setAwayGoals("");
+                router.refresh();
             } catch (e: any) {
                 toast.error(e.message || "Error");
             }
@@ -93,7 +151,7 @@ export default function TournamentDetailClient({ initialTournament }: { initialT
                 await addPlayer(teamId, tour.id, newPlayerName);
                 toast.success("Jugador agregado");
                 setNewPlayerName("");
-                setTimeout(() => window.location.reload(), 800);
+                router.refresh();
             } catch (e: any) {
                 toast.error(e.message || "Error");
             }
@@ -105,7 +163,7 @@ export default function TournamentDetailClient({ initialTournament }: { initialT
             try {
                 await removePlayer(playerId, tour.id);
                 toast.success("Jugador eliminado");
-                setTimeout(() => window.location.reload(), 800);
+                router.refresh();
             } catch (e: any) {
                 toast.error(e.message || "Error");
             }
@@ -119,7 +177,7 @@ export default function TournamentDetailClient({ initialTournament }: { initialT
                 await updatePlayerStats(editingPlayer.id, tour.id, playerStats.goals, playerStats.yellowCards, playerStats.redCards);
                 toast.success("Estadísticas guardadas");
                 setEditingPlayer(null);
-                setTimeout(() => window.location.reload(), 800);
+                router.refresh();
             } catch (e: any) {
                 toast.error(e.message || "Error");
             }
@@ -142,11 +200,25 @@ export default function TournamentDetailClient({ initialTournament }: { initialT
                         <Button variant="ghost" size="icon" className="rounded-xl"><ArrowLeft className="w-5 h-5"/></Button>
                     </Link>
                     <div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                             <h1 className="text-2xl font-bold">{tour.name}</h1>
                             <span className="text-xs font-bold uppercase tracking-widest bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400 px-2 py-1 rounded-md">
                                 {tour.status}
                             </span>
+                            {tour.publicSlug && (
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-7 text-xs ml-2 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                                    onClick={() => {
+                                        const url = `${window.location.origin}/torneos/${tour.publicSlug}`;
+                                        navigator.clipboard.writeText(url);
+                                        toast.success("Enlace público copiado al portapapeles");
+                                    }}
+                                >
+                                    Copiar Link Público
+                                </Button>
+                            )}
                         </div>
                         <p className="text-muted-foreground text-sm mt-1 flex items-center gap-4">
                             <span className="flex items-center gap-1"><Trophy className="w-4 h-4"/> {tour.sportType}</span>
@@ -163,10 +235,10 @@ export default function TournamentDetailClient({ initialTournament }: { initialT
 
             {/* Tabs */}
             <div className="flex space-x-2 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-2xl w-fit">
-                {(["posiciones", "fixture", "equipos"]).map(t => (
+                {(["posiciones", "fixture", "equipos", "goleadores"]).map(t => (
                     <button
                         key={t}
-                        onClick={() => setActiveTab(t as any)}
+                        onClick={() => handleTabChange(t as any)}
                         className={`px-6 py-2.5 rounded-xl text-sm font-bold capitalize transition-all ${activeTab === t ? "bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                     >
                         {t}
@@ -318,13 +390,40 @@ export default function TournamentDetailClient({ initialTournament }: { initialT
                                                         </div>
                                                         <div className="flex-1 text-left font-bold truncate pl-3">{match.awayTeam?.name}</div>
                                                     </div>
+                                                    
+                                                    {match.complex && (
+                                                        <p className="text-[10px] text-center mt-2 text-muted-foreground uppercase tracking-widest font-bold flex items-center justify-center gap-1">
+                                                            <CalendarDays className="w-2 h-2"/> {match.complex.name}
+                                                        </p>
+                                                    )}
+
                                                     <Button 
                                                         variant="ghost" 
                                                         size="sm"
                                                         onClick={() => {
                                                             setShowResultDialog(match);
+                                                            setResultStep(1);
                                                             setHomeGoals(match.homeGoals?.toString() || "");
                                                             setAwayGoals(match.awayGoals?.toString() || "");
+                                                            setMatchComplexId(match.complexId || complexes[0]?.id || "");
+                                                            
+                                                            // Prepare player stats for the dialog
+                                                            const homePlayers = tour.teams.find((t: any) => t.id === match.homeTeamId)?.players || [];
+                                                            const awayPlayers = tour.teams.find((t: any) => t.id === match.awayTeamId)?.players || [];
+                                                            const existingStats = match.playerStats || [];
+                                                            
+                                                            const allPlayersStats = [...homePlayers, ...awayPlayers].map(p => {
+                                                                const s = existingStats.find((es: any) => es.playerId === p.id);
+                                                                return {
+                                                                    playerId: p.id,
+                                                                    name: p.name,
+                                                                    teamId: p.teamId,
+                                                                    goals: s?.goals || 0,
+                                                                    yellowCards: s?.yellowCards || 0,
+                                                                    redCards: s?.redCards || 0
+                                                                };
+                                                            });
+                                                            setMatchPlayerStats(allPlayersStats);
                                                         }}
                                                         className="mt-4 mx-auto w-fit text-xs rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                                                     >
@@ -338,6 +437,44 @@ export default function TournamentDetailClient({ initialTournament }: { initialT
                             </div>
                         ))
                     )}
+                </div>
+            )}
+
+            {/* Tab: Goleadores */}
+            {activeTab === "goleadores" && (
+                <div className="space-y-4">
+                    <Card className="rounded-3xl border-border/50 shadow-sm overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="text-xs text-muted-foreground uppercase bg-slate-50 dark:bg-slate-900 border-b">
+                                    <tr>
+                                        <th className="px-6 py-4 font-semibold">Jugador</th>
+                                        <th className="px-6 py-4 font-semibold">Equipo</th>
+                                        <th className="px-6 py-4 font-semibold text-center">Goles</th>
+                                        <th className="px-6 py-4 font-semibold text-center">Amarillas</th>
+                                        <th className="px-6 py-4 font-semibold text-center">Rojas</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {tour.teams.flatMap((t: any) => t.players.map((p: any) => ({ ...p, teamName: t.name })))
+                                        .sort((a, b) => b.goals - a.goals)
+                                        .map((p, idx) => (
+                                            <tr key={p.id} className="border-b hover:bg-muted/30 transition-colors">
+                                                <td className="px-6 py-4 font-bold flex items-center gap-3">
+                                                    <span className="text-muted-foreground w-4">{idx + 1}</span>
+                                                    {p.name}
+                                                </td>
+                                                <td className="px-6 py-4 text-muted-foreground font-medium">{p.teamName}</td>
+                                                <td className="px-6 py-4 text-center font-black text-emerald-600 text-lg">{p.goals}</td>
+                                                <td className="px-6 py-4 text-center font-bold text-yellow-600">{p.yellowCards}</td>
+                                                <td className="px-6 py-4 text-center font-bold text-red-600">{p.redCards}</td>
+                                            </tr>
+                                        ))
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
                 </div>
             )}
 
@@ -359,26 +496,120 @@ export default function TournamentDetailClient({ initialTournament }: { initialT
             </Dialog>
 
             <Dialog open={!!showResultDialog} onOpenChange={(open) => !open && setShowResultDialog(null)}>
-                <DialogContent className="rounded-3xl sm:max-w-[400px]">
+                <DialogContent className="rounded-3xl sm:max-w-[450px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle className="text-center text-xl">Resultado del Partido</DialogTitle>
+                        <DialogTitle className="text-center text-xl">
+                            {resultStep === 1 ? "Resultado del Partido" : "Estadísticas de Jugadores"}
+                        </DialogTitle>
                     </DialogHeader>
-                    {showResultDialog && (
-                        <div className="py-6 flex items-center justify-between gap-4">
-                            <div className="flex flex-col items-center gap-2 flex-1">
-                                <Label className="text-center font-bold text-sm truncate w-full">{showResultDialog.homeTeam?.name}</Label>
-                                <Input type="number" min="0" value={homeGoals} onChange={e => setHomeGoals(e.target.value)} className="h-20 text-4xl text-center font-black rounded-2xl bg-muted border-2 border-transparent focus:border-emerald-500" />
+                    
+                    {showResultDialog && resultStep === 1 && (
+                        <div className="space-y-6 py-4">
+                            <div className="flex items-center justify-between gap-4">
+                                <div className="flex flex-col items-center gap-2 flex-1 text-center">
+                                    <Label className="font-bold text-sm truncate w-full">{showResultDialog.homeTeam?.name}</Label>
+                                    <Input type="number" min="0" value={homeGoals} onChange={e => setHomeGoals(e.target.value)} className="h-20 text-4xl text-center font-black rounded-2xl bg-muted" />
+                                </div>
+                                <div className="text-2xl font-black text-muted-foreground/30">-</div>
+                                <div className="flex flex-col items-center gap-2 flex-1 text-center">
+                                    <Label className="font-bold text-sm truncate w-full">{showResultDialog.awayTeam?.name}</Label>
+                                    <Input type="number" min="0" value={awayGoals} onChange={e => setAwayGoals(e.target.value)} className="h-20 text-4xl text-center font-black rounded-2xl bg-muted" />
+                                </div>
                             </div>
-                            <div className="text-2xl font-black text-muted-foreground/30">-</div>
-                            <div className="flex flex-col items-center gap-2 flex-1">
-                                <Label className="text-center font-bold text-sm truncate w-full">{showResultDialog.awayTeam?.name}</Label>
-                                <Input type="number" min="0" value={awayGoals} onChange={e => setAwayGoals(e.target.value)} className="h-20 text-4xl text-center font-black rounded-2xl bg-muted border-2 border-transparent focus:border-emerald-500" />
+
+                            <div>
+                                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Sede del Partido</Label>
+                                <Select value={matchComplexId} onValueChange={setMatchComplexId}>
+                                    <SelectTrigger className="h-12 rounded-xl">
+                                        <SelectValue placeholder="Seleccionar sede" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {complexes.map(c => (
+                                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                     )}
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowResultDialog(null)} className="rounded-xl w-full">Cancelar</Button>
-                        <Button onClick={handleSaveResult} disabled={isPending || homeGoals === "" || awayGoals === ""} className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-xl w-full">Guardar Resultado</Button>
+
+                    {showResultDialog && resultStep === 2 && (
+                        <div className="space-y-6 py-4">
+                            {[showResultDialog.homeTeamId, showResultDialog.awayTeamId].map(teamId => {
+                                const teamName = teamId === showResultDialog.homeTeamId ? showResultDialog.homeTeam?.name : showResultDialog.awayTeam?.name;
+                                const players = matchPlayerStats.filter(p => p.teamId === teamId);
+                                
+                                return (
+                                    <div key={teamId} className="space-y-3">
+                                        <h4 className="font-black text-xs uppercase tracking-tighter text-emerald-600 border-b pb-1">{teamName}</h4>
+                                        <div className="space-y-2">
+                                            {players.length === 0 && <p className="text-xs text-muted-foreground italic">No hay jugadores cargados en este equipo</p>}
+                                            {players.map(p => (
+                                                <div key={p.playerId} className="flex items-center gap-2 bg-muted/30 p-2 rounded-xl border border-transparent hover:border-emerald-200 transition-colors">
+                                                    <div className="flex-1 text-xs font-bold truncate">{p.name}</div>
+                                                    <div className="flex items-center gap-1">
+                                                        <div className="relative group">
+                                                            <Input 
+                                                                type="number" 
+                                                                className="w-10 h-8 p-0 text-center text-xs rounded-lg font-bold" 
+                                                                value={p.goals} 
+                                                                onChange={e => {
+                                                                    const val = Number(e.target.value);
+                                                                    setMatchPlayerStats(prev => prev.map(item => item.playerId === p.playerId ? {...item, goals: val} : item));
+                                                                }}
+                                                            />
+                                                            <span className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 text-[8px] bg-black text-white px-1 rounded pointer-events-none">Goles</span>
+                                                        </div>
+                                                        <div className="relative group">
+                                                            <Input 
+                                                                type="number" 
+                                                                className="w-10 h-8 p-0 text-center text-xs rounded-lg font-bold border-yellow-500/30 text-yellow-700 bg-yellow-50" 
+                                                                value={p.yellowCards} 
+                                                                onChange={e => {
+                                                                    const val = Number(e.target.value);
+                                                                    setMatchPlayerStats(prev => prev.map(item => item.playerId === p.playerId ? {...item, yellowCards: val} : item));
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <div className="relative group">
+                                                            <Input 
+                                                                type="number" 
+                                                                className="w-10 h-8 p-0 text-center text-xs rounded-lg font-bold border-red-500/30 text-red-700 bg-red-50" 
+                                                                value={p.redCards} 
+                                                                onChange={e => {
+                                                                    const val = Number(e.target.value);
+                                                                    setMatchPlayerStats(prev => prev.map(item => item.playerId === p.playerId ? {...item, redCards: val} : item));
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        {resultStep === 1 ? (
+                            <>
+                                <Button variant="outline" onClick={() => setShowResultDialog(null)} className="rounded-xl flex-1">Cancelar</Button>
+                                <Button 
+                                    onClick={() => setResultStep(2)} 
+                                    disabled={homeGoals === "" || awayGoals === ""} 
+                                    className="bg-emerald-600 text-white rounded-xl flex-1"
+                                >
+                                    Cargar Detalle <ChevronRight className="w-4 h-4 ml-1"/>
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button variant="ghost" onClick={() => setResultStep(1)} className="rounded-xl flex-1">Atrás</Button>
+                                <Button onClick={handleSaveResult} disabled={isPending} className="bg-emerald-600 text-white rounded-xl flex-1">Guardar Todo</Button>
+                            </>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

@@ -13,9 +13,10 @@ import {
     Palette,
     Shield,
     Save,
+    CreditCard,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
-import { updateComplexInfo, updateComplexSchedule } from "./actions";
+import { updateComplexInfo, updateComplexSchedule, updateComplexPaymentSettings } from "./actions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -47,6 +48,23 @@ export function SettingsClient({ initialComplex }: { initialComplex: any }) {
 
     const [schedules, setSchedules] = useState(initialSchedules);
 
+    // Bank Account Data State parsing
+    const defaultBank = { alias: "", cbu: "", titular: "", porcentajeSena: "30" };
+    let parsedBank = defaultBank;
+    try {
+        if (initialComplex.bankAccountInfo) {
+            parsedBank = { ...defaultBank, ...JSON.parse(initialComplex.bankAccountInfo) };
+        }
+    } catch(e) {}
+
+    const [paymentConfig, setPaymentConfig] = useState({
+        requiresDeposit: initialComplex.requiresDeposit || false,
+        alias: parsedBank.alias,
+        cbu: parsedBank.cbu,
+        titular: parsedBank.titular,
+        porcentajeSena: parsedBank.porcentajeSena
+    });
+
     const handleScheduleChange = (dayIndex: number, field: string, value: any) => {
         setSchedules(prev => prev.map(s => s.dayOfWeek === dayIndex ? { ...s, [field]: value } : s));
     };
@@ -71,6 +89,24 @@ export function SettingsClient({ initialComplex }: { initialComplex: any }) {
                 router.refresh();
             } catch (e: any) {
                 toast.error(e.message || "Error al guardar horarios");
+            }
+        });
+    };
+
+    const handleSavePaymentConfig = () => {
+        startTransition(async () => {
+            try {
+                const bankJson = JSON.stringify({
+                    alias: paymentConfig.alias,
+                    cbu: paymentConfig.cbu,
+                    titular: paymentConfig.titular,
+                    porcentajeSena: paymentConfig.porcentajeSena
+                });
+                await updateComplexPaymentSettings(initialComplex.id, paymentConfig.requiresDeposit, bankJson);
+                toast.success("Configuración de pagos guardada");
+                router.refresh();
+            } catch (e: any) {
+                toast.error(e.message || "Error al guardar configuración de pagos");
             }
         });
     };
@@ -156,6 +192,60 @@ export function SettingsClient({ initialComplex }: { initialComplex: any }) {
                 <div className="flex justify-end pt-4">
                     <Button onClick={handleSaveSchedules} disabled={isPending} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md">
                         <Save className="w-4 h-4 mr-2" /> Guardar Horarios
+                    </Button>
+                </div>
+            </Card>
+
+            {/* Online Payments Settings */}
+            <Card className="card-elevated p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <CreditCard className="w-5 h-5 text-emerald-600" />
+                        <div>
+                            <h2 className="text-lg font-bold">Cobros y Señas Online</h2>
+                            <p className="text-xs text-muted-foreground">Configura los datos bancarios para que los clientes te transfieran al reservar online.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="pt-2 border-b pb-4 mb-4">
+                    <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-500/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-500/20">
+                        <div>
+                            <p className="font-bold text-emerald-800 dark:text-emerald-400">Solicitar Seña Obligatoria</p>
+                            <p className="text-sm text-emerald-700/80 dark:text-emerald-500/80">Requerir comprobar un pago por transferencia para confirmar la reserva online.</p>
+                        </div>
+                        <Switch 
+                            checked={paymentConfig.requiresDeposit} 
+                            onCheckedChange={(c) => setPaymentConfig({...paymentConfig, requiresDeposit: c})} 
+                        />
+                    </div>
+                </div>
+
+                {paymentConfig.requiresDeposit && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-2 animate-fade-in">
+                        <div>
+                            <Label>Porcentaje de Seña (%)</Label>
+                            <Input type="number" min="1" max="100" value={paymentConfig.porcentajeSena} onChange={(e) => setPaymentConfig({...paymentConfig, porcentajeSena: e.target.value})} className="mt-1.5 rounded-xl" placeholder="Ej: 30" />
+                            <p className="text-xs text-muted-foreground mt-1">Se calculará este porcentaje sobre el valor de la cancha.</p>
+                        </div>
+                        <div>
+                            <Label>Titular de la Cuenta</Label>
+                            <Input value={paymentConfig.titular} onChange={(e) => setPaymentConfig({...paymentConfig, titular: e.target.value})} className="mt-1.5 rounded-xl" placeholder="Ej: Juan Perez" />
+                        </div>
+                        <div>
+                            <Label>Alias</Label>
+                            <Input value={paymentConfig.alias} onChange={(e) => setPaymentConfig({...paymentConfig, alias: e.target.value})} className="mt-1.5 rounded-xl" placeholder="Ej: MI.CANCHA.MP" />
+                        </div>
+                        <div>
+                            <Label>CBU / CVU</Label>
+                            <Input value={paymentConfig.cbu} onChange={(e) => setPaymentConfig({...paymentConfig, cbu: e.target.value})} className="mt-1.5 rounded-xl" placeholder="Ej: 00000031000..." />
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex justify-end pt-2">
+                    <Button onClick={handleSavePaymentConfig} disabled={isPending} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md">
+                        <Save className="w-4 h-4 mr-2" /> Guardar Configuración
                     </Button>
                 </div>
             </Card>

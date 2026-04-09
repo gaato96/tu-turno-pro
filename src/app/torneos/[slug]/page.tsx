@@ -17,7 +17,8 @@ export default async function PublicTournamentPage({ params }: { params: Promise
             matches: {
                 include: {
                     homeTeam: true,
-                    awayTeam: true
+                    awayTeam: true,
+                    complex: true
                 },
                 orderBy: { matchDay: 'asc' }
             }

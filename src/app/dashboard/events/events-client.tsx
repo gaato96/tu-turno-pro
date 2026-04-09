@@ -26,7 +26,7 @@ export default function EventsClient({ initialEvents, complexes, tenantId }: { i
     const [isPending, startTransition] = useTransition();
 
     const [newEvent, setNewEvent] = useState({
-        complexId: complexes.length > 0 ? complexes[0].id : "",
+        complexId: "",
         name: "",
         date: format(new Date(), "yyyy-MM-dd"),
         startTime: "18:00",

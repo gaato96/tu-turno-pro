@@ -12,11 +12,16 @@ export default async function EventsPage() {
 
     const tenantId = getTenantId(session);
 
-    const events = await prisma.event.findMany({
+    const events = (await prisma.event.findMany({
         where: { tenantId },
         include: { complex: true, sales: true, payments: true },
         orderBy: { date: "desc" }
-    });
+    })).map(e => ({
+        ...e,
+        totalAmount: Number(e.totalAmount),
+        depositPaid: Number(e.depositPaid),
+        paidAmount: Number(e.paidAmount)
+    }));
 
     const complexes = await prisma.complex.findMany({
         where: { tenantId, isActive: true },

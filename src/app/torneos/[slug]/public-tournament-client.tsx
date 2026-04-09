@@ -6,13 +6,17 @@ import { Trophy, CalendarDays, MapPin } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 export default function PublicTournamentClient({ tournament }: { tournament: any }) {
-    const [activeTab, setActiveTab] = useState<"posiciones" | "fixture">("posiciones");
+    const [activeTab, setActiveTab] = useState<"posiciones" | "fixture" | "goleadores">("posiciones");
 
     const matchesByDay = tournament.matches.reduce((acc: any, match: any) => {
         acc[match.matchDay] = acc[match.matchDay] || [];
         acc[match.matchDay].push(match);
         return acc;
     }, {});
+
+    const allPlayers = tournament.teams.flatMap((t: any) => 
+        (t.players || []).map((p: any) => ({ ...p, teamName: t.name }))
+    ).filter((p: any) => p.goals > 0).sort((a: any, b: any) => b.goals - a.goals);
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-12">
@@ -38,7 +42,7 @@ export default function PublicTournamentClient({ tournament }: { tournament: any
                 {/* Tabs */}
                 <div className="flex justify-center">
                     <div className="flex space-x-2 bg-white dark:bg-slate-900 p-1.5 rounded-2xl shadow-lg border border-border/50">
-                        {(["posiciones", "fixture"]).map(t => (
+                        {(["posiciones", "fixture", "goleadores"]).map(t => (
                             <button
                                 key={t}
                                 onClick={() => setActiveTab(t as any)}
@@ -121,12 +125,19 @@ export default function PublicTournamentClient({ tournament }: { tournament: any
                                                             <p className="font-bold text-muted-foreground text-sm uppercase tracking-widest"> Libre: <span className="text-foreground">{match.homeTeam?.name || match.awayTeam?.name}</span></p>
                                                         </div>
                                                     ) : (
-                                                        <div className="flex justify-between items-center w-full">
-                                                            <div className="flex-1 text-right font-bold truncate pr-3">{match.homeTeam?.name}</div>
-                                                            <div className={`px-4 py-2 rounded-xl font-black min-w-[80px] text-center text-lg ${match.status === "played" ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400 border border-emerald-200/50' : 'bg-slate-100 dark:bg-slate-800 border text-slate-400'}`}>
-                                                                {match.status === "played" ? `${match.homeGoals} - ${match.awayGoals}` : "vs"}
+                                                        <div className="space-y-2">
+                                                            <div className="flex justify-between items-center w-full">
+                                                                <div className="flex-1 text-right font-bold truncate pr-3">{match.homeTeam?.name}</div>
+                                                                <div className={`px-4 py-2 rounded-xl font-black min-w-[80px] text-center text-lg ${match.status === "played" ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400 border border-emerald-200/50' : 'bg-slate-100 dark:bg-slate-800 border text-slate-400'}`}>
+                                                                    {match.status === "played" ? `${match.homeGoals} - ${match.awayGoals}` : "vs"}
+                                                                </div>
+                                                                <div className="flex-1 text-left font-bold truncate pl-3">{match.awayTeam?.name}</div>
                                                             </div>
-                                                            <div className="flex-1 text-left font-bold truncate pl-3">{match.awayTeam?.name}</div>
+                                                            {match.complex && (
+                                                                <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest font-bold flex items-center justify-center gap-1 opacity-70">
+                                                                    📍 {match.complex.name}
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </Card>
@@ -137,6 +148,42 @@ export default function PublicTournamentClient({ tournament }: { tournament: any
                             </div>
                         )}
                     </div>
+                )}
+
+                {/* Tab: Goleadores */}
+                {activeTab === "goleadores" && (
+                    <Card className="rounded-3xl border-border/50 shadow-xl overflow-hidden bg-white dark:bg-slate-900">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="text-xs text-muted-foreground uppercase bg-slate-50 dark:bg-slate-900/50 border-b">
+                                    <tr>
+                                        <th className="px-6 py-5 font-bold text-center w-12">Pos</th>
+                                        <th className="px-6 py-5 font-bold">Jugador</th>
+                                        <th className="px-6 py-5 font-bold">Equipo</th>
+                                        <th className="px-6 py-5 font-black text-center text-emerald-600 dark:text-emerald-400">Goles</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {allPlayers.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={4} className="text-center py-12 text-muted-foreground">Aún no hay goles registrados en el torneo</td>
+                                        </tr>
+                                    ) : null}
+                                    {allPlayers.map((player: any, i: number) => (
+                                        <tr key={player.id} className="border-b last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                            <td className="px-6 py-5 text-center font-black text-slate-400">{i + 1}</td>
+                                            <td className="px-6 py-5 font-bold text-base flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center border text-xs shrink-0">⚽</div>
+                                                {player.name}
+                                            </td>
+                                            <td className="px-6 py-5 font-medium text-muted-foreground">{player.teamName}</td>
+                                            <td className="px-6 py-5 text-center font-black text-emerald-600 dark:text-emerald-400 text-xl">{player.goals}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
                 )}
             </div>
             

@@ -27,11 +27,11 @@ import { createReservation, changeReservationStatus, payReservation, cancelReser
 import { toast } from "sonner";
 
 const STATUS_COLORS: Record<string, string> = {
-    pending: "bg-amber-200 border-amber-500 text-amber-900 dark:bg-amber-500/40 dark:text-amber-100 dark:border-amber-400",
-    confirmed: "bg-emerald-200 border-emerald-600 text-emerald-900 dark:bg-emerald-500/50 dark:text-emerald-100 dark:border-emerald-400",
-    in_game: "bg-blue-300 border-blue-600 text-blue-900 dark:bg-blue-500/50 dark:text-blue-100 dark:border-blue-400",
-    finished: "bg-orange-300 border-orange-600 text-orange-900 dark:bg-orange-500/50 dark:text-orange-100 dark:border-orange-400",
-    paid: "bg-gray-200 border-gray-400 text-gray-600 dark:bg-gray-500/30 dark:text-gray-300 dark:border-gray-400",
+    pending: "bg-amber-400 border-amber-600 text-amber-950 font-bold dark:bg-amber-500 dark:text-amber-950 shadow-sm",
+    confirmed: "bg-emerald-500 border-emerald-700 text-white font-bold dark:bg-emerald-600 dark:text-white shadow-sm",
+    in_game: "bg-blue-500 border-blue-700 text-white font-bold dark:bg-blue-600 dark:text-white shadow-sm",
+    finished: "bg-orange-500 border-orange-700 text-white font-bold dark:bg-orange-600 dark:text-white shadow-sm",
+    paid: "bg-slate-500 border-slate-700 text-white font-bold dark:bg-slate-600 dark:text-white shadow-sm",
 };
 
 const STATUS_LABELS: Record<string, string> = {

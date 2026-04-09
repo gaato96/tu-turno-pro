@@ -179,11 +179,36 @@ export function BookingClient({ tenantId, tenantName, tenantPhone, complexes }: 
                                 <div className="flex-1">
                                     <p className="text-xs text-muted-foreground">Seña requerida (Abonar ahora)</p>
                                     <p className="font-bold text-orange-600 dark:text-orange-400 text-lg">
-                                        ${Number(activeComplex.depositAmount || (successData.totalAmount * (activeComplex.depositPercentage || 0) / 100)).toLocaleString()}
+                                        ${(() => {
+                                            let pct = 30;
+                                            try {
+                                                if (activeComplex.bankAccountInfo) {
+                                                    const b = JSON.parse(activeComplex.bankAccountInfo);
+                                                    if (b.porcentajeSena) pct = Number(b.porcentajeSena);
+                                                }
+                                            } catch(e) {}
+                                            return Number(successData.totalAmount * (pct / 100)).toLocaleString();
+                                        })()}
                                     </p>
                                     <div className="mt-2 text-sm bg-muted p-3 rounded-xl border">
                                         <p className="font-semibold text-xs mb-1 uppercase tracking-wider text-muted-foreground">Datos bancarios:</p>
-                                        <p className="whitespace-pre-wrap">{activeComplex.bankAccountInfo || "Consultar por WhatsApp"}</p>
+                                        <div className="whitespace-pre-wrap text-sm">
+                                            {(() => {
+                                                try {
+                                                    if (!activeComplex.bankAccountInfo) return "Consultar por WhatsApp";
+                                                    const b = JSON.parse(activeComplex.bankAccountInfo);
+                                                    return (
+                                                        <div className="space-y-1 mt-2">
+                                                            <p><strong>Titular:</strong> {b.titular}</p>
+                                                            <p><strong>CBU/CVU:</strong> <span className="font-mono">{b.cbu}</span></p>
+                                                            <p><strong>Alias:</strong> <span className="font-mono">{b.alias}</span></p>
+                                                        </div>
+                                                    );
+                                                } catch(e) {
+                                                    return activeComplex.bankAccountInfo;
+                                                }
+                                            })()}
+                                        </div>
                                     </div>
                                     <p className="text-xs text-orange-600/80 dark:text-orange-400/80 mt-2 font-medium">
                                         ⚠️ Si no envías el comprobante en {activeComplex.depositExpiryHours || 2} horas, el turno volverá a estar disponible.
