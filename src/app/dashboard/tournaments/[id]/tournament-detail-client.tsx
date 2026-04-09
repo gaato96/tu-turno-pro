@@ -441,8 +441,8 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
                                 </thead>
                                 <tbody>
                                     {tour.teams.flatMap((t: any) => t.players.map((p: any) => ({ ...p, teamName: t.name })))
-                                        .sort((a, b) => b.goals - a.goals)
-                                        .map((p, idx) => (
+                                        .sort((a: any, b: any) => b.goals - a.goals)
+                                        .map((p: any, idx: number) => (
                                             <tr key={p.id} className="border-b hover:bg-muted/30 transition-colors">
                                                 <td className="px-6 py-4 font-bold flex items-center gap-3">
                                                     <span className="text-muted-foreground w-4">{idx + 1}</span>
