@@ -71,3 +71,24 @@ export async function updateComplexInfo(complexId: string, name: string, phone: 
 
     revalidatePath("/dashboard/settings");
 }
+
+export async function updateComplexPaymentSettings(
+    complexId: string, 
+    requiresDeposit: boolean, 
+    depositPercentage: number, 
+    bankAccountInfo: string
+) {
+    const session = await auth();
+    getTenantId(session); // Just for auth check
+
+    await prisma.complex.update({
+        where: { id: complexId },
+        data: { 
+            requiresDeposit, 
+            depositPercentage, 
+            bankAccountInfo 
+        }
+    });
+
+    revalidatePath("/dashboard/settings");
+}

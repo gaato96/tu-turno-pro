@@ -128,22 +128,6 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
         });
     };
 
-    const handleSaveResult = () => {
-        if (!showResultDialog || homeGoals === "" || awayGoals === "") return;
-        startTransition(async () => {
-            try {
-                await updateMatchResult(showResultDialog.id, tour.id, parseInt(homeGoals), parseInt(awayGoals));
-                toast.success("Resultado guardado correctamente");
-                setShowResultDialog(null);
-                setHomeGoals("");
-                setAwayGoals("");
-                router.refresh();
-            } catch (e: any) {
-                toast.error(e.message || "Error");
-            }
-        });
-    };
-
     const handleAddPlayer = (teamId: string) => {
         if (!newPlayerName.trim()) return;
         startTransition(async () => {

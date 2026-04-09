@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { getAvailableSlots, createPublicReservation } from "./actions";
-import { CalendarDays, MapPin, Clock, User, CheckCircle2, ChevronRight, Trophy, ArrowLeft, MessageCircle, Banknote } from "lucide-react";
+import { CalendarDays, MapPin, Clock, User, CheckCircle2, ChevronRight, Trophy, ArrowLeft, MessageCircle, Banknote, Copy } from "lucide-react";
 
 const TIME_SLOTS = Array.from({ length: 32 }, (_, i) => {
     const hour = Math.floor(i / 2) + 8;
@@ -199,9 +199,17 @@ export function BookingClient({ tenantId, tenantName, tenantPhone, complexes }: 
                                                     const b = JSON.parse(activeComplex.bankAccountInfo);
                                                     return (
                                                         <div className="space-y-1 mt-2">
-                                                            <p><strong>Titular:</strong> {b.titular}</p>
-                                                            <p><strong>CBU/CVU:</strong> <span className="font-mono">{b.cbu}</span></p>
-                                                            <p><strong>Alias:</strong> <span className="font-mono">{b.alias}</span></p>
+                                                            <div className="flex items-center justify-between group">
+                                                                <p><strong>Titular:</strong> {b.titular}</p>
+                                                            </div>
+                                                            <div className="flex items-center justify-between group bg-slate-50 dark:bg-slate-800/50 p-1 rounded-lg border border-transparent hover:border-emerald-500/30 transition-all cursor-pointer" onClick={() => { navigator.clipboard.writeText(b.cbu); toast.success("CBU copiado"); }}>
+                                                                <p><strong>CBU/CVU:</strong> <span className="font-mono">{b.cbu}</span></p>
+                                                                <Copy className="w-3 h-3 text-muted-foreground group-hover:text-emerald-500" />
+                                                            </div>
+                                                            <div className="flex items-center justify-between group bg-slate-50 dark:bg-slate-800/50 p-1 rounded-lg border border-transparent hover:border-emerald-500/30 transition-all cursor-pointer" onClick={() => { navigator.clipboard.writeText(b.alias); toast.success("Alias copiado"); }}>
+                                                                <p><strong>Alias:</strong> <span className="font-mono">{b.alias}</span></p>
+                                                                <Copy className="w-3 h-3 text-muted-foreground group-hover:text-emerald-500" />
+                                                            </div>
                                                         </div>
                                                     );
                                                 } catch(e) {
@@ -225,8 +233,11 @@ export function BookingClient({ tenantId, tenantName, tenantPhone, complexes }: 
                                     const targetPhone = activeComplex?.phone || tenantPhone;
                                     const dateStr = format(new Date(successData.date), "EEEE d 'de' MMMM", { locale: es });
                                     const timeStr = format(new Date(successData.startTime), "HH:mm");
-                                    const depositMsg = activeComplex?.requiresDeposit ? "\n💳 *Adjunto mi comprobante de seña* para confirmar." : "\nFavor de confirmar.";
-                                    const msg = encodeURIComponent(`Hola, realicé una reserva en ${successData.complexName}.\n\n📅 *Día:* ${dateStr}\n⏰ *Hora:* ${timeStr}hs\n🏟️ *Cancha:* ${successData.courtName}\n👤 *Nombre:* ${customerName}\n${depositMsg} ¡Gracias!`);
+                                    const depositValue = Number(activeComplex.depositAmount || (successData.totalAmount * (activeComplex.depositPercentage || 0) / 100)).toLocaleString();
+                                    const depositMsg = activeComplex?.requiresDeposit 
+                                        ? `\n\n💳 *Acabo de transferir la seña de $${depositValue}*\n📄 Adjunto el comprobante abajo.` 
+                                        : "\nFavor de confirmar.";
+                                    const msg = encodeURIComponent(`Hola, realicé una reserva en ${successData.complexName}.\n\n📅 *Día:* ${dateStr}\n⏰ *Hora:* ${timeStr}hs\n🏟️ *Cancha:* ${successData.courtName}\n👤 *Nombre:* ${customerName}${depositMsg}\n\n¡Gracias!`);
                                     window.open(`https://wa.me/${targetPhone.replace(/\D/g, "")}?text=${msg}`, "_blank");
                                 }}
                                 className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-md flex items-center justify-center gap-2 h-12"
