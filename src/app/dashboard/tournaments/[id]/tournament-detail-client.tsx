@@ -503,7 +503,7 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
 
                             <div>
                                 <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Sede del Partido</Label>
-                                <Select value={matchComplexId} onValueChange={setMatchComplexId}>
+                                <Select value={matchComplexId} onValueChange={(v) => setMatchComplexId(v || "")}>
                                     <SelectTrigger className="h-12 rounded-xl">
                                         <SelectValue placeholder="Seleccionar sede" />
                                     </SelectTrigger>
