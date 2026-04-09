@@ -127,7 +127,7 @@ export default function EventsClient({ initialEvents, complexes, tenantId }: { i
                         </div>
                         <div className="col-span-2">
                             <Label>Sede / Complejo</Label>
-                            <Select value={newEvent.complexId} onValueChange={v => setNewEvent({...newEvent, complexId: v})}>
+                            <Select value={newEvent.complexId} onValueChange={v => setNewEvent({...newEvent, complexId: v || ""})}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Seleccionar complejo" />
                                 </SelectTrigger>
