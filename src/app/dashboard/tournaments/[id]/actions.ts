@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 export async function addTeam(tournamentId: string, name: string) {
@@ -124,7 +125,7 @@ export async function updateMatchResult(
                 homeGoals,
                 awayGoals,
                 complexId: complexId || null,
-                playerStats: playerStats || null,
+                playerStats: playerStats && playerStats.length > 0 ? playerStats : Prisma.DbNull,
                 status: "played"
             }
         });
