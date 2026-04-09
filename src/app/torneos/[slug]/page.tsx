@@ -9,6 +9,7 @@ export default async function PublicTournamentPage({ params }: { params: Promise
         include: {
             complex: true,
             teams: {
+                include: { players: true },
                 orderBy: [
                     { points: 'desc' },
                     { goalsFor: 'desc' }
