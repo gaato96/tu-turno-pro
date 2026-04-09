@@ -102,7 +102,7 @@ export function SettingsClient({ initialComplex }: { initialComplex: any }) {
                     titular: paymentConfig.titular,
                     porcentajeSena: paymentConfig.porcentajeSena
                 });
-                await updateComplexPaymentSettings(initialComplex.id, paymentConfig.requiresDeposit, bankJson);
+                await updateComplexPaymentSettings(initialComplex.id, paymentConfig.requiresDeposit, Number(paymentConfig.porcentajeSena), bankJson);
                 toast.success("Configuración de pagos guardada");
                 router.refresh();
             } catch (e: any) {
