@@ -92,6 +92,8 @@ export async function getCalendarData(dateStr: string) {
         consumptionAmount: Number(r.consumptionAmount),
         discount: Number(r.discount),
         totalAmount: Number(r.totalAmount),
+        depositAmount: Number(r.depositAmount || 0),
+        paidAmount: Number(r.paidAmount || 0),
     }));
 
     const serializedCourts = complex.courts.map((c: any) => ({
@@ -155,7 +157,10 @@ export async function createReservation(formData: FormData) {
     const endTimeStr = formData.get("endTime") as string;
     const customerId = formData.get("customerId") as string || null;
     const notes = formData.get("notes") as string || null;
-
+    const depositAmountStr = formData.get("depositAmount") as string;
+    const paymentMethod = formData.get("paymentMethod") as string || "cash";
+    
+    const depositAmount = depositAmountStr ? Number(depositAmountStr) : 0;
 
     // Use a fixed reference for "today" in local time to avoid UTC shifts
     // Normalized to 12:00 to keep the date invariant during basic math
@@ -195,6 +200,22 @@ export async function createReservation(formData: FormData) {
         throw new Error("El horario seleccionado o una cancha vinculada ya se encuentra reservada.");
     }
 
+    // Event overlap validation (Events block all courts in the complex)
+    const overlappingEvents = await prisma.event.findMany({
+        where: {
+            complexId,
+            status: { notIn: ["cancelled"] },
+            AND: [
+                { startTime: { lt: endTime } },
+                { endTime: { gt: startTime } }
+            ]
+        }
+    });
+
+    if (overlappingEvents.length > 0) {
+        throw new Error("Hay un evento programado que bloquea las canchas en este horario.");
+    }
+
     // Calculate rate accurately splitting by nightStart
     const nightStartHour = parseInt(court.nightRateStartTime.split(":")[0]);
     const nightStartMinute = parseInt(court.nightRateStartTime.split(":")[1] || "0");
@@ -215,30 +236,74 @@ export async function createReservation(formData: FormData) {
         iter.setMinutes(iter.getMinutes() + 30);
     }
 
-    await prisma.reservation.create({
-        data: {
-            tenantId,
-            complexId,
-            courtId,
-            userId: (session?.user as any)?.id || null,
-            customerName,
-            customerPhone,
-            customerId: customerId || null,
-            date,
+    await prisma.$transaction(async (tx) => {
+        const newRes = await tx.reservation.create({
+            data: {
+                tenantId,
+                complexId,
+                courtId,
+                userId: (session?.user as any)?.id || null,
+                customerName,
+                customerPhone,
+                customerId: customerId || null,
+                date,
+                startTime,
+                endTime,
+                status: "confirmed",
+                source: "backoffice",
+                courtAmount,
+                totalAmount: courtAmount,
+                depositAmount,
+                paidAmount: depositAmount,
+                notes,
+            }
+        });
 
-            startTime,
-            endTime,
-            status: "confirmed",
-            source: "backoffice",
-            courtAmount,
-            totalAmount: courtAmount,
-            notes,
+        if (depositAmount > 0) {
+            const cashSession = await tx.cashSession.findFirst({
+                where: { tenantId, status: "open" }
+            });
+
+            await tx.payment.create({
+                data: {
+                    tenantId,
+                    reservationId: newRes.id,
+                    customerId: customerId || null,
+                    cashSessionId: cashSession?.id,
+                    amount: depositAmount,
+                    paymentMethod,
+                    concept: "seña",
+                }
+            });
+
+            const now = new Date();
+            const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
+            const todaySalesCount = await tx.sale.count({
+                where: {
+                    tenantId,
+                    createdAt: { gte: new Date(now.toISOString().slice(0, 10) + "T00:00:00") }
+                }
+            });
+            const invoiceNumber = `S${dateStr}-${(todaySalesCount + 1).toString().padStart(4, "0")}`;
+
+            await tx.sale.create({
+                data: {
+                    tenantId,
+                    reservationId: newRes.id,
+                    cashSessionId: cashSession?.id || null,
+                    invoiceNumber,
+                    subtotal: depositAmount,
+                    total: depositAmount,
+                    status: "completed",
+                    paymentMethod,
+                }
+            });
         }
     });
 
-
     revalidatePath("/dashboard/reservations");
     revalidatePath("/dashboard");
+    revalidatePath("/dashboard/cash");
     return { success: true };
 }
 
@@ -263,44 +328,91 @@ export async function changeReservationStatus(reservationId: string, newStatus: 
     return { success: true };
 }
 
-export async function payReservation(reservationId: string, paymentMethod: string, paymentDetails?: any) {
+export async function payReservation(
+    reservationId: string, 
+    paymentMethod: string, 
+    amountToPay: number,
+    leaveOnAccount: boolean,
+    paymentDetails?: any
+) {
     const session = await auth();
     const tenantId = getTenantId(session);
 
     const reservation = await prisma.reservation.findFirst({
-        where: { id: reservationId, tenantId }
+        where: { id: reservationId, tenantId },
+        include: { sales: { where: { status: "on_tab" } } }
     });
     if (!reservation) throw new Error("Reservation not found");
+
+    if (leaveOnAccount && !reservation.customerId) {
+        throw new Error("Se requiere un cliente asociado para dejar saldo a cuenta.");
+    }
 
     const cashSession = await prisma.cashSession.findFirst({
         where: { tenantId, status: "open" }
     });
 
+    const totalAmount = Number(reservation.totalAmount);
+    const previouslyPaid = Number(reservation.paidAmount);
+    const pendingBalance = totalAmount - previouslyPaid;
+
+    if (amountToPay > pendingBalance) {
+        throw new Error("El monto a pagar no puede ser mayor al saldo pendiente.");
+    }
+
     await prisma.$transaction(async (tx) => {
-        // 1. Mark reservation as paid
+        let paymentRecord = null;
+        if (amountToPay > 0) {
+            paymentRecord = await tx.payment.create({
+                data: {
+                    tenantId,
+                    reservationId,
+                    customerId: reservation.customerId,
+                    cashSessionId: cashSession?.id,
+                    amount: amountToPay,
+                    paymentMethod,
+                    concept: "court_payment",
+                    notes: paymentDetails ? JSON.stringify(paymentDetails) : undefined,
+                }
+            });
+        }
+
+        const newPaidAmount = previouslyPaid + amountToPay;
+        const remainingAfterThisPayment = totalAmount - newPaidAmount;
+
+        let status = reservation.status;
+
+        if (leaveOnAccount && remainingAfterThisPayment > 0) {
+            status = "paid";
+            await tx.customer.update({
+                where: { id: reservation.customerId! },
+                data: { balance: { increment: remainingAfterThisPayment } }
+            });
+        } else if (newPaidAmount >= totalAmount) {
+            status = "paid";
+        }
+
         await tx.reservation.update({
             where: { id: reservationId },
             data: {
-                status: "paid",
-                paymentMethod,
-                paymentDetails: paymentDetails ? JSON.parse(JSON.stringify(paymentDetails)) : undefined,
+                status,
+                paidAmount: leaveOnAccount ? totalAmount : newPaidAmount,
+                paymentMethod: status === "paid" ? paymentMethod : undefined,
             }
         });
 
-        // 2. Clear any on_tab sales linked to this reservation and attach to active cash session
-        await tx.sale.updateMany({
-            where: { reservationId, status: "on_tab" },
-            data: {
-                status: "completed",
-                paymentMethod,
-                paymentDetails: paymentDetails ? JSON.parse(JSON.stringify(paymentDetails)) : undefined,
-                cashSessionId: cashSession?.id || null, // Link to active session at payment time
-            }
-        });
+        if (status === "paid" && reservation.sales.length > 0) {
+            await tx.sale.updateMany({
+                where: { reservationId, status: "on_tab" },
+                data: {
+                    status: "completed",
+                    paymentMethod: paymentMethod,
+                    cashSessionId: cashSession?.id || null, // Link to active session
+                }
+            });
+        }
 
-        // 3. Create a Sale for the court amount to reflect in cash register
-        if (Number(reservation.courtAmount) > 0) {
-            // Generate sequential invoice number roughly for this sale
+        if (amountToPay > 0) {
             const now = new Date();
             const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
             const todaySalesCount = await tx.sale.count({
@@ -317,12 +429,11 @@ export async function payReservation(reservationId: string, paymentMethod: strin
                     reservationId,
                     cashSessionId: cashSession?.id || null,
                     invoiceNumber,
-                    subtotal: reservation.courtAmount,
-                    total: reservation.courtAmount, // minus discount if global discount applied? simple for now
+                    subtotal: amountToPay,
+                    total: amountToPay, 
                     status: "completed",
                     paymentMethod,
                     paymentDetails: paymentDetails ? JSON.parse(JSON.stringify(paymentDetails)) : undefined,
-                    // No SaleItems needed for Court rent because it's distinct
                 }
             });
         }

@@ -145,7 +145,7 @@ export function CalendarGrid({ currentDate, complex, courts, initialReservations
         if (!selectedRes) return;
         startTransition(async () => {
             try {
-                await payReservation(selectedRes.id, payMethod);
+                await payReservation(selectedRes.id, payMethod, selectedRes.totalAmount, false);
                 toast.success("Pago registrado");
                 setPayOpen(false);
                 setViewOpen(false);

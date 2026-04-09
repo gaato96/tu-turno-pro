@@ -7,35 +7,38 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Banknote, CreditCard, ArrowLeftRight, Check, Receipt } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 interface PaymentDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     totalAmount: number;
-    onConfirm: (method: string, details?: any) => void;
+    onConfirm: (method: string, amount: number, leaveOnAccount: boolean, details?: any) => void;
     isPending?: boolean;
 }
 
 export function PaymentDialog({ open, onOpenChange, totalAmount, onConfirm, isPending }: PaymentDialogProps) {
     const [paymentMethod, setPaymentMethod] = useState<string>("");
+    const [paymentAmount, setPaymentAmount] = useState<string>(totalAmount.toString());
+    const [leaveOnAccount, setLeaveOnAccount] = useState<boolean>(false);
     const [mixedPayment, setMixedPayment] = useState({ cash: "", card: "", transfer: "" });
+
+    // Sync amount when totalAmount changes
+    // (In reality we might use a useEffect if totalAmount can change while dialog is open)
 
     const handleConfirm = () => {
         if (!paymentMethod) return;
+
+        const amountToPayThisTime = Number(paymentAmount) || 0;
 
         if (paymentMethod === "mixed") {
             const mCash = Number(mixedPayment.cash || 0);
             const mCard = Number(mixedPayment.card || 0);
             const mTransfer = Number(mixedPayment.transfer || 0);
 
-            // Allow completing if total matches or is greater (change is implied)
-            if (mCash + mCard + mTransfer < totalAmount) {
-                // Should show error, but we trust the user for now
-                // Actually maybe it's a partial payment, but we will pass details
-            }
-            onConfirm("mixed", { cash: mCash, card: mCard, transfer: mTransfer });
+            onConfirm("mixed", amountToPayThisTime, leaveOnAccount, { cash: mCash, card: mCard, transfer: mTransfer });
         } else {
-            onConfirm(paymentMethod);
+            onConfirm(paymentMethod, amountToPayThisTime, leaveOnAccount);
         }
     };
 
@@ -48,11 +51,31 @@ export function PaymentDialog({ open, onOpenChange, totalAmount, onConfirm, isPe
 
                 <div className="space-y-4 py-2">
                     <div className="text-center p-4 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
-                        <p className="text-sm text-muted-foreground">Total a cobrar</p>
+                        <p className="text-sm text-muted-foreground">Total de la reserva</p>
                         <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-400">
                             ${totalAmount.toLocaleString()}
                         </p>
                     </div>
+
+                    <div className="space-y-2">
+                        <Label>Monto a abonar ahora</Label>
+                        <Input 
+                            type="number" 
+                            value={paymentAmount} 
+                            onChange={(e) => setPaymentAmount(e.target.value)} 
+                            className="text-lg w-full rounded-xl"
+                        />
+                    </div>
+
+                    {Number(paymentAmount) < totalAmount && (
+                        <div className="flex flex-row items-center justify-between rounded-xl border p-4">
+                            <div className="space-y-0.5">
+                                <Label>Dejar saldo a cuenta</Label>
+                                <p className="text-xs text-muted-foreground">Registrar deudad de ${totalAmount - Number(paymentAmount)} en el perfil del cliente</p>
+                            </div>
+                            <Switch checked={leaveOnAccount} onCheckedChange={setLeaveOnAccount} />
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-2">
                         {[

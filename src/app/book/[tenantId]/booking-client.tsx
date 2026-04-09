@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { getAvailableSlots, createPublicReservation } from "./actions";
-import { CalendarDays, MapPin, Clock, User, CheckCircle2, ChevronRight, Trophy, ArrowLeft, MessageCircle } from "lucide-react";
+import { CalendarDays, MapPin, Clock, User, CheckCircle2, ChevronRight, Trophy, ArrowLeft, MessageCircle, Banknote } from "lucide-react";
 
 const TIME_SLOTS = Array.from({ length: 32 }, (_, i) => {
     const hour = Math.floor(i / 2) + 8;
@@ -139,8 +139,14 @@ export function BookingClient({ tenantId, tenantName, tenantPhone, complexes }: 
                     <div className="w-20 h-20 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
                         <CheckCircle2 className="w-10 h-10" />
                     </div>
-                    <h2 className="text-3xl font-bold text-emerald-800 dark:text-emerald-400 mb-2">¡Reserva Confirmada!</h2>
-                    <p className="text-muted-foreground mb-8">Te esperamos el día de tu turno. Tu reserva está anotada.</p>
+                    <h2 className="text-3xl font-bold text-emerald-800 dark:text-emerald-400 mb-2">
+                        {activeComplex?.requiresDeposit ? "¡Reserva Pre-confirmada!" : "¡Reserva Confirmada!"}
+                    </h2>
+                    <p className="text-muted-foreground mb-8">
+                        {activeComplex?.requiresDeposit 
+                            ? `Para confirmar tu turno de forma definitiva, debes abonar una seña en las próximas ${activeComplex.depositExpiryHours || 2} horas.` 
+                            : "Te esperamos el día de tu turno. Tu reserva está anotada."}
+                    </p>
 
                     <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 text-left border border-border shadow-sm mb-8 space-y-4">
                         <div className="flex items-center gap-3">
@@ -160,10 +166,31 @@ export function BookingClient({ tenantId, tenantName, tenantPhone, complexes }: 
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-emerald-100 dark:bg-emerald-500/20 rounded-lg text-emerald-600"><Clock className="w-5 h-5" /></div>
                             <div>
-                                <p className="text-xs text-muted-foreground">A pagar en el complejo</p>
+                                <p className="text-xs text-muted-foreground">Total de la reserva</p>
                                 <p className="font-bold text-emerald-600 dark:text-emerald-400 text-lg">${Number(successData.totalAmount).toLocaleString()}</p>
                             </div>
                         </div>
+
+                        {activeComplex?.requiresDeposit && (
+                            <div className="flex items-start gap-3 mt-4 pt-4 border-t border-border/50">
+                                <div className="p-2 bg-orange-100 dark:bg-orange-500/20 rounded-lg text-orange-600 flex-shrink-0">
+                                    <Banknote className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-xs text-muted-foreground">Seña requerida (Abonar ahora)</p>
+                                    <p className="font-bold text-orange-600 dark:text-orange-400 text-lg">
+                                        ${Number(activeComplex.depositAmount || (successData.totalAmount * (activeComplex.depositPercentage || 0) / 100)).toLocaleString()}
+                                    </p>
+                                    <div className="mt-2 text-sm bg-muted p-3 rounded-xl border">
+                                        <p className="font-semibold text-xs mb-1 uppercase tracking-wider text-muted-foreground">Datos bancarios:</p>
+                                        <p className="whitespace-pre-wrap">{activeComplex.bankAccountInfo || "Consultar por WhatsApp"}</p>
+                                    </div>
+                                    <p className="text-xs text-orange-600/80 dark:text-orange-400/80 mt-2 font-medium">
+                                        ⚠️ Si no envías el comprobante en {activeComplex.depositExpiryHours || 2} horas, el turno volverá a estar disponible.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex flex-col gap-3">
@@ -173,7 +200,8 @@ export function BookingClient({ tenantId, tenantName, tenantPhone, complexes }: 
                                     const targetPhone = activeComplex?.phone || tenantPhone;
                                     const dateStr = format(new Date(successData.date), "EEEE d 'de' MMMM", { locale: es });
                                     const timeStr = format(new Date(successData.startTime), "HH:mm");
-                                    const msg = encodeURIComponent(`Hola, realicé una reserva en ${successData.complexName}.\n\n📅 *Día:* ${dateStr}\n⏰ *Hora:* ${timeStr}hs\n🏟️ *Cancha:* ${successData.courtName}\n👤 *Nombre:* ${customerName}\n\nFavor de confirmar. ¡Gracias!`);
+                                    const depositMsg = activeComplex?.requiresDeposit ? "\n💳 *Adjunto mi comprobante de seña* para confirmar." : "\nFavor de confirmar.";
+                                    const msg = encodeURIComponent(`Hola, realicé una reserva en ${successData.complexName}.\n\n📅 *Día:* ${dateStr}\n⏰ *Hora:* ${timeStr}hs\n🏟️ *Cancha:* ${successData.courtName}\n👤 *Nombre:* ${customerName}\n${depositMsg} ¡Gracias!`);
                                     window.open(`https://wa.me/${targetPhone.replace(/\D/g, "")}?text=${msg}`, "_blank");
                                 }}
                                 className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-md flex items-center justify-center gap-2 h-12"
@@ -413,7 +441,7 @@ export function BookingClient({ tenantId, tenantName, tenantPhone, complexes }: 
 
                         <div className="pt-6 border-t border-border/50 flex flex-col items-center">
                             <p className="text-xs text-muted-foreground mb-4 text-center max-w-sm">
-                                Al confirmar, estás aceptando las políticas de cancelación de {tenantName}. El pago se realizará en el establecimiento.
+                                Al confirmar, estás aceptando las políticas de cancelación de {tenantName}. {activeComplex?.requiresDeposit ? "Requerirá pago de seña." : "El pago se realizará en el establecimiento."}
                             </p>
                             <Button
                                 onClick={handleConfirm}

@@ -25,6 +25,7 @@ import {
     ChevronLeft,
     Trophy,
     Link as LinkIcon,
+    Users,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -32,6 +33,8 @@ const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Complejos", href: "/dashboard/complexes", icon: Building2 },
     { name: "Reservas", href: "/dashboard/reservations", icon: CalendarDays },
+    { name: "Eventos", href: "/dashboard/events", icon: Trophy },
+    { name: "Clientes", href: "/dashboard/customers", icon: Users },
     { name: "Kiosko (POS)", href: "/dashboard/pos", icon: ShoppingCart },
     { name: "Productos", href: "/dashboard/products", icon: Package },
     { name: "Caja", href: "/dashboard/cash", icon: Wallet },
