@@ -47,7 +47,7 @@ const adminNavigation = [
     { name: "Suscripciones", href: "/admin/subscriptions", icon: Shield },
 ];
 
-export function Sidebar({ activeComplexName, userRoleProp }: { activeComplexName?: string, userRoleProp?: string }) {
+export function Sidebar({ activeComplexName, userRoleProp, activeModules }: { activeComplexName?: string, userRoleProp?: string, activeModules?: string[] }) {
     const pathname = usePathname();
     const { data: session } = useSession();
     const { theme, toggleTheme } = useTheme();
@@ -134,6 +134,15 @@ export function Sidebar({ activeComplexName, userRoleProp }: { activeComplexName
                             // Hide "Complejos" and "Configuración" for staff (Encargado)
                             if (userRole !== "admin" && (item.name === "Complejos" || item.name === "Configuración")) {
                                 return null;
+                            }
+
+                            // Filter by active Modules
+                            if (activeModules) {
+                                if (item.name === "Torneos" && !activeModules.includes("tournaments")) return null;
+                                if (item.name === "Eventos" && !activeModules.includes("events")) return null;
+                                if (item.name === "Kiosko (POS)" && !activeModules.includes("pos")) return null;
+                                if (item.name === "Productos" && (!activeModules.includes("pos") && !activeModules.includes("inventory"))) return null;
+                                if (item.name === "Reportes" && !activeModules.includes("reports")) return null;
                             }
 
                             const isActive = pathname === item.href ||

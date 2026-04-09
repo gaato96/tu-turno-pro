@@ -17,6 +17,7 @@ import { processSale } from "./actions";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
+import { Switch } from "@/components/ui/switch";
 
 type CartItem = { productId: string; name: string; unitPrice: number; quantity: number };
 
@@ -34,6 +35,7 @@ export function POSTerminal({ categories, products, activeReservations }: any) {
     const [checkoutType, setCheckoutType] = useState<"direct" | "tab">(defaultRes ? "tab" : "direct");
     const [payMethod, setPayMethod] = useState("cash");
     const [selectedReservationId, setSelectedReservationId] = useState(defaultRes);
+    const [isStaffConsumption, setIsStaffConsumption] = useState(false);
 
     const filteredProducts = products.filter((p: any) => {
         const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
@@ -71,6 +73,7 @@ export function POSTerminal({ categories, products, activeReservations }: any) {
                     items: cart.map(i => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice })),
                     paymentMethod: checkoutType === "direct" ? payMethod : "on_tab",
                     reservationId: checkoutType === "tab" ? selectedReservationId : undefined,
+                    isStaffConsumption,
                 });
                 toast.success(`Venta registrada: ${result.invoiceNumber}`);
                 setCart([]);
@@ -258,7 +261,12 @@ export function POSTerminal({ categories, products, activeReservations }: any) {
                             </div>
                         )}
 
-                        <DialogFooter>
+                        <div className="flex items-center space-x-2 pt-2 border-t mt-4">
+                            <Switch id="staff-consumption" checked={isStaffConsumption} onCheckedChange={setIsStaffConsumption} />
+                            <Label htmlFor="staff-consumption" className="text-sm cursor-pointer">Consumo de Personal (No contabilizar en caja)</Label>
+                        </div>
+
+                        <DialogFooter className="mt-4">
                             <Button variant="outline" onClick={() => setCheckoutOpen(false)}>Cancelar</Button>
                             <Button
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white"

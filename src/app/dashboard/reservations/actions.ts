@@ -159,6 +159,7 @@ export async function createReservation(formData: FormData) {
     const notes = formData.get("notes") as string || null;
     const depositAmountStr = formData.get("depositAmount") as string;
     const paymentMethod = formData.get("paymentMethod") as string || "cash";
+    const reservationType = formData.get("reservationType") as string || "casual";
     
     const depositAmount = depositAmountStr ? Number(depositAmountStr) : 0;
 
@@ -246,6 +247,7 @@ export async function createReservation(formData: FormData) {
                 customerName,
                 customerPhone,
                 customerId: customerId || null,
+                reservationType,
                 date,
                 startTime,
                 endTime,

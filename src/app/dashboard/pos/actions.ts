@@ -63,6 +63,7 @@ export async function processSale(data: {
     items: { productId: string; quantity: number; unitPrice: number }[];
     paymentMethod: string;
     reservationId?: string;
+    isStaffConsumption?: boolean;
 }) {
     const session = await auth();
     const tenantId = getTenantId(session);
@@ -70,7 +71,8 @@ export async function processSale(data: {
     const targetComplexId = await getActiveComplexOrRedirect();
     if (!targetComplexId) throw new Error("No active complex");
 
-    const subtotal = data.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+    const originalSubtotal = data.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+    const subtotal = data.isStaffConsumption ? 0 : originalSubtotal;
     const total = subtotal;
     const isOnTab = !!data.reservationId;
 
@@ -99,7 +101,8 @@ export async function processSale(data: {
             subtotal,
             total,
             status: isOnTab ? "on_tab" : "completed",
-            paymentMethod: isOnTab ? null : data.paymentMethod,
+            paymentMethod: data.isStaffConsumption ? "staff" : (isOnTab ? null : data.paymentMethod),
+            isStaffConsumption: data.isStaffConsumption || false,
             items: {
                 create: data.items.map(i => ({
                     productId: i.productId,

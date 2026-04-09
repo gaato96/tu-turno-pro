@@ -43,6 +43,14 @@ const STATUS_LABELS: Record<string, string> = {
     cancelled: "Cancelada",
 };
 
+const TYPE_LABELS: Record<string, string> = {
+    casual: "Casual",
+    fixed: "Turno Fijo",
+    tournament: "Torneo",
+    school: "Escuelita",
+    event: "Evento",
+};
+
 export function CalendarGrid({ currentDate, complex, courts, initialReservations }: any) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
@@ -57,6 +65,7 @@ export function CalendarGrid({ currentDate, complex, courts, initialReservations
         startTime: "",
         endTime: "",
         notes: "",
+        reservationType: "casual",
     });
 
     // ── View Reservation Dialog ──
@@ -92,6 +101,7 @@ export function CalendarGrid({ currentDate, complex, courts, initialReservations
             startTime: time,
             endTime: `${endH.toString().padStart(2, "0")}:00`,
             notes: "",
+            reservationType: "casual",
         });
         setCreateOpen(true);
     };
@@ -110,6 +120,7 @@ export function CalendarGrid({ currentDate, complex, courts, initialReservations
                 fd.append("startTime", createForm.startTime);
                 fd.append("endTime", createForm.endTime);
                 fd.append("notes", createForm.notes);
+                fd.append("reservationType", createForm.reservationType);
                 await createReservation(fd);
                 toast.success("Reserva creada");
                 setCreateOpen(false);
@@ -253,8 +264,15 @@ export function CalendarGrid({ currentDate, complex, courts, initialReservations
                                                     <span className="font-bold text-xs truncate max-w-[100px]">{cellRes[0].customerName}</span>
                                                     <span className="text-[10px] font-mono opacity-80">${cellRes[0].totalAmount.toLocaleString()}</span>
                                                 </div>
-                                                <div className="text-[10px] opacity-70 mt-0.5">
-                                                    {format(new Date(cellRes[0].startTime), "HH:mm")} - {format(new Date(cellRes[0].endTime), "HH:mm")}
+                                                <div className="flex items-center justify-between mt-0.5">
+                                                    <div className="text-[10px] opacity-70">
+                                                        {format(new Date(cellRes[0].startTime), "HH:mm")} - {format(new Date(cellRes[0].endTime), "HH:mm")}
+                                                    </div>
+                                                    {cellRes[0].reservationType && cellRes[0].reservationType !== 'casual' && (
+                                                        <span className="text-[9px] uppercase tracking-widest bg-black/20 px-1.5 py-0.5 rounded opacity-90">
+                                                            {TYPE_LABELS[cellRes[0].reservationType] || cellRes[0].reservationType}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
@@ -288,6 +306,19 @@ export function CalendarGrid({ currentDate, complex, courts, initialReservations
                                         {courts.map((c: any) => (
                                             <SelectItem key={c.id} value={c.id}>{c.name} ({c.sportType})</SelectItem>
                                         ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2 col-span-2">
+                                <Label>Tipo de Reserva</Label>
+                                <Select value={createForm.reservationType} onValueChange={(v) => setCreateForm({ ...createForm, reservationType: v ?? "casual" })}>
+                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="casual">Turno Casual</SelectItem>
+                                        <SelectItem value="fixed">Turno Fijo</SelectItem>
+                                        <SelectItem value="tournament">Torneo</SelectItem>
+                                        <SelectItem value="school">Escuelita</SelectItem>
+                                        <SelectItem value="event">Evento</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -374,7 +405,18 @@ export function CalendarGrid({ currentDate, complex, courts, initialReservations
                                         <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => window.open(`tel:${selectedRes.customerPhone}`)}>
                                             <Phone className="w-3.5 h-3.5" /> Llamar
                                         </Button>
-                                        <Button variant="outline" size="sm" className="gap-1.5 text-xs text-green-600" onClick={() => window.open(`https://wa.me/${selectedRes.customerPhone?.replace(/[^0-9]/g, "")}?text=Hola ${selectedRes.customerName}, te recordamos tu turno a las ${format(new Date(selectedRes.startTime), "HH:mm")}`)}>
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            className="gap-1.5 text-xs text-green-600" 
+                                            onClick={() => {
+                                                const tel = selectedRes.customerPhone?.replace(/[^0-9]/g, "");
+                                                const dDate = format(new Date(selectedRes.startTime), "dd/MM/yyyy");
+                                                const dTime = format(new Date(selectedRes.startTime), "HH:mm");
+                                                const msg = encodeURIComponent(`Hola ${selectedRes.customerName}, te recordamos tu turno en *${complex.name}*.\n\n📅 Fecha: ${dDate}\n⏰ Hora: ${dTime}hs\n🏟️ Cancha: ${selectedRes.court?.name}\n💰 Total: $${selectedRes.totalAmount.toLocaleString()}\n\n¡Gracias por elegirnos!`);
+                                                window.open(`https://wa.me/${tel}?text=${msg}`);
+                                            }}
+                                        >
                                             <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
                                         </Button>
                                     </div>

@@ -130,6 +130,9 @@ export function EditTenantDialog({ tenant, onClose }: { tenant: Tenant; onClose:
                                 { key: "pos", label: "Kiosko (POS)" },
                                 { key: "inventory", label: "Inventario" },
                                 { key: "reports", label: "Reportes" },
+                                { key: "tournaments", label: "Torneos" },
+                                { key: "school", label: "Escuelita" },
+                                { key: "events", label: "Eventos" },
                             ].map((mod) => (
                                 <label key={mod.key} className="flex items-center gap-3 p-3 border rounded-xl hover:bg-accent cursor-pointer">
                                     <Switch checked={formData.modules.includes(mod.key)} onCheckedChange={(c) => handleModules(mod.key, c)} />
