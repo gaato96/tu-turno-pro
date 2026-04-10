@@ -947,7 +947,8 @@ export default function ReservationsClient({
             <PaymentDialog
                 open={!!paymentReservation}
                 onOpenChange={(open) => !open && setPaymentReservation(null)}
-                totalAmount={paymentReservation?.totalAmount || 0}
+                totalAmount={(paymentReservation?.totalAmount || 0) - (paymentReservation?.paidAmount || 0)}
+                hasCustomer={!!paymentReservation?.customerId}
                 onConfirm={handlePayment}
                 isPending={isPending}
             />

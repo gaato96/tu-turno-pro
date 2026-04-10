@@ -13,11 +13,12 @@ interface PaymentDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     totalAmount: number;
+    hasCustomer?: boolean;
     onConfirm: (method: string, amount: number, leaveOnAccount: boolean, details?: any) => void;
     isPending?: boolean;
 }
 
-export function PaymentDialog({ open, onOpenChange, totalAmount, onConfirm, isPending }: PaymentDialogProps) {
+export function PaymentDialog({ open, onOpenChange, totalAmount, hasCustomer = true, onConfirm, isPending }: PaymentDialogProps) {
     const [paymentMethod, setPaymentMethod] = useState<string>("");
     const [paymentAmount, setPaymentAmount] = useState<string>(totalAmount.toString());
     const [leaveOnAccount, setLeaveOnAccount] = useState<boolean>(false);
@@ -59,21 +60,28 @@ export function PaymentDialog({ open, onOpenChange, totalAmount, onConfirm, isPe
 
                     <div className="space-y-2">
                         <Label>Monto a abonar ahora</Label>
-                        <Input 
-                            type="number" 
-                            value={paymentAmount} 
-                            onChange={(e) => setPaymentAmount(e.target.value)} 
+                        <Input
+                            type="number"
+                            value={paymentAmount}
+                            onChange={(e) => setPaymentAmount(e.target.value)}
                             className="text-lg w-full rounded-xl"
                         />
                     </div>
 
                     {Number(paymentAmount) < totalAmount && (
-                        <div className="flex flex-row items-center justify-between rounded-xl border p-4">
-                            <div className="space-y-0.5">
-                                <Label>Dejar saldo a cuenta</Label>
-                                <p className="text-xs text-muted-foreground">Registrar deudad de ${totalAmount - Number(paymentAmount)} en el perfil del cliente</p>
+                        <div className="flex flex-col gap-2 rounded-xl border p-4">
+                            <div className="flex flex-row items-center justify-between">
+                                <div className="space-y-0.5 pr-4">
+                                    <Label>Dejar saldo a cuenta</Label>
+                                    <p className="text-xs text-muted-foreground">Registrar deuda de ${(totalAmount - Number(paymentAmount)).toLocaleString()} en el perfil del cliente</p>
+                                </div>
+                                <Switch checked={leaveOnAccount} onCheckedChange={setLeaveOnAccount} disabled={!hasCustomer} />
                             </div>
-                            <Switch checked={leaveOnAccount} onCheckedChange={setLeaveOnAccount} />
+                            {!hasCustomer && (
+                                <p className="text-xs text-red-600 bg-red-50 dark:bg-red-500/10 dark:text-red-400 p-2 rounded-lg font-medium">
+                                    ⚠️ Para dejar saldo pendiente, asigna este turno a un cliente registrado (no casual).
+                                </p>
+                            )}
                         </div>
                     )}
 

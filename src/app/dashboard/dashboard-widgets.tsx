@@ -121,10 +121,17 @@ export function DashboardReservationModal({ reservation, onClose }: { reservatio
                     )}
 
                     <div className="flex justify-between items-center px-2">
-                        <span className="text-sm text-muted-foreground">Total a pagar</span>
-                        <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                            ${reservation.totalAmount.toLocaleString()}
-                        </span>
+                        <span className="text-sm text-muted-foreground">Total restante a pagar</span>
+                        <div className="text-right">
+                            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                                ${(reservation.totalAmount - (reservation.paidAmount || 0)).toLocaleString()}
+                            </div>
+                            {(reservation.paidAmount || 0) > 0 && (
+                                <div className="text-[11px] text-muted-foreground font-semibold">
+                                    Pagado parcial: ${reservation.paidAmount.toLocaleString()} / Total: ${reservation.totalAmount.toLocaleString()}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 mt-4">
@@ -178,7 +185,8 @@ export function DashboardReservationModal({ reservation, onClose }: { reservatio
                 <PaymentDialog
                     open={paymentOpen}
                     onOpenChange={setPaymentOpen}
-                    totalAmount={reservation.totalAmount}
+                    totalAmount={reservation.totalAmount - (reservation.paidAmount || 0)}
+                    hasCustomer={!!reservation.customerId}
                     onConfirm={handlePayment}
                     isPending={isPending}
                 />
@@ -321,7 +329,9 @@ export function FinishedReservationsWidget({ finishedReservations }: { finishedR
                                     <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
                                         <span>{r.courtName}</span>
                                         <span>•</span>
-                                        <span className="font-bold text-foreground">${r.totalAmount.toLocaleString()}</span>
+                                        <span className="font-bold text-foreground">
+                                            ${(r.totalAmount - (r.paidAmount || 0)).toLocaleString()}
+                                        </span>
                                     </div>
                                 </div>
                                 <Button size="sm" className="shrink-0 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white" disabled>

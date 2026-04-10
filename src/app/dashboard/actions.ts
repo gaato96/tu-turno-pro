@@ -149,6 +149,7 @@ export async function getDashboardData() {
         id: r.id,
         customerName: r.customerName,
         customerPhone: r.customerPhone,
+        customerId: r.customerId,
         status: r.status,
         courtName: r.court?.name,
         courtId: r.courtId,
@@ -157,6 +158,7 @@ export async function getDashboardData() {
         courtAmount: Number(r.courtAmount),
         consumptionAmount: Number(r.consumptionAmount),
         totalAmount: Number(r.totalAmount),
+        paidAmount: Number(r.paidAmount || 0),
         sales: r.sales?.map((s: any) => ({
             id: s.id,
             total: Number(s.total),
