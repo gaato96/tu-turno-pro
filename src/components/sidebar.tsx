@@ -26,6 +26,7 @@ import {
     Trophy,
     Link as LinkIcon,
     Users,
+    Receipt,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -39,6 +40,7 @@ const navigation = [
     { name: "Kiosko (POS)", href: "/dashboard/pos", icon: ShoppingCart },
     { name: "Productos", href: "/dashboard/products", icon: Package },
     { name: "Caja", href: "/dashboard/cash", icon: Wallet },
+    { name: "Gastos", href: "/dashboard/expenses", icon: Receipt },
     { name: "Configuración", href: "/dashboard/settings", icon: Settings },
 ];
 

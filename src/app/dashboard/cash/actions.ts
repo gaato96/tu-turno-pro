@@ -25,7 +25,8 @@ export async function getCashData() {
             sales: {
                 where: { status: { not: "cancelled" } },
                 include: { items: true }
-            }
+            },
+            expenses: true
         }
     });
 
@@ -39,7 +40,7 @@ export async function getCashData() {
     if (openSession) {
         // Calculate X Report data
         const sales = openSession.sales.filter(s => s.status === "completed");
-        
+
         // Separation of Reservation vs Kiosk income
         const reservationSales = sales.filter(s => s.reservationId !== null);
         const kioskSales = sales.filter(s => s.reservationId === null);
@@ -47,12 +48,14 @@ export async function getCashData() {
         const resTotal = reservationSales.reduce((sum, s) => sum + Number(s.total), 0);
         const kioskTotal = kioskSales.reduce((sum, s) => sum + Number(s.total), 0);
 
+        const expensesTotal = openSession.expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+
         const cashTotal = sales.filter(s => s.paymentMethod === "cash").reduce((sum, s) => sum + Number(s.total), 0);
         const cardTotal = sales.filter(s => s.paymentMethod === "card").reduce((sum, s) => sum + Number(s.total), 0);
         const transferTotal = sales.filter(s => s.paymentMethod === "transfer").reduce((sum, s) => sum + Number(s.total), 0);
-        
+
         const salesTotal = cashTotal + cardTotal + transferTotal;
-        const expectedBalance = Number(openSession.openingBalance) + cashTotal;
+        const expectedBalance = Number(openSession.openingBalance) + cashTotal - expensesTotal;
 
         return {
             openSession: {
@@ -61,6 +64,7 @@ export async function getCashData() {
                 salesCount: sales.length,
                 resTotal,
                 kioskTotal,
+                expensesTotal,
                 cashTotal,
                 cardTotal,
                 transferTotal,
@@ -133,15 +137,19 @@ export async function closeCashSession(closingBalance: number, notes?: string) {
 
     const openSession = await prisma.cashSession.findFirst({
         where: { tenantId, complexId: targetComplexId, status: "open" },
-        include: { sales: { where: { status: "completed" } } }
+        include: {
+            sales: { where: { status: "completed" } },
+            expenses: true
+        }
     });
     if (!openSession) throw new Error("No hay caja abierta");
 
     const sales = openSession.sales;
+    const expensesTotal = openSession.expenses.reduce((sum, e) => sum + Number(e.amount), 0);
     const cashTotal = sales.filter(s => s.paymentMethod === "cash").reduce((sum, s) => sum + Number(s.total), 0);
     const cardTotal = sales.filter(s => s.paymentMethod === "card").reduce((sum, s) => sum + Number(s.total), 0);
     const transferTotal = sales.filter(s => s.paymentMethod === "transfer").reduce((sum, s) => sum + Number(s.total), 0);
-    const expectedBalance = Number(openSession.openingBalance) + cashTotal;
+    const expectedBalance = Number(openSession.openingBalance) + cashTotal - expensesTotal;
     const difference = closingBalance - expectedBalance;
 
     await prisma.cashSession.update({

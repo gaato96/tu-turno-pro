@@ -40,7 +40,7 @@ export async function getPOSData() {
                     tenantId,
                     complexId: targetComplexId,
                     date: { gte: startOfDay, lte: endOfDay },
-                    status: { in: ["in_game", "finished"] }
+                    status: { in: ["confirmed", "in_game", "finished"] }
                 },
                 include: { court: { select: { name: true } } },
                 orderBy: { startTime: "asc" }

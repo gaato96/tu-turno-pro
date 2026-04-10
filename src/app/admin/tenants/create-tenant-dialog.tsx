@@ -150,22 +150,20 @@ export function CreateTenantDialog() {
                     <div className="space-y-4">
                         <h3 className="font-semibold text-sm text-emerald-600">Módulos Habilitados</h3>
                         <div className="grid grid-cols-2 gap-4">
-                            <label className="flex items-center gap-3 p-3 border rounded-xl hover:bg-accent cursor-pointer">
-                                <Switch checked={formData.modules.includes('reservations')} onCheckedChange={(c) => handleModules('reservations', c)} />
-                                <span className="text-sm font-medium">Reservas</span>
-                            </label>
-                            <label className="flex items-center gap-3 p-3 border rounded-xl hover:bg-accent cursor-pointer">
-                                <Switch checked={formData.modules.includes('pos')} onCheckedChange={(c) => handleModules('pos', c)} />
-                                <span className="text-sm font-medium">Kiosko (POS)</span>
-                            </label>
-                            <label className="flex items-center gap-3 p-3 border rounded-xl hover:bg-accent cursor-pointer">
-                                <Switch checked={formData.modules.includes('inventory')} onCheckedChange={(c) => handleModules('inventory', c)} />
-                                <span className="text-sm font-medium">Inventario</span>
-                            </label>
-                            <label className="flex items-center gap-3 p-3 border rounded-xl hover:bg-accent cursor-pointer">
-                                <Switch checked={formData.modules.includes('reports')} onCheckedChange={(c) => handleModules('reports', c)} />
-                                <span className="text-sm font-medium">Reportes</span>
-                            </label>
+                            {[
+                                { key: "reservations", label: "Reservas" },
+                                { key: "pos", label: "Kiosko (POS)" },
+                                { key: "inventory", label: "Inventario" },
+                                { key: "reports", label: "Reportes" },
+                                { key: "tournaments", label: "Torneos" },
+                                { key: "school", label: "Escuelita" },
+                                { key: "events", label: "Eventos" },
+                            ].map((mod) => (
+                                <label key={mod.key} className="flex items-center gap-3 p-3 border rounded-xl hover:bg-accent cursor-pointer">
+                                    <Switch checked={formData.modules.includes(mod.key)} onCheckedChange={(c) => handleModules(mod.key, c)} />
+                                    <span className="text-sm font-medium">{mod.label}</span>
+                                </label>
+                            ))}
                         </div>
                     </div>
 

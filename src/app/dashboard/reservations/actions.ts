@@ -321,7 +321,7 @@ export async function createReservation(formData: FormData) {
                     date: iterDate,
                     startTime: iterStart,
                     endTime: iterEnd,
-                    status: "pending",
+                    status: "confirmed", // Fixed reservations are auto-confirmed (no deposit needed)
                     source: "backoffice",
                     courtAmount,
                     totalAmount: courtAmount,

@@ -239,14 +239,16 @@ export function POSTerminal({ categories, products, activeReservations }: any) {
                                                 const r = activeReservations.find((res: any) => res.id === selectedReservationId);
                                                 if (!r) return null;
                                                 const timeString = new Date(r.startTime).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-                                                return `${r.customerName} — ${r.court?.name || "Cancha"} (${timeString})`;
+                                                const typeLabel = r.reservationType === 'school' ? 'Escuelita' : r.reservationType === 'tournament' ? 'Torneo' : 'Turno';
+                                                return `${r.customerName} — ${r.court?.name || "Cancha"} (${timeString}) [${typeLabel}]`;
                                             })()}
                                         </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
                                         {activeReservations.map((r: any) => {
                                             const timeString = new Date(r.startTime).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-                                            const label = `${r.customerName} — ${r.court?.name || "Cancha"} (${timeString})`;
+                                            const typeLabel = r.reservationType === 'school' ? 'Escuelita' : r.reservationType === 'tournament' ? 'Torneo' : 'Turno';
+                                            const label = `${r.customerName} — ${r.court?.name || "Cancha"} (${timeString}) [${typeLabel}]`;
                                             return (
                                                 <SelectItem key={r.id} value={r.id} textValue={label}>
                                                     {label}

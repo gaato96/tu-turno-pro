@@ -102,6 +102,10 @@ export function CashPanel({ openSession, history }: { openSession: any, history:
                                         <span className="font-medium">Kiosco</span>
                                         <span className="font-bold text-blue-600">${openSession.kioskTotal.toLocaleString()}</span>
                                     </div>
+                                    <div className="flex justify-between border-b pb-1 mb-1">
+                                        <span className="font-medium text-red-600">Gastos</span>
+                                        <span className="font-bold text-red-600">-${openSession.expensesTotal.toLocaleString()}</span>
+                                    </div>
                                     <div className="flex justify-between">
                                         <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" />Efectivo</span>
                                         <span className="font-semibold">${openSession.cashTotal.toLocaleString()}</span>
@@ -204,6 +208,7 @@ export function CashPanel({ openSession, history }: { openSession: any, history:
                                 <div className="flex justify-between"><span className="text-muted-foreground">Apertura:</span><span className="font-semibold">${openSession.openingBalance.toLocaleString()}</span></div>
                                 <div className="flex justify-between"><span className="text-muted-foreground">Ingresos Reservas:</span><span className="font-semibold text-emerald-600">${openSession.resTotal.toLocaleString()}</span></div>
                                 <div className="flex justify-between"><span className="text-muted-foreground">Ingresos Kiosco:</span><span className="font-semibold text-blue-600">${openSession.kioskTotal.toLocaleString()}</span></div>
+                                <div className="flex justify-between"><span className="text-muted-foreground w-1/2">Retiros / Egresos:</span><span className="font-semibold text-red-600 text-right">-${openSession.expensesTotal.toLocaleString()}</span></div>
                                 <div className="flex justify-between border-t pt-2"><span className="text-muted-foreground">Ventas Efectivo:</span><span className="font-semibold">${openSession.cashTotal.toLocaleString()}</span></div>
                                 <div className="flex justify-between"><span className="text-muted-foreground">Ventas Tarjeta:</span><span className="font-semibold">${openSession.cardTotal.toLocaleString()}</span></div>
                                 <div className="flex justify-between"><span className="text-muted-foreground">Ventas Transf.:</span><span className="font-semibold">${openSession.transferTotal.toLocaleString()}</span></div>
