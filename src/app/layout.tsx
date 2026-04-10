@@ -14,10 +14,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Tu Turno Pro — Gestión de Complejos Deportivos",
   description: "Sistema integral de gestión para complejos deportivos. Reservas, POS, inventario y análisis financiero en un solo lugar.",
-  manifest: "/manifest.webmanifest",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "Tu Turno Pro",
   },
   formatDetection: {
@@ -43,6 +43,21 @@ export default function RootLayout({
             {children}
           </TooltipProvider>
         </Providers>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                  }, function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                  });
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );

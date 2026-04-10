@@ -86,9 +86,9 @@ export function POSTerminal({ categories, products, activeReservations }: any) {
     };
 
     return (
-        <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
+        <div className="flex flex-col lg:flex-row gap-4 min-h-0 lg:overflow-hidden h-[calc(100vh-100px)] lg:h-auto">
             {/* ── LEFT: Product Grid ── */}
-            <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 flex flex-col min-h-[50vh] lg:min-h-0">
                 {/* Search + Categories */}
                 <div className="flex items-center gap-3 mb-4">
                     <div className="relative flex-1">
@@ -137,7 +137,7 @@ export function POSTerminal({ categories, products, activeReservations }: any) {
             </div>
 
             {/* ── RIGHT: Cart ── */}
-            <div className="w-[340px] shrink-0 bg-card border rounded-xl flex flex-col shadow-sm">
+            <div className="w-full lg:w-[340px] shrink-0 bg-card border rounded-xl flex flex-col shadow-sm min-h-[40vh] lg:min-h-0 relative">
                 <div className="p-4 border-b flex items-center gap-2">
                     <ShoppingCart className="w-5 h-5 text-emerald-600" />
                     <h3 className="font-bold">Carrito</h3>

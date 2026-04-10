@@ -59,25 +59,25 @@ export function CashPanel({ openSession, history }: { openSession: any, history:
                 <>
                     {/* X Report — Current Session */}
                     <Card className="p-6 border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-500/5">
-                        <div className="flex items-center justify-between mb-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 flex shrink-0 items-center justify-center">
                                     <Unlock className="w-5 h-5 text-emerald-600" />
                                 </div>
-                                <div>
-                                    <h3 className="font-bold text-lg">Caja Abierta</h3>
-                                    <p className="text-xs text-muted-foreground">
+                                <div className="min-w-0">
+                                    <h3 className="font-bold text-lg truncate">Caja Abierta</h3>
+                                    <p className="text-xs text-muted-foreground truncate">
                                         Abierta por {openSession.openedBy?.name} — {format(new Date(openSession.openingDate), "dd/MM HH:mm", { locale: es })}
                                     </p>
                                 </div>
                             </div>
-                            <Button variant="destructive" onClick={() => setCloseDialogVisible(true)} className="gap-2">
+                            <Button variant="destructive" onClick={() => setCloseDialogVisible(true)} className="gap-2 w-full sm:w-auto shrink-0">
                                 <Lock className="w-4 h-4" /> Cerrar Caja
                             </Button>
                         </div>
 
                         {/* KPI Cards */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                             <Card className="p-4 text-center">
                                 <p className="text-xs text-muted-foreground mb-1">Apertura</p>
                                 <p className="text-xl font-bold">${openSession.openingBalance.toLocaleString()}</p>
