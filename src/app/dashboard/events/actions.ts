@@ -21,10 +21,10 @@ export async function createEvent(data: {
         throw new Error("Debes seleccionar un complejo válido.");
     }
 
-    // Force UTC suffix (Z) with exact times to avoid server guessing timezones
-    const parsedDate = new Date(`${date}T00:00:00.000Z`);
-    const parsedStartTime = new Date(`${date}T${startTime}:00.000Z`);
-    const parsedEndTime = new Date(`${date}T${endTime}:00.000Z`);
+    // Parse as local time (matching createReservation pattern — no Z suffix)
+    const parsedDate = new Date(`${date}T12:00:00`);
+    const parsedStartTime = new Date(`${date}T${startTime}:00`);
+    const parsedEndTime = new Date(`${date}T${endTime}:00`);
 
     await prisma.event.create({
         data: {

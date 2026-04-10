@@ -51,7 +51,7 @@ export async function generateFixture(tournamentId: string) {
     if (tournament.matches.length > 0) throw new Error("El fixture ya fue generado. Elimine los partidos primero o reinicie el torneo.");
 
     const teams = [...tournament.teams];
-    
+
     // Si la cantidad de equipos es impar, agregamos un equipo "Libre" (null)
     if (teams.length % 2 !== 0) {
         teams.push({ id: "FREE", name: "Libre", tournamentId, points: 0, gamesPlayed: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0 });
@@ -99,11 +99,11 @@ export async function generateFixture(tournamentId: string) {
 }
 
 export async function updateMatchResult(
-    matchId: string, 
-    tournamentId: string, 
-    homeGoals: number, 
-    awayGoals: number, 
-    complexId?: string, 
+    matchId: string,
+    tournamentId: string,
+    homeGoals: number,
+    awayGoals: number,
+    complexId?: string,
     playerStats?: any[]
 ) {
     await prisma.$transaction(async (tx) => {
@@ -132,7 +132,7 @@ export async function updateMatchResult(
 
         // Aplicar nuevas estadísticas de equipos
         await applyTeamStats(tx, match.homeTeamId, match.awayTeamId, homeGoals, awayGoals);
-        
+
         // Aplicar nuevas estadísticas de jugadores si existen
         if (playerStats && playerStats.length > 0) {
             await applyPlayerStats(tx, playerStats);
@@ -171,7 +171,7 @@ async function applyPlayerStats(tx: any, stats: any[]) {
 
 async function revertTeamStats(tx: any, match: any) {
     if (match.status !== "played" || match.homeGoals === null || match.awayGoals === null) return;
-    
+
     const hGoals = match.homeGoals;
     const aGoals = match.awayGoals;
 
@@ -282,4 +282,86 @@ export async function updatePlayerStats(playerId: string, tournamentId: string, 
     });
     revalidatePath(`/dashboard/tournaments/${tournamentId}`);
     return { success: true };
+}
+
+// ── Schedule Match (link to court + create reservation) ──
+
+export async function scheduleMatch(
+    matchId: string,
+    tournamentId: string,
+    courtId: string,
+    date: string,      // "YYYY-MM-DD"
+    startTime: string,  // "HH:MM"
+    durationMinutes: number = 60
+) {
+    const match = await prisma.tournamentMatch.findUnique({
+        where: { id: matchId },
+        include: {
+            homeTeam: true,
+            awayTeam: true,
+            tournament: { include: { complex: true } }
+        }
+    });
+    if (!match) throw new Error("Partido no encontrado");
+
+    const tournament = match.tournament;
+    const complex = tournament.complex;
+
+    // Calculate end time
+    const [h, m] = startTime.split(":").map(Number);
+    const endMinutes = h * 60 + m + durationMinutes;
+    const endH = Math.floor(endMinutes / 60) % 24;
+    const endM = endMinutes % 60;
+    const endTime = `${endH.toString().padStart(2, "0")}:${endM.toString().padStart(2, "0")}`;
+
+    const parsedDate = new Date(`${date}T12:00:00`);
+    const parsedStart = new Date(`${date}T${startTime}:00`);
+    const parsedEnd = new Date(`${date}T${endTime}:00`);
+
+    // Get court info for pricing
+    const court = await prisma.court.findUnique({ where: { id: courtId } });
+    if (!court) throw new Error("Cancha no encontrada");
+
+    const courtAmount = Number(court.dayRate); // simplified pricing
+
+    const customerName = `🏆 ${match.homeTeam.name} vs ${match.awayTeam.name}`;
+
+    const result = await prisma.$transaction(async (tx) => {
+        // Create the reservation
+        const reservation = await tx.reservation.create({
+            data: {
+                tenantId: tournament.tenantId,
+                complexId: complex.id,
+                courtId,
+                customerName,
+                reservationType: "tournament",
+                date: parsedDate,
+                startTime: parsedStart,
+                endTime: parsedEnd,
+                status: "confirmed",
+                source: "backoffice",
+                courtAmount,
+                totalAmount: courtAmount,
+                notes: `Torneo: ${tournament.name} | Fecha ${match.matchDay}`,
+            }
+        });
+
+        // Link match to court and reservation
+        await tx.tournamentMatch.update({
+            where: { id: matchId },
+            data: {
+                courtId,
+                complexId: complex.id,
+                date: parsedDate,
+                time: startTime,
+                reservationId: reservation.id,
+            }
+        });
+
+        return reservation;
+    });
+
+    revalidatePath(`/dashboard/tournaments/${tournamentId}`);
+    revalidatePath("/dashboard/reservations");
+    return { success: true, reservationId: result.id };
 }

@@ -133,7 +133,8 @@ model Court {
   parentCourt   Court?  @relation("LinkedCourts", fields: [parentCourtId], references: [id])
   childCourts   Court[] @relation("LinkedCourts")
 
-  reservations Reservation[]
+  reservations     Reservation[]
+  tournamentMatches TournamentMatch[]
 }
 
 // ============================================
@@ -192,8 +193,9 @@ model Reservation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  sales    Sale[]
-  payments Payment[]
+  sales            Sale[]
+  payments          Payment[]
+  tournamentMatches TournamentMatch[]
 
   @@index([complexId, date])
   @@index([courtId, date])
@@ -508,21 +510,25 @@ model TournamentPlayer {
 }
 
 model TournamentMatch {
-  id           String         @id @default(cuid())
-  tournamentId String
-  tournament   Tournament     @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  matchDay     Int // fecha/jornada
-  homeTeamId   String
-  homeTeam     TournamentTeam @relation("HomeTeam", fields: [homeTeamId], references: [id])
-  awayTeamId   String
-  awayTeam     TournamentTeam @relation("AwayTeam", fields: [awayTeamId], references: [id])
-  homeGoals    Int?
-  awayGoals    Int?
-  date         DateTime?      @db.Date
-  time         String?
-  status       String         @default("scheduled") // scheduled, played, cancelled
-  complexId    String?
-  complex      Complex?       @relation(fields: [complexId], references: [id])
-  playerStats  Json?
-  notes        String?
+  id            String          @id @default(cuid())
+  tournamentId  String
+  tournament    Tournament      @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  matchDay      Int // fecha/jornada
+  homeTeamId    String
+  homeTeam      TournamentTeam  @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeamId    String
+  awayTeam      TournamentTeam  @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  homeGoals     Int?
+  awayGoals     Int?
+  date          DateTime?       @db.Date
+  time          String?
+  status        String          @default("scheduled") // scheduled, played, cancelled
+  complexId     String?
+  complex       Complex?        @relation(fields: [complexId], references: [id])
+  courtId       String?
+  court         Court?          @relation(fields: [courtId], references: [id])
+  reservationId String?
+  reservation   Reservation?    @relation(fields: [reservationId], references: [id])
+  playerStats   Json?
+  notes         String?
 }

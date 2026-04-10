@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { addTeam, removeTeam, generateFixture, updateMatchResult, addPlayer, removePlayer, updatePlayerStats } from "./actions";
+import { addTeam, removeTeam, generateFixture, updateMatchResult, addPlayer, removePlayer, updatePlayerStats, scheduleMatch } from "./actions";
 import Link from "next/link";
 import {
     Select,
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { useRouter } from "next/navigation";
 
-export default function TournamentDetailClient({ initialTournament, complexes }: { initialTournament: any, complexes: any[] }) {
+export default function TournamentDetailClient({ initialTournament, complexes, courts }: { initialTournament: any, complexes: any[], courts: any[] }) {
     const router = useRouter();
     const [tour, setTour] = useState(initialTournament);
     const [activeTab, setActiveTab] = useState<"posiciones" | "fixture" | "equipos" | "goleadores">("posiciones");
@@ -53,6 +53,13 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
     const [editingPlayer, setEditingPlayer] = useState<any>(null);
     const [playerStats, setPlayerStats] = useState({ goals: 0, yellowCards: 0, redCards: 0 });
 
+    // Schedule match state
+    const [scheduleDialog, setScheduleDialog] = useState<any>(null);
+    const [scheduleCourtId, setScheduleCourtId] = useState("");
+    const [scheduleDate, setScheduleDate] = useState(format(new Date(), "yyyy-MM-dd"));
+    const [scheduleTime, setScheduleTime] = useState("18:00");
+    const [scheduleDuration, setScheduleDuration] = useState("60");
+
     const handleSaveResult = () => {
         startTransition(async () => {
             try {
@@ -66,14 +73,14 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
                     }));
 
                 await updateMatchResult(
-                    showResultDialog.id, 
-                    tour.id, 
-                    parseInt(homeGoals), 
-                    parseInt(awayGoals), 
-                    matchComplexId, 
+                    showResultDialog.id,
+                    tour.id,
+                    parseInt(homeGoals),
+                    parseInt(awayGoals),
+                    matchComplexId,
                     filteredStats
                 );
-                
+
                 toast.success("Resultado y estadísticas guardadas correctamente");
                 setShowResultDialog(null);
                 setResultStep(1);
@@ -90,15 +97,15 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
     const handleAddTeam = () => {
         if (!newTeamName) return;
         startTransition(async () => {
-             try {
-                 await addTeam(tour.id, newTeamName);
-                 toast.success("Equipo agregado");
-                 setShowAddTeam(false);
-                 setNewTeamName("");
-                 router.refresh();
-             } catch (e: any) {
-                 toast.error(e.message || "Error al agregar equipo");
-             }
+            try {
+                await addTeam(tour.id, newTeamName);
+                toast.success("Equipo agregado");
+                setShowAddTeam(false);
+                setNewTeamName("");
+                router.refresh();
+            } catch (e: any) {
+                toast.error(e.message || "Error al agregar equipo");
+            }
         });
     };
 
@@ -168,6 +175,23 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
         });
     };
 
+    const handleScheduleMatch = () => {
+        if (!scheduleDialog || !scheduleCourtId) {
+            toast.error("Seleccioná una cancha.");
+            return;
+        }
+        startTransition(async () => {
+            try {
+                await scheduleMatch(scheduleDialog.id, tour.id, scheduleCourtId, scheduleDate, scheduleTime, Number(scheduleDuration));
+                toast.success("Partido programado y reserva creada!");
+                setScheduleDialog(null);
+                router.refresh();
+            } catch (e: any) {
+                toast.error(e.message || "Error al programar");
+            }
+        });
+    };
+
     // Group matches by matchDay
     const matchesByDay = tour.matches.reduce((acc: any, match: any) => {
         acc[match.matchDay] = acc[match.matchDay] || [];
@@ -181,7 +205,7 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-border/50">
                 <div className="flex items-center gap-4">
                     <Link href="/dashboard/tournaments">
-                        <Button variant="ghost" size="icon" className="rounded-xl"><ArrowLeft className="w-5 h-5"/></Button>
+                        <Button variant="ghost" size="icon" className="rounded-xl"><ArrowLeft className="w-5 h-5" /></Button>
                     </Link>
                     <div>
                         <div className="flex flex-wrap items-center gap-3">
@@ -190,9 +214,9 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
                                 {tour.status}
                             </span>
                             {tour.publicSlug && (
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
+                                <Button
+                                    variant="outline"
+                                    size="sm"
                                     className="h-7 text-xs ml-2 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
                                     onClick={() => {
                                         const url = `${window.location.origin}/torneos/${tour.publicSlug}`;
@@ -205,8 +229,8 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
                             )}
                         </div>
                         <p className="text-muted-foreground text-sm mt-1 flex items-center gap-4">
-                            <span className="flex items-center gap-1"><Trophy className="w-4 h-4"/> {tour.sportType}</span>
-                            <span className="flex items-center gap-1"><Users className="w-4 h-4"/> {tour.teams.length} / {tour.maxTeams} Equipos</span>
+                            <span className="flex items-center gap-1"><Trophy className="w-4 h-4" /> {tour.sportType}</span>
+                            <span className="flex items-center gap-1"><Users className="w-4 h-4" /> {tour.teams.length} / {tour.maxTeams} Equipos</span>
                         </p>
                     </div>
                 </div>
@@ -346,12 +370,12 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
                 <div className="space-y-8">
                     {tour.matches.length === 0 ? (
                         <div className="text-center p-12 bg-muted/30 border-2 border-dashed rounded-3xl">
-                            <CalendarDays className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50"/>
+                            <CalendarDays className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
                             <h3 className="text-lg font-bold">El fixture no ha sido generado</h3>
                             <p className="text-muted-foreground mt-2 max-w-md mx-auto">Cuando todos los equipos estén inscritos, haz click en "Sortear Fixture e Iniciar" para crear el calendario de partidos automáticamente.</p>
                         </div>
                     ) : (
-                        Object.keys(matchesByDay).sort((a,b)=>Number(a)-Number(b)).map((day) => (
+                        Object.keys(matchesByDay).sort((a, b) => Number(a) - Number(b)).map((day) => (
                             <div key={day} className="space-y-4">
                                 <h3 className="font-bold text-lg flex items-center gap-2">
                                     <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400 px-3 py-1 rounded-lg text-sm uppercase tracking-widest">
@@ -374,15 +398,15 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
                                                         </div>
                                                         <div className="flex-1 text-left font-bold truncate pl-3">{match.awayTeam?.name}</div>
                                                     </div>
-                                                    
+
                                                     {match.complex && (
                                                         <p className="text-[10px] text-center mt-2 text-muted-foreground uppercase tracking-widest font-bold flex items-center justify-center gap-1">
-                                                            <CalendarDays className="w-2 h-2"/> {match.complex.name}
+                                                            <CalendarDays className="w-2 h-2" /> {match.complex.name}
                                                         </p>
                                                     )}
 
-                                                    <Button 
-                                                        variant="ghost" 
+                                                    <Button
+                                                        variant="ghost"
                                                         size="sm"
                                                         onClick={() => {
                                                             setShowResultDialog(match);
@@ -390,12 +414,12 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
                                                             setHomeGoals(match.homeGoals?.toString() || "");
                                                             setAwayGoals(match.awayGoals?.toString() || "");
                                                             setMatchComplexId(match.complexId || complexes[0]?.id || "");
-                                                            
+
                                                             // Prepare player stats for the dialog
                                                             const homePlayers = tour.teams.find((t: any) => t.id === match.homeTeamId)?.players || [];
                                                             const awayPlayers = tour.teams.find((t: any) => t.id === match.awayTeamId)?.players || [];
                                                             const existingStats = match.playerStats || [];
-                                                            
+
                                                             const allPlayersStats = [...homePlayers, ...awayPlayers].map(p => {
                                                                 const s = existingStats.find((es: any) => es.playerId === p.id);
                                                                 return {
@@ -409,10 +433,30 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
                                                             });
                                                             setMatchPlayerStats(allPlayersStats);
                                                         }}
-                                                        className="mt-4 mx-auto w-fit text-xs rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                                        className="mt-3 mx-auto w-fit text-xs rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                                                     >
                                                         <Edit3 className="w-3 h-3 mr-1" /> {match.status === "played" ? "Editar Resultado" : "Cargar Resultado"}
                                                     </Button>
+
+                                                    {/* Schedule match to court */}
+                                                    {!match.reservationId && (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                setScheduleDialog(match);
+                                                                setScheduleCourtId(courts[0]?.id || "");
+                                                            }}
+                                                            className="mt-1 mx-auto w-fit text-xs rounded-lg border-orange-300 text-orange-600 hover:bg-orange-50"
+                                                        >
+                                                            🏟️ Programar Cancha
+                                                        </Button>
+                                                    )}
+                                                    {match.reservationId && (
+                                                        <p className="text-[10px] text-center mt-2 text-orange-600 font-semibold">
+                                                            ✅ Cancha: {match.court?.name || "Asignada"} | {match.time || ""}
+                                                        </p>
+                                                    )}
                                                 </>
                                             )}
                                         </Card>
@@ -486,7 +530,7 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
                             {resultStep === 1 ? "Resultado del Partido" : "Estadísticas de Jugadores"}
                         </DialogTitle>
                     </DialogHeader>
-                    
+
                     {showResultDialog && resultStep === 1 && (
                         <div className="space-y-6 py-4">
                             <div className="flex items-center justify-between gap-4">
@@ -522,7 +566,7 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
                             {[showResultDialog.homeTeamId, showResultDialog.awayTeamId].map(teamId => {
                                 const teamName = teamId === showResultDialog.homeTeamId ? showResultDialog.homeTeam?.name : showResultDialog.awayTeam?.name;
                                 const players = matchPlayerStats.filter(p => p.teamId === teamId);
-                                
+
                                 return (
                                     <div key={teamId} className="space-y-3">
                                         <h4 className="font-black text-xs uppercase tracking-tighter text-emerald-600 border-b pb-1">{teamName}</h4>
@@ -533,36 +577,36 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
                                                     <div className="flex-1 text-xs font-bold truncate">{p.name}</div>
                                                     <div className="flex items-center gap-1">
                                                         <div className="relative group">
-                                                            <Input 
-                                                                type="number" 
-                                                                className="w-10 h-8 p-0 text-center text-xs rounded-lg font-bold" 
-                                                                value={p.goals} 
+                                                            <Input
+                                                                type="number"
+                                                                className="w-10 h-8 p-0 text-center text-xs rounded-lg font-bold"
+                                                                value={p.goals}
                                                                 onChange={e => {
                                                                     const val = Number(e.target.value);
-                                                                    setMatchPlayerStats(prev => prev.map(item => item.playerId === p.playerId ? {...item, goals: val} : item));
+                                                                    setMatchPlayerStats(prev => prev.map(item => item.playerId === p.playerId ? { ...item, goals: val } : item));
                                                                 }}
                                                             />
                                                             <span className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 text-[8px] bg-black text-white px-1 rounded pointer-events-none">Goles</span>
                                                         </div>
                                                         <div className="relative group">
-                                                            <Input 
-                                                                type="number" 
-                                                                className="w-10 h-8 p-0 text-center text-xs rounded-lg font-bold border-yellow-500/30 text-yellow-700 bg-yellow-50" 
-                                                                value={p.yellowCards} 
+                                                            <Input
+                                                                type="number"
+                                                                className="w-10 h-8 p-0 text-center text-xs rounded-lg font-bold border-yellow-500/30 text-yellow-700 bg-yellow-50"
+                                                                value={p.yellowCards}
                                                                 onChange={e => {
                                                                     const val = Number(e.target.value);
-                                                                    setMatchPlayerStats(prev => prev.map(item => item.playerId === p.playerId ? {...item, yellowCards: val} : item));
+                                                                    setMatchPlayerStats(prev => prev.map(item => item.playerId === p.playerId ? { ...item, yellowCards: val } : item));
                                                                 }}
                                                             />
                                                         </div>
                                                         <div className="relative group">
-                                                            <Input 
-                                                                type="number" 
-                                                                className="w-10 h-8 p-0 text-center text-xs rounded-lg font-bold border-red-500/30 text-red-700 bg-red-50" 
-                                                                value={p.redCards} 
+                                                            <Input
+                                                                type="number"
+                                                                className="w-10 h-8 p-0 text-center text-xs rounded-lg font-bold border-red-500/30 text-red-700 bg-red-50"
+                                                                value={p.redCards}
                                                                 onChange={e => {
                                                                     const val = Number(e.target.value);
-                                                                    setMatchPlayerStats(prev => prev.map(item => item.playerId === p.playerId ? {...item, redCards: val} : item));
+                                                                    setMatchPlayerStats(prev => prev.map(item => item.playerId === p.playerId ? { ...item, redCards: val } : item));
                                                                 }}
                                                             />
                                                         </div>
@@ -580,12 +624,12 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
                         {resultStep === 1 ? (
                             <>
                                 <Button variant="outline" onClick={() => setShowResultDialog(null)} className="rounded-xl flex-1">Cancelar</Button>
-                                <Button 
-                                    onClick={() => setResultStep(2)} 
-                                    disabled={homeGoals === "" || awayGoals === ""} 
+                                <Button
+                                    onClick={() => setResultStep(2)}
+                                    disabled={homeGoals === "" || awayGoals === ""}
                                     className="bg-emerald-600 text-white rounded-xl flex-1"
                                 >
-                                    Cargar Detalle <ChevronRight className="w-4 h-4 ml-1"/>
+                                    Cargar Detalle <ChevronRight className="w-4 h-4 ml-1" />
                                 </Button>
                             </>
                         ) : (
@@ -605,20 +649,80 @@ export default function TournamentDetailClient({ initialTournament, complexes }:
                     <div className="space-y-4 py-2">
                         <div>
                             <Label>⚽ Goles</Label>
-                            <Input type="number" min="0" value={playerStats.goals} onChange={e => setPlayerStats({...playerStats, goals: Number(e.target.value)})} className="mt-1.5 rounded-xl" />
+                            <Input type="number" min="0" value={playerStats.goals} onChange={e => setPlayerStats({ ...playerStats, goals: Number(e.target.value) })} className="mt-1.5 rounded-xl" />
                         </div>
                         <div>
                             <Label>🟨 Tarjetas Amarillas</Label>
-                            <Input type="number" min="0" value={playerStats.yellowCards} onChange={e => setPlayerStats({...playerStats, yellowCards: Number(e.target.value)})} className="mt-1.5 rounded-xl" />
+                            <Input type="number" min="0" value={playerStats.yellowCards} onChange={e => setPlayerStats({ ...playerStats, yellowCards: Number(e.target.value) })} className="mt-1.5 rounded-xl" />
                         </div>
                         <div>
                             <Label>🟥 Tarjetas Rojas</Label>
-                            <Input type="number" min="0" value={playerStats.redCards} onChange={e => setPlayerStats({...playerStats, redCards: Number(e.target.value)})} className="mt-1.5 rounded-xl" />
+                            <Input type="number" min="0" value={playerStats.redCards} onChange={e => setPlayerStats({ ...playerStats, redCards: Number(e.target.value) })} className="mt-1.5 rounded-xl" />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setEditingPlayer(null)} className="rounded-xl">Cancelar</Button>
                         <Button onClick={handleSavePlayerStats} disabled={isPending} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl">Guardar</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Schedule Match Dialog */}
+            <Dialog open={!!scheduleDialog} onOpenChange={(open) => !open && setScheduleDialog(null)}>
+                <DialogContent className="rounded-3xl sm:max-w-[400px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-center">
+                            🏟️ Programar Partido
+                        </DialogTitle>
+                        {scheduleDialog && (
+                            <p className="text-center text-sm text-muted-foreground">
+                                {scheduleDialog.homeTeam?.name} vs {scheduleDialog.awayTeam?.name}
+                            </p>
+                        )}
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div>
+                            <Label>Cancha</Label>
+                            <Select value={scheduleCourtId} onValueChange={(v) => setScheduleCourtId(v || "")}>
+                                <SelectTrigger className="rounded-xl mt-1.5">
+                                    <SelectValue placeholder="Seleccionar cancha" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {courts.map(c => (
+                                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label>Fecha</Label>
+                            <Input type="date" value={scheduleDate} onChange={e => setScheduleDate(e.target.value)} className="rounded-xl mt-1.5" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Label>Hora Inicio</Label>
+                                <Input type="time" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} className="rounded-xl mt-1.5" />
+                            </div>
+                            <div>
+                                <Label>Duración (min)</Label>
+                                <Select value={scheduleDuration} onValueChange={v => setScheduleDuration(v || "60")}>
+                                    <SelectTrigger className="rounded-xl mt-1.5">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="60">60 min</SelectItem>
+                                        <SelectItem value="90">90 min</SelectItem>
+                                        <SelectItem value="120">120 min</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setScheduleDialog(null)} className="rounded-xl">Cancelar</Button>
+                        <Button onClick={handleScheduleMatch} disabled={isPending} className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl">
+                            {isPending ? "Programando..." : "Confirmar"}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

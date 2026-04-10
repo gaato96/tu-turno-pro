@@ -16,11 +16,16 @@ export default async function EventsPage() {
         where: { tenantId },
         include: { complex: true, sales: true, payments: true },
         orderBy: { date: "desc" }
-    })).map(e => ({
+    })).map((e: any) => ({
         ...e,
+        date: e.date.toISOString().replace("Z", ""),
+        startTime: e.startTime.toISOString().replace("Z", ""),
+        endTime: e.endTime.toISOString().replace("Z", ""),
         totalAmount: Number(e.totalAmount),
         depositPaid: Number(e.depositPaid),
-        paidAmount: Number(e.paidAmount)
+        paidAmount: Number(e.paidAmount),
+        sales: e.sales?.map((s: any) => ({ ...s, subtotal: Number(s.subtotal), total: Number(s.total) })) || [],
+        payments: e.payments?.map((p: any) => ({ ...p, amount: Number(p.amount) })) || [],
     }));
 
     const complexes = await prisma.complex.findMany({

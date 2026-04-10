@@ -13,7 +13,7 @@ export default async function TournamentDetailPage({ params }: { params: Promise
     const tenantId = getTenantId(session);
     const { id } = await params;
 
-    const tournament = await prisma.tournament.findFirst({
+    const tournament = await (prisma as any).tournament.findFirst({
         where: { id, tenantId },
         include: {
             teams: {
@@ -29,7 +29,8 @@ export default async function TournamentDetailPage({ params }: { params: Promise
                 include: {
                     homeTeam: true,
                     awayTeam: true,
-                    complex: true
+                    complex: true,
+                    court: true
                 },
                 orderBy: { matchDay: 'asc' }
             }
@@ -40,9 +41,16 @@ export default async function TournamentDetailPage({ params }: { params: Promise
         where: { tenantId }
     });
 
+    // Get courts from the tournament's complex
+    const courts = tournament ? await prisma.court.findMany({
+        where: { complexId: tournament.complexId, isActive: true },
+        select: { id: true, name: true, sportType: true },
+        orderBy: { displayOrder: 'asc' }
+    }) : [];
+
     if (!tournament) {
         redirect("/dashboard/tournaments");
     }
 
-    return <TournamentDetailClient initialTournament={tournament} complexes={complexes} />;
+    return <TournamentDetailClient initialTournament={tournament} complexes={complexes} courts={courts} />;
 }

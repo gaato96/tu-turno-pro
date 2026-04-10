@@ -272,6 +272,29 @@
 }
 
 /* ===========================
+   RESERVATION TYPE INDICATORS
+   =========================== */
+.restype-casual {
+  border-left: 4px solid #3b82f6 !important;
+}
+
+.restype-fixed {
+  border-left: 4px solid #8b5cf6 !important;
+}
+
+.restype-tournament {
+  border-left: 4px solid #f97316 !important;
+}
+
+.restype-school {
+  border-left: 4px solid #eab308 !important;
+}
+
+.restype-event {
+  border-left: 4px solid #ef4444 !important;
+}
+
+/* ===========================
    ANIMATIONS
    =========================== */
 @keyframes fadeIn {

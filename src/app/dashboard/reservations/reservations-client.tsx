@@ -514,11 +514,12 @@ export default function ReservationsClient({
 
                                             if (reservation && isStart) {
                                                 const statusCfg = statusConfig[reservation.status];
+                                                const restypeClass = `restype-${reservation.reservationType || "casual"}`;
                                                 return (
                                                     <div key={court.id} className="border-r border-border/30 last:border-r-0 p-1" style={{ gridRow: `span ${span}` }}>
-                                                        <div className={`h-full rounded-xl p-2.5 ${statusCfg.class} cursor-pointer group relative transition-all duration-200 hover:shadow-md`} onClick={() => setDetailReservation(reservation)}>
-                                                            <p className="text-xs font-bold truncate text-white">{reservation.customerName}</p>
-                                                            <p className="text-[10px] opacity-75 text-white">{format(new Date(reservation.startTime), "HH:mm")} — {format(new Date(reservation.endTime), "HH:mm")}</p>
+                                                        <div className={`h-full rounded-xl p-2.5 ${statusCfg.class} ${restypeClass} cursor-pointer group relative transition-all duration-200 hover:shadow-md`} onClick={() => setDetailReservation(reservation)}>
+                                                            <p className="text-xs font-bold truncate">{reservation.customerName}</p>
+                                                            <p className="text-[10px] opacity-75">{format(new Date(reservation.startTime), "HH:mm")} — {format(new Date(reservation.endTime), "HH:mm")}</p>
                                                         </div>
                                                     </div>
                                                 );
@@ -589,10 +590,11 @@ export default function ReservationsClient({
 
                                                             if (reservation && isStart) {
                                                                 const statusCfg = statusConfig[reservation.status];
+                                                                const restypeClass = `restype-${reservation.reservationType || "casual"}`;
                                                                 return (
                                                                     <div key={day.toString()} className="border-r border-border/30 last:border-r-0 p-1" style={{ gridRow: `span ${span}` }}>
-                                                                        <div className={`h-full rounded-lg p-1.5 ${statusCfg.class} cursor-pointer transition-all hover:brightness-110`} onClick={() => setDetailReservation(reservation)}>
-                                                                            <p className="text-[9px] font-bold truncate text-white">{reservation.customerName}</p>
+                                                                        <div className={`h-full rounded-lg p-1.5 ${statusCfg.class} ${restypeClass} cursor-pointer transition-all hover:brightness-110`} onClick={() => setDetailReservation(reservation)}>
+                                                                            <p className="text-[9px] font-bold truncate">{reservation.customerName}</p>
                                                                         </div>
                                                                     </div>
                                                                 );
