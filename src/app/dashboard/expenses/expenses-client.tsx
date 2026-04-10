@@ -311,7 +311,7 @@ export default function ExpensesClient({ complexes, categories, tenantId }: { co
                             </div>
                             <div>
                                 <Label className="font-bold">Categoría</Label>
-                                <Select value={categoryId} onValueChange={setCategoryId}>
+                                <Select value={categoryId} onValueChange={(v) => setCategoryId(v ?? "")}>
                                     <SelectTrigger className="h-12 mt-1.5 rounded-xl bg-muted/50">
                                         <SelectValue placeholder="Seleccionar" />
                                     </SelectTrigger>
