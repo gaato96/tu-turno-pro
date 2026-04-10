@@ -82,6 +82,18 @@ export async function getCalendarData(dateStr: string) {
         orderBy: { startTime: "asc" }
     });
 
+    const events = await (prisma as any).event.findMany({
+        where: {
+            tenantId,
+            complexId: complex.id,
+            status: { notIn: ["cancelled"] },
+            AND: [
+                { startTime: { lt: businessEnd } },
+                { endTime: { gt: businessStart } }
+            ]
+        }
+    });
+
     // Serialize Decimal fields and fix Timezone shift for client
     const serializedReservations = reservations.map((r: any) => ({
         ...r,
@@ -94,6 +106,17 @@ export async function getCalendarData(dateStr: string) {
         totalAmount: Number(r.totalAmount),
         depositAmount: Number(r.depositAmount || 0),
         paidAmount: Number(r.paidAmount || 0),
+        sales: r.sales?.map((s: any) => ({
+            ...s,
+            createdAt: s.createdAt,
+            subtotal: Number(s.subtotal),
+            total: Number(s.total),
+            items: s.items?.map((i: any) => ({
+                ...i,
+                unitPrice: Number(i.unitPrice),
+                subtotal: Number(i.subtotal)
+            })) || []
+        })) || []
     }));
 
     const serializedCourts = complex.courts.map((c: any) => ({
@@ -102,11 +125,22 @@ export async function getCalendarData(dateStr: string) {
         nightRate: Number(c.nightRate),
     }));
 
+    const serializedEvents = events.map((e: any) => ({
+        ...e,
+        date: e.date.toISOString().replace("Z", ""),
+        startTime: e.startTime.toISOString().replace("Z", ""),
+        endTime: e.endTime.toISOString().replace("Z", ""),
+        totalAmount: Number(e.totalAmount),
+        depositPaid: Number(e.depositPaid),
+        paidAmount: Number(e.paidAmount)
+    }));
+
     return {
         complex: { id: complex.id, name: complex.name, openingTime: complex.openingTime, closingTime: complex.closingTime },
         complexes: allComplexes,
         courts: serializedCourts,
-        reservations: serializedReservations
+        reservations: serializedReservations,
+        events: serializedEvents
     };
 }
 
@@ -160,7 +194,8 @@ export async function createReservation(formData: FormData) {
     const depositAmountStr = formData.get("depositAmount") as string;
     const paymentMethod = formData.get("paymentMethod") as string || "cash";
     const reservationType = formData.get("reservationType") as string || "casual";
-    
+    const isRecurring = formData.get("isRecurring") === "true";
+
     const depositAmount = depositAmountStr ? Number(depositAmountStr) : 0;
 
     // Use a fixed reference for "today" in local time to avoid UTC shifts
@@ -248,6 +283,7 @@ export async function createReservation(formData: FormData) {
                 customerPhone,
                 customerId: customerId || null,
                 reservationType,
+                isRecurring,
                 date,
                 startTime,
                 endTime,
@@ -260,6 +296,44 @@ export async function createReservation(formData: FormData) {
                 notes,
             }
         });
+
+        if (isRecurring) {
+            const recurringData = [];
+            for (let i = 1; i < 52; i++) {
+                const iterDate = new Date(date);
+                iterDate.setDate(iterDate.getDate() + i * 7);
+                const iterStart = new Date(startTime);
+                iterStart.setDate(iterStart.getDate() + i * 7);
+                const iterEnd = new Date(endTime);
+                iterEnd.setDate(iterEnd.getDate() + i * 7);
+
+                recurringData.push({
+                    tenantId,
+                    complexId,
+                    courtId,
+                    userId: (session?.user as any)?.id || null,
+                    customerName,
+                    customerPhone,
+                    customerId: customerId || null,
+                    reservationType,
+                    isRecurring: true,
+                    parentReservationId: newRes.id,
+                    date: iterDate,
+                    startTime: iterStart,
+                    endTime: iterEnd,
+                    status: "pending",
+                    source: "backoffice",
+                    courtAmount,
+                    totalAmount: courtAmount,
+                    depositAmount: 0,
+                    paidAmount: 0,
+                    notes,
+                });
+            }
+            if (recurringData.length > 0) {
+                await tx.reservation.createMany({ data: recurringData });
+            }
+        }
 
         if (depositAmount > 0) {
             const cashSession = await tx.cashSession.findFirst({
@@ -331,8 +405,8 @@ export async function changeReservationStatus(reservationId: string, newStatus: 
 }
 
 export async function payReservation(
-    reservationId: string, 
-    paymentMethod: string, 
+    reservationId: string,
+    paymentMethod: string,
     amountToPay: number,
     leaveOnAccount: boolean,
     paymentDetails?: any
@@ -347,7 +421,7 @@ export async function payReservation(
     if (!reservation) throw new Error("Reservation not found");
 
     if (leaveOnAccount && !reservation.customerId) {
-        throw new Error("Se requiere un cliente asociado para dejar saldo a cuenta.");
+        throw new Error("No se puede dejar saldo a cuenta a un usuario casual. Edite la reserva y asígnela a un Cliente registrado de la base de datos.");
     }
 
     const cashSession = await prisma.cashSession.findFirst({
@@ -355,7 +429,7 @@ export async function payReservation(
     });
 
     const totalAmount = Number(reservation.totalAmount);
-    const previouslyPaid = Number(reservation.paidAmount);
+    const previouslyPaid = Number((reservation as any).paidAmount);
     const pendingBalance = totalAmount - previouslyPaid;
 
     if (amountToPay > pendingBalance) {
@@ -432,7 +506,7 @@ export async function payReservation(
                     cashSessionId: cashSession?.id || null,
                     invoiceNumber,
                     subtotal: amountToPay,
-                    total: amountToPay, 
+                    total: amountToPay,
                     status: "completed",
                     paymentMethod,
                     paymentDetails: paymentDetails ? JSON.parse(JSON.stringify(paymentDetails)) : undefined,

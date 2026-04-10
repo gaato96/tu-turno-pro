@@ -51,10 +51,17 @@ export async function getPOSData() {
     return {
         categories,
         products: products.map(p => ({ ...p, costPrice: Number(p.costPrice), salePrice: Number(p.salePrice) })),
-        activeReservations: activeReservations.map(r => ({
+        activeReservations: activeReservations.map((r: any) => ({
             ...r,
+            date: r.date.toISOString().replace("Z", ""),
+            startTime: r.startTime.toISOString().replace("Z", ""),
+            endTime: r.endTime.toISOString().replace("Z", ""),
             courtAmount: Number(r.courtAmount),
+            consumptionAmount: Number(r.consumptionAmount),
+            discount: Number(r.discount),
             totalAmount: Number(r.totalAmount),
+            depositAmount: Number(r.depositAmount || 0),
+            paidAmount: Number(r.paidAmount || 0),
         }))
     };
 }

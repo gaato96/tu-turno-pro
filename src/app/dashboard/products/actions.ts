@@ -149,9 +149,23 @@ export async function getProducts() {
     });
 
     return products.map(p => ({
-        ...p,
+        id: p.id,
+        tenantId: p.tenantId,
+        complexId: p.complexId,
+        categoryId: p.categoryId,
+        supplierId: p.supplierId,
+        name: p.name,
+        description: p.description,
         costPrice: Number(p.costPrice),
         salePrice: Number(p.salePrice),
+        stock: p.stock,
+        minStock: p.minStock,
+        trackStock: p.trackStock,
+        isActive: p.isActive,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+        category: p.category ? { name: p.category.name } : null,
+        supplier: p.supplier ? { name: p.supplier.name } : null
     }));
 }
 

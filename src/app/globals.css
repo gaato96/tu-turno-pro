@@ -204,35 +204,41 @@
   transform: none;
 }
 
-/* Status colors */
+/* Status colors - High Contrast */
 .status-pending {
-  background: #fef3c7;
-  color: #92400e;
+  background: #fde68a;
+  color: #78350f;
+  border: 1px solid #fcd34d;
 }
 
 .status-confirmed {
-  background: #dbeafe;
-  color: #1e40af;
+  background: #bfdbfe;
+  color: #1e3a8a;
+  border: 1px solid #93c5fd;
 }
 
 .status-in_game {
-  background: #d1fae5;
-  color: #065f46;
+  background: #a7f3d0;
+  color: #064e3b;
+  border: 1px solid #6ee7b7;
 }
 
 .status-finished {
-  background: #fce7f3;
-  color: #9d174d;
+  background: #fbcfe8;
+  color: #831843;
+  border: 1px solid #f9a8d4;
 }
 
 .status-paid {
-  background: #e2e8f0;
-  color: #475569;
+  background: #cbd5e1;
+  color: #334155;
+  border: 1px solid #94a3b8;
 }
 
 .status-cancelled {
-  background: #fee2e2;
-  color: #991b1b;
+  background: #fecaca;
+  color: #7f1d1d;
+  border: 1px solid #fca5a5;
 }
 
 .dark .status-pending {

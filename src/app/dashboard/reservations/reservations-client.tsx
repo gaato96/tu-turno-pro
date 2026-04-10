@@ -94,6 +94,7 @@ export default function ReservationsClient({
     complex,
     courts,
     initialReservations,
+    initialEvents,
     currentDate,
     isNew,
     openResId,
@@ -101,6 +102,7 @@ export default function ReservationsClient({
     complex: any;
     courts: Court[];
     initialReservations: any[];
+    initialEvents: any[];
     currentDate: string;
     isNew?: boolean;
     openResId?: string;
@@ -128,6 +130,22 @@ export default function ReservationsClient({
     useEffect(() => {
         setReservations(initialReservations);
     }, [initialReservations]);
+
+    // Events state
+    const [events] = useState(initialEvents);
+
+    // Check if a time slot is blocked by an event (applies to ALL courts)
+    const getEventForSlot = (time: string): any | undefined => {
+        return events.find((ev: any) => {
+            const evStart = format(new Date(ev.startTime), "HH:mm");
+            const evEnd = format(new Date(ev.endTime), "HH:mm");
+            return time >= evStart && time < evEnd;
+        });
+    };
+
+    const isEventStart = (time: string): boolean => {
+        return events.some((ev: any) => format(new Date(ev.startTime), "HH:mm") === time);
+    };
 
     // New reservation form state
     const [newRes, setNewRes] = useState({
@@ -193,6 +211,12 @@ export default function ReservationsClient({
         });
         if (occupied) return;
 
+        // Block if an event covers this slot
+        if (getEventForSlot(time)) {
+            toast.error("Este horario está bloqueado por un evento.");
+            return;
+        }
+
         const court = courts.find((c) => c.id === courtId);
         const startHour = parseInt(time.split(":")[0]);
         const isNight = court ? startHour >= parseInt(court.nightRateStartTime.split(":")[0]) : false;
@@ -236,10 +260,15 @@ export default function ReservationsClient({
                 formData.append("date", newRes.date); // Use selected date in form
                 formData.append("startTime", newRes.startTime);
                 formData.append("endTime", newRes.endTime);
-                
+
                 if (Number(newRes.depositAmount) > 0) {
                     formData.append("depositAmount", newRes.depositAmount);
                     formData.append("paymentMethod", newRes.paymentMethod);
+                }
+
+                if (newRes.isRecurring) {
+                    formData.append("isRecurring", "true");
+                    formData.append("reservationType", "fixed");
                 }
 
 
@@ -276,7 +305,7 @@ export default function ReservationsClient({
                 toast.success("Cobro registrado exitosamente");
 
                 setPaymentReservation(null);
-                
+
                 // We reload to get the latest updated fields like paidAmount and status
                 window.location.reload();
             } catch (error: any) {
@@ -446,7 +475,36 @@ export default function ReservationsClient({
                                             {time}
                                         </div>
 
-                                        {courts.map((court) => {
+                                        {courts.map((court, courtIndex) => {
+                                            // Check event FIRST (events block ALL courts)
+                                            const eventBlock = getEventForSlot(time);
+                                            const isEvStart = eventBlock && isEventStart(time);
+
+                                            if (eventBlock && !isEvStart) return <div key={court.id} className="border-r border-border/30 last:border-r-0" />;
+
+                                            if (eventBlock && isEvStart) {
+                                                const evSpan = (() => {
+                                                    const s = new Date(eventBlock.startTime);
+                                                    const e = new Date(eventBlock.endTime);
+                                                    return ((e.getHours() * 60 + e.getMinutes()) - (s.getHours() * 60 + s.getMinutes())) / 30;
+                                                })();
+                                                return (
+                                                    <div key={court.id} className="border-r border-border/30 last:border-r-0 p-1" style={{ gridRow: `span ${evSpan}` }}>
+                                                        <div className="h-full rounded-xl p-2.5 bg-red-500/80 dark:bg-red-600/60 border border-red-600 cursor-default">
+                                                            {courtIndex === 0 && (
+                                                                <>
+                                                                    <p className="text-xs font-bold truncate text-white">🎉 {eventBlock.name}</p>
+                                                                    <p className="text-[10px] opacity-80 text-white">{format(new Date(eventBlock.startTime), "HH:mm")} — {format(new Date(eventBlock.endTime), "HH:mm")}</p>
+                                                                </>
+                                                            )}
+                                                            {courtIndex > 0 && (
+                                                                <p className="text-[10px] font-semibold text-white/70 truncate">BLOQUEADO</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+
                                             const reservation = getReservationForSlot(court.id, time);
                                             const isStart = reservation && isSlotStart(court.id, time);
                                             const span = reservation && isStart ? getSlotSpan(reservation) : 0;
@@ -666,11 +724,11 @@ export default function ReservationsClient({
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <Label>Seña / Abono Inicial (Opcional)</Label>
-                                <Input 
-                                    type="number" 
-                                    placeholder="0" 
-                                    value={newRes.depositAmount} 
-                                    onChange={(e) => setNewRes({ ...newRes, depositAmount: e.target.value })} 
+                                <Input
+                                    type="number"
+                                    placeholder="0"
+                                    value={newRes.depositAmount}
+                                    onChange={(e) => setNewRes({ ...newRes, depositAmount: e.target.value })}
                                     className="mt-1.5 rounded-xl"
                                 />
                             </div>
@@ -702,7 +760,7 @@ export default function ReservationsClient({
                             <Label htmlFor="recurring" className="cursor-pointer">
                                 <span className="font-semibold">Es Fijo (Recurrente)</span>
                                 <br />
-                                <span className="text-xs text-muted-foreground">Crea 4 reservas semanales</span>
+                                <span className="text-xs text-muted-foreground">Crea 52 reservas semanales (1 año)</span>
                             </Label>
                         </div>
 

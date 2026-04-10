@@ -26,9 +26,9 @@ export default async function ReservationsPage({
         calendarData = await getCalendarData(targetDateStr);
     } catch (e) {
         console.error("RESERVATIONS FETCH ERROR:", e);
-        calendarData = { complex: null, complexes: [], courts: [], reservations: [] };
+        calendarData = { complex: null, complexes: [], courts: [], reservations: [], events: [] };
     }
-    const { complex, complexes, courts, reservations } = calendarData;
+    const { complex, complexes, courts, reservations, events } = calendarData;
 
     if (!complex) {
         if (complexes && complexes.length > 0) {
@@ -46,6 +46,7 @@ export default async function ReservationsPage({
             complex={complex}
             courts={courts}
             initialReservations={reservations}
+            initialEvents={events || []}
             currentDate={targetDateStr}
             isNew={isNew}
             openResId={openResId}
