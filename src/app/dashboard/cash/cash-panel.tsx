@@ -131,7 +131,7 @@ export function CashPanel({ openSession, history }: { openSession: any, history:
                                         <div className="flex items-center gap-2">
                                             <span className="font-bold text-emerald-600 dark:text-emerald-400">{s.invoiceNumber || 'Ticket'}</span>
                                             <span className="text-muted-foreground">{s.reservationId ? 'Cobro de Reserva' : 'Venta de Kiosco'}</span>
-                                            <Badge variant="outline" className="text-[10px]">{s.paymentMethod.toUpperCase()}</Badge>
+                                            <Badge variant="outline" className="text-[10px]">{s.paymentMethod?.toUpperCase() || 'N/A'}</Badge>
                                         </div>
                                         <span className="font-bold text-foreground">${s.total.toLocaleString()}</span>
                                     </div>
