@@ -481,9 +481,9 @@ export async function payReservation(
             await tx.sale.updateMany({
                 where: { reservationId, status: "on_tab" },
                 data: {
-                    status: "completed",
-                    paymentMethod: paymentMethod,
-                    cashSessionId: cashSession?.id || null, // Link to active session
+                    status: "paid_with_reservation",
+                    // We DO NOT set cashSessionId here because the Master Sale created below
+                    // fully accounts for this money in the cash register.
                 }
             });
         }
