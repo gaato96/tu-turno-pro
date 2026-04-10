@@ -62,7 +62,7 @@ export async function getDashboardData() {
             take: 10
         }),
         prisma.reservation.findMany({
-            where: { tenantId, complexId: targetComplexId, status: "pending" },
+            where: { tenantId, complexId: targetComplexId, status: "pending", source: "web" },
             include: {
                 court: { select: { name: true, complex: { select: { name: true } } } }
             },

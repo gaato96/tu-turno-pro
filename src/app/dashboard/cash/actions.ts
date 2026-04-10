@@ -60,6 +60,8 @@ export async function getCashData() {
         return {
             openSession: {
                 ...openSession,
+                sales: openSession.sales.map((s: any) => ({ ...s, total: Number(s.total), subtotal: Number(s.subtotal) })),
+                expenses: openSession.expenses.map((e: any) => ({ ...e, amount: Number(e.amount) })),
                 openingBalance: Number(openSession.openingBalance),
                 salesCount: sales.length,
                 resTotal,

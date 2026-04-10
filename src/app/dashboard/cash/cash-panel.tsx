@@ -122,6 +122,34 @@ export function CashPanel({ openSession, history }: { openSession: any, history:
                             </Card>
 
                         </div>
+                        {/* Transaction Details */}
+                        <div className="mt-8 space-y-4">
+                            <h4 className="font-bold text-lg">Operaciones Detalladas del Turno</h4>
+                            <div className="bg-white dark:bg-slate-900 rounded-xl border p-4 space-y-3">
+                                {openSession.sales?.map((s: any) => (
+                                    <div key={s.id} className="flex justify-between items-center text-sm font-medium border-b dark:border-border/50 pb-2 last:border-0 last:pb-0">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-emerald-600 dark:text-emerald-400">{s.invoiceNumber || 'Ticket'}</span>
+                                            <span className="text-muted-foreground">{s.reservationId ? 'Cobro de Reserva' : 'Venta de Kiosco'}</span>
+                                            <Badge variant="outline" className="text-[10px]">{s.paymentMethod.toUpperCase()}</Badge>
+                                        </div>
+                                        <span className="font-bold text-foreground">${s.total.toLocaleString()}</span>
+                                    </div>
+                                ))}
+                                {openSession.expenses?.map((e: any) => (
+                                    <div key={e.id} className="flex justify-between items-center text-sm font-medium border-b dark:border-border/50 pb-2 last:border-0 last:pb-0">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-red-600 dark:text-red-400">Gasto</span>
+                                            <span className="text-muted-foreground">{e.description}</span>
+                                        </div>
+                                        <span className="font-bold text-red-600 dark:text-red-400">-${e.amount.toLocaleString()}</span>
+                                    </div>
+                                ))}
+                                {(!openSession.sales?.length && !openSession.expenses?.length) && (
+                                    <p className="text-sm text-muted-foreground text-center py-4">No hay operaciones registradas en esta caja.</p>
+                                )}
+                            </div>
+                        </div>
                     </Card>
                 </>
             ) : (
