@@ -391,7 +391,11 @@ export function ProductsClient({ initialProducts, initialCategories, initialSupp
                             <div className="space-y-2">
                                 <Label>Categoría</Label>
                                 <Select value={productForm.categoryId} onValueChange={(v) => setProductForm({ ...productForm, categoryId: v })}>
-                                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                                    <SelectTrigger className="rounded-xl">
+                                        <SelectValue placeholder="Seleccionar...">
+                                            {productForm.categoryId ? initialCategories.find((c: any) => c.id === productForm.categoryId)?.name || "Seleccionar..." : "Seleccionar..."}
+                                        </SelectValue>
+                                    </SelectTrigger>
                                     <SelectContent>
                                         {initialCategories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                                     </SelectContent>
@@ -400,7 +404,11 @@ export function ProductsClient({ initialProducts, initialCategories, initialSupp
                             <div className="space-y-2">
                                 <Label>Proveedor (Opcional)</Label>
                                 <Select value={productForm.supplierId || "none"} onValueChange={(v) => setProductForm({ ...productForm, supplierId: v === "none" ? null : v })}>
-                                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Opcional..." /></SelectTrigger>
+                                    <SelectTrigger className="rounded-xl">
+                                        <SelectValue placeholder="Opcional...">
+                                            {productForm.supplierId && productForm.supplierId !== "none" ? initialSuppliers.find((s: any) => s.id === productForm.supplierId)?.name || "Opcional..." : "Opcional..."}
+                                        </SelectValue>
+                                    </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="none">Ninguno</SelectItem>
                                         {initialSuppliers.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}

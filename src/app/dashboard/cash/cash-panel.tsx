@@ -99,6 +99,10 @@ export function CashPanel({ openSession, history }: { openSession: any, history:
                                         <span className="font-bold text-emerald-600">${openSession.resTotal.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between border-b pb-1 mb-1">
+                                        <span className="font-medium">Ingresos por Señas</span>
+                                        <span className="font-bold text-emerald-600">${openSession.senasTotal?.toLocaleString() || 0}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b pb-1 mb-1">
                                         <span className="font-medium">Kiosco</span>
                                         <span className="font-bold text-blue-600">${openSession.kioskTotal.toLocaleString()}</span>
                                     </div>

@@ -98,6 +98,7 @@ export default function ReservationsClient({
     currentDate,
     isNew,
     openResId,
+    userRole,
 }: {
     complex: any;
     courts: Court[];
@@ -106,6 +107,7 @@ export default function ReservationsClient({
     currentDate: string;
     isNew?: boolean;
     openResId?: string;
+    userRole?: string;
 }) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
@@ -117,7 +119,7 @@ export default function ReservationsClient({
         setSelectedDate(new Date(currentDate + "T12:00:00"));
     }, [currentDate]);
 
-    const [viewType, setViewType] = useState<"day" | "week">("day");
+    const [viewType, setViewType] = useState<"day" | "week" | "list">("day");
     const [selectedCourtForWeek, setSelectedCourtForWeek] = useState<string>(courts[0]?.id || "");
     const [showNewReservation, setShowNewReservation] = useState(isNew || false);
 
@@ -391,6 +393,16 @@ export default function ReservationsClient({
                         >
                             Semana
                         </Button>
+                        {userRole === "admin" && (
+                            <Button
+                                variant={viewType === "list" ? "secondary" : "ghost"}
+                                size="sm"
+                                className="rounded-lg text-xs text-amber-700 dark:text-amber-500"
+                                onClick={() => setViewType("list")}
+                            >
+                                Registro
+                            </Button>
+                        )}
                     </div>
                     <Button
                         onClick={() => {
@@ -536,7 +548,7 @@ export default function ReservationsClient({
                             })}
                         </div>
                     </div>
-                ) : (
+                ) : viewType === "week" ? (
                     <div className="flex flex-col">
                         <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -622,7 +634,39 @@ export default function ReservationsClient({
                             </div>
                         </div>
                     </div>
-                )}
+                ) : viewType === "list" && userRole === "admin" ? (
+                    <div className="flex flex-col">
+                        <div className="p-4 border-b bg-muted/30">
+                            <h3 className="font-bold">Registro de Turnos ({format(selectedDate, "dd/MM/yyyy")})</h3>
+                            <p className="text-xs text-muted-foreground">Vista de todos los turnos del día corriente. Solo visible para administradores.</p>
+                        </div>
+                        <div className="p-4">
+                            {reservations.length === 0 ? (
+                                <p className="text-sm text-center py-8 text-muted-foreground">No hay turnos registrados para esta fecha.</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {reservations.map(r => (
+                                        <div key={r.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border bg-card hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setDetailReservation(r)}>
+                                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
+                                                <div className="flex items-center gap-2">
+                                                    <Badge className={`${statusConfig[r.status]?.class} rounded-full`}>{statusConfig[r.status]?.label}</Badge>
+                                                    <span className="text-sm font-bold">{format(new Date(r.startTime), "HH:mm")} - {format(new Date(r.endTime), "HH:mm")}</span>
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-sm">{r.customerName}</p>
+                                                    <p className="text-xs text-muted-foreground">{courts.find(c => c.id === r.courtId)?.name}</p>
+                                                </div>
+                                            </div>
+                                            <div className="mt-2 sm:mt-0 text-right">
+                                                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">${Number(r.paidAmount).toLocaleString()} <span className="text-muted-foreground font-normal text-xs">/ ${Number(r.totalAmount).toLocaleString()}</span></p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : null}
             </Card>
 
 

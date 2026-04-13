@@ -50,6 +50,7 @@ export default async function ReservationsPage({
             currentDate={targetDateStr}
             isNew={isNew}
             openResId={openResId}
+            userRole={userRole}
         />
     );
 }

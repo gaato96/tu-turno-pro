@@ -45,7 +45,7 @@ export function PaymentDialog({ open, onOpenChange, totalAmount, hasCustomer = t
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[420px] rounded-2xl">
+            <DialogContent className="sm:max-w-[420px] rounded-2xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="text-xl font-bold">Cobrar</DialogTitle>
                 </DialogHeader>

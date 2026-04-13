@@ -1,10 +1,18 @@
 import { getSettingsData } from "./actions";
 import { SettingsClient } from "./settings-client";
 import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
+    const session = await auth();
+    const userRole = (session?.user as any)?.role || "staff";
+
+    if (userRole === "staff") {
+        redirect("/dashboard");
+    }
+
     try {
         const complex = await getSettingsData();
         return (

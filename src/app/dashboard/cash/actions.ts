@@ -26,6 +26,9 @@ export async function getCashData() {
                 where: { status: { not: "cancelled" } },
                 include: { items: true }
             },
+            payments: {
+                where: { concept: "seña" }
+            },
             expenses: true
         }
     });
@@ -47,12 +50,27 @@ export async function getCashData() {
 
         const resTotal = reservationSales.reduce((sum, s) => sum + Number(s.total), 0);
         const kioskTotal = kioskSales.reduce((sum, s) => sum + Number(s.total), 0);
+        const senasTotal = openSession.payments ? openSession.payments.reduce((sum: number, p: any) => sum + Number(p.amount), 0) : 0;
 
         const expensesTotal = openSession.expenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
-        const cashTotal = sales.filter(s => s.paymentMethod === "cash").reduce((sum, s) => sum + Number(s.total), 0);
-        const cardTotal = sales.filter(s => s.paymentMethod === "card").reduce((sum, s) => sum + Number(s.total), 0);
-        const transferTotal = sales.filter(s => s.paymentMethod === "transfer").reduce((sum, s) => sum + Number(s.total), 0);
+        const cashTotal = sales.filter(s => s.paymentMethod === "cash").reduce((sum, s) => sum + Number(s.total), 0)
+            + sales.filter(s => s.paymentMethod === "mixed").reduce((sum, s) => {
+                const details = s.paymentDetails as any;
+                return sum + (details?.cash ? Number(details.cash) : 0);
+            }, 0);
+
+        const cardTotal = sales.filter(s => s.paymentMethod === "card").reduce((sum, s) => sum + Number(s.total), 0)
+            + sales.filter(s => s.paymentMethod === "mixed").reduce((sum, s) => {
+                const details = s.paymentDetails as any;
+                return sum + (details?.card ? Number(details.card) : 0);
+            }, 0);
+
+        const transferTotal = sales.filter(s => s.paymentMethod === "transfer").reduce((sum, s) => sum + Number(s.total), 0)
+            + sales.filter(s => s.paymentMethod === "mixed").reduce((sum, s) => {
+                const details = s.paymentDetails as any;
+                return sum + (details?.transfer ? Number(details.transfer) : 0);
+            }, 0);
 
         const salesTotal = cashTotal + cardTotal + transferTotal;
         const expectedBalance = Number(openSession.openingBalance) + cashTotal - expensesTotal;
@@ -66,6 +84,7 @@ export async function getCashData() {
                 salesCount: sales.length,
                 resTotal,
                 kioskTotal,
+                senasTotal,
                 expensesTotal,
                 cashTotal,
                 cardTotal,
@@ -148,9 +167,23 @@ export async function closeCashSession(closingBalance: number, notes?: string) {
 
     const sales = openSession.sales;
     const expensesTotal = openSession.expenses.reduce((sum, e) => sum + Number(e.amount), 0);
-    const cashTotal = sales.filter(s => s.paymentMethod === "cash").reduce((sum, s) => sum + Number(s.total), 0);
-    const cardTotal = sales.filter(s => s.paymentMethod === "card").reduce((sum, s) => sum + Number(s.total), 0);
-    const transferTotal = sales.filter(s => s.paymentMethod === "transfer").reduce((sum, s) => sum + Number(s.total), 0);
+    const cashTotal = sales.filter(s => s.paymentMethod === "cash").reduce((sum, s) => sum + Number(s.total), 0)
+        + sales.filter(s => s.paymentMethod === "mixed").reduce((sum, s) => {
+            const details = s.paymentDetails as any;
+            return sum + (details?.cash ? Number(details.cash) : 0);
+        }, 0);
+
+    const cardTotal = sales.filter(s => s.paymentMethod === "card").reduce((sum, s) => sum + Number(s.total), 0)
+        + sales.filter(s => s.paymentMethod === "mixed").reduce((sum, s) => {
+            const details = s.paymentDetails as any;
+            return sum + (details?.card ? Number(details.card) : 0);
+        }, 0);
+
+    const transferTotal = sales.filter(s => s.paymentMethod === "transfer").reduce((sum, s) => sum + Number(s.total), 0)
+        + sales.filter(s => s.paymentMethod === "mixed").reduce((sum, s) => {
+            const details = s.paymentDetails as any;
+            return sum + (details?.transfer ? Number(details.transfer) : 0);
+        }, 0);
     const expectedBalance = Number(openSession.openingBalance) + cashTotal - expensesTotal;
     const difference = closingBalance - expectedBalance;
 

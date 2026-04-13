@@ -73,9 +73,10 @@ export async function updateComplexInfo(complexId: string, name: string, phone: 
 }
 
 export async function updateComplexPaymentSettings(
-    complexId: string, 
-    requiresDeposit: boolean, 
-    depositPercentage: number, 
+    complexId: string,
+    requiresDeposit: boolean,
+    depositPercentage: number | null,
+    depositAmount: number | null,
     bankAccountInfo: string
 ) {
     const session = await auth();
@@ -83,10 +84,11 @@ export async function updateComplexPaymentSettings(
 
     await prisma.complex.update({
         where: { id: complexId },
-        data: { 
-            requiresDeposit, 
-            depositPercentage, 
-            bankAccountInfo 
+        data: {
+            requiresDeposit,
+            depositPercentage,
+            depositAmount,
+            bankAccountInfo
         }
     });
 

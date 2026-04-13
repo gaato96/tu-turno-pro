@@ -151,6 +151,8 @@ type DashboardData = {
     finishedReservations: any[];
     pendingReservations: any[];
     topProducts: any[];
+    isCashOpen: boolean;
+    userRole: string;
 };
 
 export default function DashboardClient({ initialData, greeting }: { initialData: DashboardData | null; greeting: string }) {
@@ -203,18 +205,33 @@ export default function DashboardClient({ initialData, greeting }: { initialData
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
                     <div className="flex flex-wrap items-center gap-2">
-                        <Link href={`/dashboard/reservations?new=true`}>
-                            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 rounded-xl">
-                                <Plus className="w-4 h-4 mr-2" />
-                                Nueva Reserva
-                            </Button>
-                        </Link>
-                        <Link href="/dashboard/pos">
-                            <Button variant="outline" className="rounded-xl">
-                                <ShoppingCart className="w-4 h-4 mr-2" />
-                                Nueva Venta
-                            </Button>
-                        </Link>
+                        {(!data?.isCashOpen && data?.userRole !== "admin") ? (
+                            <>
+                                <Button disabled className="bg-emerald-600/50 text-white shadow-lg shadow-emerald-500/20 rounded-xl cursor-not-allowed" title="Debes abrir caja primero">
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Nueva Reserva
+                                </Button>
+                                <Button disabled variant="outline" className="rounded-xl opacity-50 cursor-not-allowed" title="Debes abrir caja primero">
+                                    <ShoppingCart className="w-4 h-4 mr-2" />
+                                    Nueva Venta
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Link href={`/dashboard/reservations?new=true`}>
+                                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 rounded-xl">
+                                        <Plus className="w-4 h-4 mr-2" />
+                                        Nueva Reserva
+                                    </Button>
+                                </Link>
+                                <Link href="/dashboard/pos">
+                                    <Button variant="outline" className="rounded-xl">
+                                        <ShoppingCart className="w-4 h-4 mr-2" />
+                                        Nueva Venta
+                                    </Button>
+                                </Link>
+                            </>
+                        )}
                         <Link href="/dashboard/cash">
                             <Button variant="outline" className="rounded-xl bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400">
                                 <Wallet className="w-4 h-4 mr-2" />
@@ -234,6 +251,28 @@ export default function DashboardClient({ initialData, greeting }: { initialData
                     </div>
                 </div>
             </div>
+
+            {/* Cash Alert */}
+            {!data?.isCashOpen && (
+                <div className="animate-slide-up p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/20 shrink-0">
+                            <Wallet className="w-5 h-5 text-white animate-pulse" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-extrabold tracking-tight text-amber-800 dark:text-amber-400">La Caja está Cerrada</h3>
+                            <p className="text-sm text-amber-700 dark:text-amber-500 font-medium">
+                                Recomendamos abrir caja antes de comenzar a operar. {data?.userRole !== "admin" ? "Las operaciones están bloqueadas." : ""}
+                            </p>
+                        </div>
+                    </div>
+                    <Link href="/dashboard/cash" onClick={() => refresh()}>
+                        <Button className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-md w-full sm:w-auto shrink-0 font-bold whitespace-nowrap">
+                            Abrir Caja Ahora
+                        </Button>
+                    </Link>
+                </div>
+            )}
 
             {/* Pending Web Reservations Alert */}
             <PendingReservationsAlert pendingReservations={data?.pendingReservations ?? []} />

@@ -29,7 +29,7 @@ export async function getDashboardData() {
     const endOfDay = new Date(localTime);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const [todayReservations, activeReservations, upcomingReservations, pendingReservations, finishedReservations, todaySales, topProducts, complexes] = await Promise.all([
+    const [todayReservations, activeReservations, upcomingReservations, pendingReservations, finishedReservations, todaySales, topProducts, complexes, openCashSession] = await Promise.all([
         prisma.reservation.count({
             where: { tenantId, complexId: targetComplexId, date: { gte: startOfDay, lte: endOfDay }, status: { notIn: ["cancelled"] } }
         }),
@@ -115,6 +115,9 @@ export async function getDashboardData() {
         prisma.complex.findMany({
             where: { tenantId, id: targetComplexId },
             select: { id: true, name: true }
+        }),
+        prisma.cashSession.findFirst({
+            where: { tenantId, complexId: targetComplexId, status: "open" }
         })
     ]);
 
@@ -186,5 +189,7 @@ export async function getDashboardData() {
             revenue: tp._sum.subtotal
         })),
         complexes,
+        isCashOpen: !!openCashSession,
+        userRole: (session?.user as any)?.role
     };
 }

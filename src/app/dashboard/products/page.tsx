@@ -1,10 +1,19 @@
 import { ProductsClient } from "./products-client";
 import { getProducts, getCategories, getSuppliers } from "./actions";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function ProductsPage() {
+    const session = await auth();
+    const userRole = (session?.user as any)?.role || "staff";
+
+    if (userRole === "staff") {
+        redirect("/dashboard");
+    }
+
     let products: any[] = [], categories: any[] = [], suppliers: any[] = [];
     try {
         [products, categories, suppliers] = await Promise.all([getProducts(), getCategories(), getSuppliers()]);

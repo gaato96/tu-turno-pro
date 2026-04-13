@@ -133,8 +133,8 @@ export function Sidebar({ activeComplexName, userRoleProp, activeModules }: { ac
                 ) : (
                     <>
                         {navigation.map((item) => {
-                            // Hide "Complejos" and "Configuración" for staff (Encargado)
-                            if (userRole !== "admin" && (item.name === "Complejos" || item.name === "Configuración")) {
+                            // Manager (Encargado) can only see these specific modules
+                            if (userRole !== "admin" && !["Dashboard", "Reservas", "Eventos", "Kiosko (POS)", "Caja"].includes(item.name)) {
                                 return null;
                             }
 

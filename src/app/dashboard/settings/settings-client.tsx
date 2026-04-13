@@ -49,20 +49,21 @@ export function SettingsClient({ initialComplex }: { initialComplex: any }) {
     const [schedules, setSchedules] = useState(initialSchedules);
 
     // Bank Account Data State parsing
-    const defaultBank = { alias: "", cbu: "", titular: "", porcentajeSena: "30" };
+    const defaultBank = { alias: "", cbu: "", titular: "", tipoSena: "porcentaje", valorSena: "30" };
     let parsedBank = defaultBank;
     try {
         if (initialComplex.bankAccountInfo) {
             parsedBank = { ...defaultBank, ...JSON.parse(initialComplex.bankAccountInfo) };
         }
-    } catch(e) {}
+    } catch (e) { }
 
     const [paymentConfig, setPaymentConfig] = useState({
         requiresDeposit: initialComplex.requiresDeposit || false,
         alias: parsedBank.alias,
         cbu: parsedBank.cbu,
         titular: parsedBank.titular,
-        porcentajeSena: parsedBank.porcentajeSena
+        tipoSena: parsedBank.tipoSena || "porcentaje",
+        valorSena: parsedBank.valorSena !== undefined ? parsedBank.valorSena : (parsedBank as any).porcentajeSena || "30"
     });
 
     const handleScheduleChange = (dayIndex: number, field: string, value: any) => {
@@ -100,9 +101,15 @@ export function SettingsClient({ initialComplex }: { initialComplex: any }) {
                     alias: paymentConfig.alias,
                     cbu: paymentConfig.cbu,
                     titular: paymentConfig.titular,
-                    porcentajeSena: paymentConfig.porcentajeSena
+                    tipoSena: paymentConfig.tipoSena,
+                    valorSena: paymentConfig.valorSena
                 });
-                await updateComplexPaymentSettings(initialComplex.id, paymentConfig.requiresDeposit, Number(paymentConfig.porcentajeSena), bankJson);
+
+                const isPorcentaje = paymentConfig.tipoSena === "porcentaje";
+                const depositPercentage = isPorcentaje ? Number(paymentConfig.valorSena) : null;
+                const depositAmount = isPorcentaje ? null : Number(paymentConfig.valorSena);
+
+                await updateComplexPaymentSettings(initialComplex.id, paymentConfig.requiresDeposit, depositPercentage, depositAmount, bankJson);
                 toast.success("Configuración de pagos guardada");
                 router.refresh();
             } catch (e: any) {
@@ -118,34 +125,7 @@ export function SettingsClient({ initialComplex }: { initialComplex: any }) {
                 <p className="text-muted-foreground mt-1">Ajustes generales del complejo</p>
             </div>
 
-            {/* Complex Info */}
-            <Card className="card-elevated p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Building2 className="w-5 h-5 text-emerald-600" />
-                        <h2 className="text-lg font-bold">Información del Complejo</h2>
-                    </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                    <div>
-                        <Label>Nombre</Label>
-                        <Input value={info.name} onChange={(e) => setInfo({ ...info, name: e.target.value })} className="mt-1.5 rounded-xl" />
-                    </div>
-                    <div>
-                        <Label>Teléfono</Label>
-                        <Input value={info.phone} onChange={(e) => setInfo({ ...info, phone: e.target.value })} className="mt-1.5 rounded-xl" />
-                    </div>
-                    <div className="col-span-full">
-                        <Label>Dirección</Label>
-                        <Input value={info.address} onChange={(e) => setInfo({ ...info, address: e.target.value })} className="mt-1.5 rounded-xl" />
-                    </div>
-                </div>
-                <div className="flex justify-end pt-2">
-                    <Button onClick={handleSaveInfo} disabled={isPending} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md">
-                        <Save className="w-4 h-4 mr-2" /> Guardar Info
-                    </Button>
-                </div>
-            </Card>
+            {/* Complex Info - REMOVED (managed by SuperAdmin/Complexes) */}
 
             {/* Operating Hours (Per Day) */}
             <Card className="card-elevated p-6 space-y-4">
@@ -214,31 +194,52 @@ export function SettingsClient({ initialComplex }: { initialComplex: any }) {
                             <p className="font-bold text-emerald-800 dark:text-emerald-400">Solicitar Seña Obligatoria</p>
                             <p className="text-sm text-emerald-700/80 dark:text-emerald-500/80">Requerir comprobar un pago por transferencia para confirmar la reserva online.</p>
                         </div>
-                        <Switch 
-                            checked={paymentConfig.requiresDeposit} 
-                            onCheckedChange={(c) => setPaymentConfig({...paymentConfig, requiresDeposit: c})} 
+                        <Switch
+                            checked={paymentConfig.requiresDeposit}
+                            onCheckedChange={(c) => setPaymentConfig({ ...paymentConfig, requiresDeposit: c })}
                         />
                     </div>
                 </div>
 
                 {paymentConfig.requiresDeposit && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-2 animate-fade-in">
-                        <div>
-                            <Label>Porcentaje de Seña (%)</Label>
-                            <Input type="number" min="1" max="100" value={paymentConfig.porcentajeSena} onChange={(e) => setPaymentConfig({...paymentConfig, porcentajeSena: e.target.value})} className="mt-1.5 rounded-xl" placeholder="Ej: 30" />
-                            <p className="text-xs text-muted-foreground mt-1">Se calculará este porcentaje sobre el valor de la cancha.</p>
+                        <div className="space-y-4 col-span-full md:col-span-1">
+                            <div>
+                                <Label>Tipo de Seña</Label>
+                                <div className="flex items-center gap-4 mt-2">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="radio" name="tipoSena" value="porcentaje" checked={paymentConfig.tipoSena === "porcentaje"} onChange={() => setPaymentConfig({ ...paymentConfig, tipoSena: "porcentaje" })} className="accent-emerald-600" />
+                                        <span className="text-sm">Porcentaje (%)</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="radio" name="tipoSena" value="fija" checked={paymentConfig.tipoSena === "fija"} onChange={() => setPaymentConfig({ ...paymentConfig, tipoSena: "fija" })} className="accent-emerald-600" />
+                                        <span className="text-sm">Monto Fijo ($)</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <Label>{paymentConfig.tipoSena === "porcentaje" ? "Porcentaje de Seña (%)" : "Monto Fijo de Seña ($)"}</Label>
+                                <Input type="number" min="1" max={paymentConfig.tipoSena === "porcentaje" ? "100" : undefined} value={paymentConfig.valorSena} onChange={(e) => setPaymentConfig({ ...paymentConfig, valorSena: e.target.value })} className="mt-1.5 rounded-xl" placeholder={paymentConfig.tipoSena === "porcentaje" ? "Ej: 30" : "Ej: 5000"} />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {paymentConfig.tipoSena === "porcentaje"
+                                        ? "Se calculará este porcentaje sobre el valor de la cancha al reservar."
+                                        : "Se cobrará este monto fijo independientemente del valor de la cancha."}
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <Label>Titular de la Cuenta</Label>
-                            <Input value={paymentConfig.titular} onChange={(e) => setPaymentConfig({...paymentConfig, titular: e.target.value})} className="mt-1.5 rounded-xl" placeholder="Ej: Juan Perez" />
-                        </div>
-                        <div>
-                            <Label>Alias</Label>
-                            <Input value={paymentConfig.alias} onChange={(e) => setPaymentConfig({...paymentConfig, alias: e.target.value})} className="mt-1.5 rounded-xl" placeholder="Ej: MI.CANCHA.MP" />
-                        </div>
-                        <div>
-                            <Label>CBU / CVU</Label>
-                            <Input value={paymentConfig.cbu} onChange={(e) => setPaymentConfig({...paymentConfig, cbu: e.target.value})} className="mt-1.5 rounded-xl" placeholder="Ej: 00000031000..." />
+                        <div className="space-y-4">
+                            <div>
+                                <Label>Titular de la Cuenta</Label>
+                                <Input value={paymentConfig.titular} onChange={(e) => setPaymentConfig({ ...paymentConfig, titular: e.target.value })} className="mt-1.5 rounded-xl" placeholder="Ej: Juan Perez" />
+                            </div>
+                            <div>
+                                <Label>Alias</Label>
+                                <Input value={paymentConfig.alias} onChange={(e) => setPaymentConfig({ ...paymentConfig, alias: e.target.value })} className="mt-1.5 rounded-xl" placeholder="Ej: MI.CANCHA.MP" />
+                            </div>
+                            <div>
+                                <Label>CBU / CVU</Label>
+                                <Input value={paymentConfig.cbu} onChange={(e) => setPaymentConfig({ ...paymentConfig, cbu: e.target.value })} className="mt-1.5 rounded-xl" placeholder="Ej: 00000031000..." />
+                            </div>
                         </div>
                     </div>
                 )}
@@ -265,32 +266,7 @@ export function SettingsClient({ initialComplex }: { initialComplex: any }) {
                 </div>
             </Card>
 
-            {/* Modules */}
-            <Card className="card-elevated p-6 space-y-4">
-                <div className="flex items-center gap-3">
-                    <Shield className="w-5 h-5 text-emerald-600" />
-                    <h2 className="text-lg font-bold">Módulos Activos</h2>
-                </div>
-                <div className="space-y-3">
-                    {[
-                        { name: "Reservas", desc: "Gestión de turnos y calendario", enabled: true },
-                        { name: "POS / Kiosko", desc: "Punto de venta", enabled: true },
-                        { name: "Inventario", desc: "Control de stock y productos", enabled: true },
-                        { name: "Reportes", desc: "Analíticas y reportes financieros", enabled: true },
-                    ].map((mod) => (
-                        <div key={mod.name} className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
-                            <div>
-                                <p className="font-medium">{mod.name}</p>
-                                <p className="text-xs text-muted-foreground">{mod.desc}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Badge className="bg-emerald-100 text-emerald-700 rounded-full text-xs">Activo</Badge>
-                                <Switch defaultChecked={mod.enabled} />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </Card>
+            {/* Modules - REMOVED (managed by SuperAdmin) */}
         </div>
     );
 }
