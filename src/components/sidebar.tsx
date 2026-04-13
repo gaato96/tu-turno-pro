@@ -134,7 +134,7 @@ export function Sidebar({ activeComplexName, userRoleProp, activeModules }: { ac
                     <>
                         {navigation.map((item) => {
                             // Manager (Encargado) can only see these specific modules
-                            if (userRole !== "admin" && !["Dashboard", "Reservas", "Eventos", "Kiosko (POS)", "Caja"].includes(item.name)) {
+                            if (userRole !== "admin" && !["Dashboard", "Reservas", "Eventos", "Kiosko (POS)", "Caja", "Clientes"].includes(item.name)) {
                                 return null;
                             }
 

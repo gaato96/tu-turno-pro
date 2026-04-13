@@ -11,10 +11,6 @@ export default async function CustomersPage() {
   const session = await auth();
   const userRole = (session?.user as any)?.role || "staff";
 
-  if (userRole === "staff") {
-    redirect("/dashboard");
-  }
-
   const customers = await getCustomers();
 
   return (

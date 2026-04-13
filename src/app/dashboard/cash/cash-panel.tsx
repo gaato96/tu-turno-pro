@@ -131,14 +131,41 @@ export function CashPanel({ openSession, history }: { openSession: any, history:
                             <h4 className="font-bold text-lg">Operaciones Detalladas del Turno</h4>
                             <div className="bg-white dark:bg-slate-900 rounded-xl border p-4 space-y-3">
                                 {openSession.sales?.map((s: any) => (
-                                    <div key={s.id} className="flex justify-between items-center text-sm font-medium border-b dark:border-border/50 pb-2 last:border-0 last:pb-0">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-bold text-emerald-600 dark:text-emerald-400">{s.invoiceNumber || 'Ticket'}</span>
-                                            <span className="text-muted-foreground">{s.reservationId ? 'Cobro de Reserva' : 'Venta de Kiosco'}</span>
-                                            <Badge variant="outline" className="text-[10px]">{s.paymentMethod?.toUpperCase() || 'N/A'}</Badge>
+                                    <details key={s.id} className="group border-b dark:border-border/50 pb-2 last:border-0 last:pb-0">
+                                        <summary className="flex justify-between items-center text-sm font-medium cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:bg-muted/30 p-1 -mx-1 rounded-lg transition-colors">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-emerald-600 dark:text-emerald-400 opacity-70 group-open:opacity-100 transition-opacity">▶</span>
+                                                <span className="font-bold text-emerald-600 dark:text-emerald-400">{s.invoiceNumber || 'Ticket'}</span>
+                                                <span className="text-muted-foreground">{s.reservationId ? 'Cobro de Reserva' : 'Venta de Kiosco'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-muted-foreground">{s.createdAt ? format(new Date(s.createdAt), "HH:mm") : ""}</span>
+                                                <span className="font-bold text-foreground">${s.total.toLocaleString()}</span>
+                                            </div>
+                                        </summary>
+                                        <div className="mt-2 text-xs bg-muted/50 p-3 rounded-lg flex flex-col gap-1 border">
+                                            <p><span className="font-medium text-muted-foreground">ID Operación:</span> {s.id}</p>
+                                            <p><span className="font-medium text-muted-foreground">Método Principal:</span> <Badge variant="outline" className="text-[10px] ml-1">{s.paymentMethod?.toUpperCase() || 'N/A'}</Badge></p>
+                                            {s.paymentMethod === 'mixed' && s.paymentDetails && (
+                                                <div className="pl-4 border-l-2 border-emerald-500/20 mt-1 space-y-1">
+                                                    <p className="text-muted-foreground font-semibold">Detalle Mixto:</p>
+                                                    {s.paymentDetails.cash > 0 && <p>• Efectivo: ${Number(s.paymentDetails.cash).toLocaleString()}</p>}
+                                                    {s.paymentDetails.card > 0 && <p>• Tarjeta: ${Number(s.paymentDetails.card).toLocaleString()}</p>}
+                                                    {s.paymentDetails.transfer > 0 && <p>• Transferencia: ${Number(s.paymentDetails.transfer).toLocaleString()}</p>}
+                                                </div>
+                                            )}
+                                            {s.items && s.items.length > 0 && (
+                                                <div className="mt-2">
+                                                    <p className="font-medium text-muted-foreground mb-1">Ítems comprados:</p>
+                                                    <ul className="list-disc pl-4 space-y-0.5">
+                                                        {s.items.map((i: any) => (
+                                                            <li key={i.id}>{i.quantity}x {i.productName || 'Producto'} (Subtotal: ${Number(i.subtotal).toLocaleString()})</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
                                         </div>
-                                        <span className="font-bold text-foreground">${s.total.toLocaleString()}</span>
-                                    </div>
+                                    </details>
                                 ))}
                                 {openSession.expenses?.map((e: any) => (
                                     <div key={e.id} className="flex justify-between items-center text-sm font-medium border-b dark:border-border/50 pb-2 last:border-0 last:pb-0">
