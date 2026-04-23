@@ -46,7 +46,6 @@ import { format, addDays, subDays, isToday, startOfWeek, eachDayOfInterval } fro
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { CustomerSelector } from "@/components/dashboard/customer-selector";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 
 // Types
@@ -677,7 +676,7 @@ export default function ReservationsClient({
                         <DialogTitle className="text-xl font-bold">Nueva Reserva</DialogTitle>
                     </DialogHeader>
 
-                    <ScrollArea className="flex-1 px-6 py-2">
+                    <div className="flex-1 overflow-y-auto px-6 py-2">
                         <div className="space-y-6 pb-6 pt-2">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="col-span-2">
@@ -839,9 +838,9 @@ export default function ReservationsClient({
                                 </Card>
                             )}
                         </div>
-                    </ScrollArea>
+                    </div>
 
-                    <DialogFooter className="p-6 pt-2 border-t">
+                    <DialogFooter className="p-6 pt-2 border-t shrink-0">
                         <Button variant="outline" onClick={() => setShowNewReservation(false)} className="rounded-xl" disabled={isPending}>
                             Cancelar
                         </Button>
@@ -858,8 +857,8 @@ export default function ReservationsClient({
 
             {/* Reservation Detail Modal */}
             <Dialog open={!!detailReservation} onOpenChange={(open) => !open && setDetailReservation(null)}>
-                <DialogContent className="sm:max-w-[420px] rounded-2xl">
-                    <DialogHeader>
+                <DialogContent className="sm:max-w-[420px] rounded-2xl p-0 overflow-hidden flex flex-col max-h-[90vh]">
+                    <DialogHeader className="p-6 pb-2 shrink-0">
                         <DialogTitle className="text-xl font-bold flex items-center justify-between">
                             <span>Detalle de Reserva</span>
                             {detailReservation && (
@@ -871,137 +870,146 @@ export default function ReservationsClient({
                     </DialogHeader>
 
                     {detailReservation && (
-                        <div className="space-y-6 py-2">
-                            {/* Summary Card */}
-                            <Card className={`p-4 rounded-xl border-dashed ${statusConfig[detailReservation.status]?.class}`}>
-                                <h3 className="text-lg font-bold mb-1">{detailReservation.customerName}</h3>
-                                {detailReservation.customerPhone && (
-                                    <p className="text-sm font-medium mb-3 opacity-90">{detailReservation.customerPhone}</p>
-                                )}
+                        <div className="flex-1 overflow-y-auto px-6 py-2">
+                            <div className="space-y-6 pb-6">
+                                {/* Summary Card */}
+                                <Card className={`p-4 rounded-xl border-dashed ${statusConfig[detailReservation.status]?.class}`}>
+                                    <h3 className="text-lg font-bold mb-1">{detailReservation.customerName}</h3>
+                                    {detailReservation.customerPhone && (
+                                        <p className="text-sm font-medium mb-3 opacity-90">{detailReservation.customerPhone}</p>
+                                    )}
 
-                                <div className="grid grid-cols-2 gap-4 mt-4">
-                                    <div>
-                                        <p className="text-xs opacity-75 mb-1">Cancha</p>
-                                        <p className="font-semibold text-sm">
-                                            {courts.find(c => c.id === detailReservation.courtId)?.name || 'Desconocida'}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-75 mb-1">Horario</p>
-                                        <p className="font-semibold text-sm flex items-center">
-                                            <Clock className="w-3.5 h-3.5 mr-1" />
-                                            {format(new Date(detailReservation.startTime), "HH:mm")} - {format(new Date(detailReservation.endTime), "HH:mm")}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="mt-4 pt-3 border-t border-white/20">
-                                    <p className="text-[10px] opacity-75 uppercase font-bold tracking-wider">Gestionado por</p>
-                                    <p className="text-sm font-semibold">{detailReservation.user?.name || "Cliente / Sistema"}</p>
-                                </div>
-                            </Card>
-
-                            {/* Financial Summary */}
-                            {/* Financial Summary */}
-                            <div className="flex flex-col gap-2 px-2">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-muted-foreground">Total de la reserva</span>
-                                    <span className={`text-xl font-bold ${Number(detailReservation.paidAmount) === 0 ? "text-emerald-600 dark:text-emerald-400 text-2xl" : ""}`}>
-                                        ${Number(detailReservation.totalAmount).toLocaleString()}
-                                    </span>
-                                </div>
-                                {Number(detailReservation.paidAmount) > 0 && (
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-muted-foreground">Monto abonado</span>
-                                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                            - ${Number(detailReservation.paidAmount).toLocaleString()}
-                                        </span>
-                                    </div>
-                                )}
-                                {Number(detailReservation.paidAmount) > 0 && Number(detailReservation.totalAmount) - Number(detailReservation.paidAmount) > 0 && (
-                                    <div className="flex justify-between items-center pt-2 border-t border-border/50">
-                                        <span className="text-sm font-semibold">Restante a pagar</span>
-                                        <span className="text-2xl font-bold text-destructive">
-                                            ${Math.max(0, Number(detailReservation.totalAmount) - Number(detailReservation.paidAmount)).toLocaleString()}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Consumptions List */}
-                            {detailReservation.sales && detailReservation.sales.length > 0 && (
-                                <div className="space-y-2 px-2">
-                                    <h4 className="text-sm font-bold flex items-center gap-2">
-                                        <ShoppingCart className="w-4 h-4" /> Consumos
-                                    </h4>
-                                    <div className="bg-muted/50 rounded-xl p-3 space-y-2 border border-border/50">
-                                        {detailReservation.sales.flatMap((s: any) => s.items).map((item: any, idx: number) => (
-                                            <div key={idx} className="flex justify-between text-xs">
-                                                <span>{item.quantity}x {item.product?.name || "Producto"}</span>
-                                                <span className="font-semibold">${Number(item.subtotal).toLocaleString()}</span>
-                                            </div>
-                                        ))}
-                                        <div className="pt-2 border-t flex justify-between text-[11px] text-muted-foreground uppercase font-bold tracking-tighter">
-                                            <span>Subtotal Consumo</span>
-                                            <span className="text-emerald-600 dark:text-emerald-400">
-                                                ${Number(detailReservation.consumptionAmount).toLocaleString()}
-                                            </span>
+                                    <div className="grid grid-cols-2 gap-4 mt-4">
+                                        <div>
+                                            <p className="text-xs opacity-75 mb-1">Cancha</p>
+                                            <p className="font-semibold text-sm">
+                                                {courts.find(c => c.id === detailReservation.courtId)?.name || 'Desconocida'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-75 mb-1">Horario</p>
+                                            <p className="font-semibold text-sm flex items-center">
+                                                <Clock className="w-3.5 h-3.5 mr-1" />
+                                                {format(new Date(detailReservation.startTime), "HH:mm")} - {format(new Date(detailReservation.endTime), "HH:mm")}
+                                            </p>
                                         </div>
                                     </div>
+                                </Card>
+
+                                {/* Gestión Info */}
+                                <div className="flex items-center gap-2 p-3 bg-muted/60 border border-border rounded-xl">
+                                    <div className="bg-primary/10 p-2 rounded-lg">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Gestionado por</p>
+                                        <p className="text-sm font-semibold text-foreground">{detailReservation.user?.name || "Cliente / Sistema"}</p>
+                                    </div>
                                 </div>
-                            )}
 
-                            {/* Actions Grouped by Status */}
-                            <div className="grid grid-cols-2 gap-2 mt-4">
-                                {detailReservation.status === "pending" && (
-                                    <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-12" onClick={() => updateStatus(detailReservation.id, "confirmed")} disabled={isPending}>
-                                        <Check className="w-4 h-4 mr-2" /> Confirmar
-                                    </Button>
+                                {/* Financial Summary */}
+                                {/* Financial Summary */}
+                                <div className="flex flex-col gap-2 px-2">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm text-muted-foreground">Total de la reserva</span>
+                                        <span className={`text-xl font-bold ${Number(detailReservation.paidAmount) === 0 ? "text-emerald-600 dark:text-emerald-400 text-2xl" : ""}`}>
+                                            ${Number(detailReservation.totalAmount).toLocaleString()}
+                                        </span>
+                                    </div>
+                                    {Number(detailReservation.paidAmount) > 0 && (
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-muted-foreground">Monto abonado</span>
+                                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                                - ${Number(detailReservation.paidAmount).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {Number(detailReservation.paidAmount) > 0 && Number(detailReservation.totalAmount) - Number(detailReservation.paidAmount) > 0 && (
+                                        <div className="flex justify-between items-center pt-2 border-t border-border/50">
+                                            <span className="text-sm font-semibold">Restante a pagar</span>
+                                            <span className="text-2xl font-bold text-destructive">
+                                                ${Math.max(0, Number(detailReservation.totalAmount) - Number(detailReservation.paidAmount)).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Consumptions List */}
+                                {detailReservation.sales && detailReservation.sales.length > 0 && (
+                                    <div className="space-y-2 px-2">
+                                        <h4 className="text-sm font-bold flex items-center gap-2">
+                                            <ShoppingCart className="w-4 h-4" /> Consumos
+                                        </h4>
+                                        <div className="bg-muted/50 rounded-xl p-3 space-y-2 border border-border/50">
+                                            {detailReservation.sales.flatMap((s: any) => s.items).map((item: any, idx: number) => (
+                                                <div key={idx} className="flex justify-between text-xs">
+                                                    <span>{item.quantity}x {item.product?.name || "Producto"}</span>
+                                                    <span className="font-semibold">${Number(item.subtotal).toLocaleString()}</span>
+                                                </div>
+                                            ))}
+                                            <div className="pt-2 border-t flex justify-between text-[11px] text-muted-foreground uppercase font-bold tracking-tighter">
+                                                <span>Subtotal Consumo</span>
+                                                <span className="text-emerald-600 dark:text-emerald-400">
+                                                    ${Number(detailReservation.consumptionAmount).toLocaleString()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 )}
-                                {detailReservation.status === "confirmed" && (
-                                    <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-12" onClick={() => updateStatus(detailReservation.id, "in_game")} disabled={isPending}>
-                                        <Play className="w-4 h-4 mr-2" /> Iniciar (Check-in)
-                                    </Button>
-                                )}
-                                {detailReservation.status === "in_game" && (
-                                    <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white rounded-xl h-12" onClick={() => updateStatus(detailReservation.id, "finished")} disabled={isPending}>
-                                        <Square className="w-4 h-4 mr-2" /> Finalizar Turno
-                                    </Button>
-                                )}
-                                {(detailReservation.status === "pending" || detailReservation.status === "confirmed") && (
-                                    <Button variant="outline" className="w-full rounded-xl h-12 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30" onClick={() => updateStatus(detailReservation.id, "cancelled")} disabled={isPending}>
-                                        Cancelar Turno
+
+                                {/* Actions Grouped by Status */}
+                                <div className="grid grid-cols-2 gap-2 mt-4">
+                                    {detailReservation.status === "pending" && (
+                                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-12" onClick={() => updateStatus(detailReservation.id, "confirmed")} disabled={isPending}>
+                                            <Check className="w-4 h-4 mr-2" /> Confirmar
+                                        </Button>
+                                    )}
+                                    {detailReservation.status === "confirmed" && (
+                                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-12" onClick={() => updateStatus(detailReservation.id, "in_game")} disabled={isPending}>
+                                            <Play className="w-4 h-4 mr-2" /> Iniciar (Check-in)
+                                        </Button>
+                                    )}
+                                    {detailReservation.status === "in_game" && (
+                                        <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white rounded-xl h-12" onClick={() => updateStatus(detailReservation.id, "finished")} disabled={isPending}>
+                                            <Square className="w-4 h-4 mr-2" /> Finalizar Turno
+                                        </Button>
+                                    )}
+                                    {(detailReservation.status === "pending" || detailReservation.status === "confirmed") && (
+                                        <Button variant="outline" className="w-full rounded-xl h-12 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30" onClick={() => updateStatus(detailReservation.id, "cancelled")} disabled={isPending}>
+                                            Cancelar Turno
+                                        </Button>
+                                    )}
+
+                                    {detailReservation.customerPhone && (
+                                        <Button variant="outline" className="w-full rounded-xl h-12 border-emerald-500/30 text-emerald-600 hover:bg-emerald-50" onClick={() => handleWhatsApp(detailReservation.customerPhone, detailReservation.customerName)}>
+                                            <MessageCircle className="w-4 h-4 mr-2" /> WhatsApp
+                                        </Button>
+                                    )}
+                                </div>
+
+                                {/* Giant Pay Button if Finished */}
+                                {detailReservation.status === "finished" && (
+                                    <Button
+                                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-14 mt-2 text-lg font-bold"
+                                        onClick={() => setPaymentReservation(detailReservation)}
+                                        disabled={isPending}
+                                    >
+                                        <DollarSign className="w-5 h-5 mr-2" /> Cobrar Turno
                                     </Button>
                                 )}
 
-                                {detailReservation.customerPhone && (
-                                    <Button variant="outline" className="w-full rounded-xl h-12 border-emerald-500/30 text-emerald-600 hover:bg-emerald-50" onClick={() => handleWhatsApp(detailReservation.customerPhone, detailReservation.customerName)}>
-                                        <MessageCircle className="w-4 h-4 mr-2" /> WhatsApp
+                                {detailReservation.status !== "cancelled" && (
+                                    <Button
+                                        variant="outline"
+                                        className="w-full mt-2 rounded-xl h-12 border-blue-500/30 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                        onClick={() => {
+                                            router.push(`/dashboard/pos?reservationId=${detailReservation.id}`);
+                                        }}
+                                    >
+                                        <ShoppingCart className="w-4 h-4 mr-2" /> Agregar Consumo
                                     </Button>
                                 )}
                             </div>
-
-                            {/* Giant Pay Button if Finished */}
-                            {detailReservation.status === "finished" && (
-                                <Button
-                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-14 mt-2 text-lg font-bold"
-                                    onClick={() => setPaymentReservation(detailReservation)}
-                                    disabled={isPending}
-                                >
-                                    <DollarSign className="w-5 h-5 mr-2" /> Cobrar Turno
-                                </Button>
-                            )}
-
-                            {detailReservation.status !== "cancelled" && (
-                                <Button
-                                    variant="outline"
-                                    className="w-full mt-2 rounded-xl h-12 border-blue-500/30 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                                    onClick={() => {
-                                        router.push(`/dashboard/pos?reservationId=${detailReservation.id}`);
-                                    }}
-                                >
-                                    <ShoppingCart className="w-4 h-4 mr-2" /> Agregar Consumo
-                                </Button>
-                            )}
                         </div>
                     )}
                 </DialogContent>
