@@ -70,10 +70,11 @@ export async function getCalendarData(dateStr: string) {
                 gte: businessStart,
                 lt: businessEnd
             },
-            status: { notIn: ["cancelled"] }
+            ...(userRole === "admin" ? {} : { status: { notIn: ["cancelled"] } })
         },
         include: {
             court: { select: { name: true } },
+            user: { select: { name: true } },
             sales: {
                 where: { status: { not: "cancelled" } },
                 include: { items: { include: { product: { select: { name: true } } } } }

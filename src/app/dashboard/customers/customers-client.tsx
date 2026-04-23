@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Phone, History, CreditCard, Eye, Plus, ArrowRight } from "lucide-react";
+import { Search, Phone, History, CreditCard, Eye, Plus, ArrowRight, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -21,7 +21,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { getCustomerDetail, addCustomerPayment, createCustomer } from "./actions";
+import { getCustomerDetail, addCustomerPayment, createCustomer, updateCustomer, deleteCustomer } from "./actions";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 type CustomerSummary = {
@@ -52,8 +52,18 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
   const [newPhone, setNewPhone] = useState("");
   const [isSubmittingNew, setIsSubmittingNew] = useState(false);
 
-  const filteredCustomers = customers.filter(c => 
-    c.name.toLowerCase().includes(search.toLowerCase()) || 
+  // Edit Customer state
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+
+  // Delete confirm
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const filteredCustomers = customers.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
     (c.phone && c.phone.includes(search))
   );
 
@@ -64,6 +74,9 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
     try {
       const data = await getCustomerDetail(id);
       setDetailData(data);
+      // Pre-fill edit states
+      setEditName(data.name);
+      setEditPhone(data.phone || "");
     } catch (error: any) {
       toast.error(error.message || "Error al cargar detalle");
     } finally {
@@ -79,39 +92,70 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
 
     setIsSubmittingPayment(true);
     try {
-        await addCustomerPayment(selectedCustomerId, Number(paymentAmount), paymentMethod, paymentNotes);
-        toast.success("Pago registrado correctamente");
-        setIsPaymentDialogOpen(false);
-        setPaymentAmount("");
-        setPaymentNotes("");
-        // Reload detail
-        await openCustomerDetail(selectedCustomerId);
-        // We'd ideally reload the main list too, for now we just use a page refresh
-        window.location.reload(); 
+      await addCustomerPayment(selectedCustomerId, Number(paymentAmount), paymentMethod, paymentNotes);
+      toast.success("Pago registrado correctamente");
+      setIsPaymentDialogOpen(false);
+      setPaymentAmount("");
+      setPaymentNotes("");
+      // Reload detail
+      await openCustomerDetail(selectedCustomerId);
+      // We'd ideally reload the main list too, for now we just use a page refresh
+      window.location.reload();
     } catch (error: any) {
-        toast.error(error.message || "Error al registrar pago");
+      toast.error(error.message || "Error al registrar pago");
     } finally {
-        setIsSubmittingPayment(false);
+      setIsSubmittingPayment(false);
     }
   };
 
   const handleCreateCustomer = async () => {
     if (!newName) {
-       toast.error("El nombre es requerido");
-       return;
+      toast.error("El nombre es requerido");
+      return;
     }
     setIsSubmittingNew(true);
     try {
-        await createCustomer({ name: newName, phone: newPhone });
-        toast.success("Cliente creado");
-        setIsNewCustomerOpen(false);
-        setNewName("");
-        setNewPhone("");
-        window.location.reload();
-    } catch(err: any) {
-        toast.error(err.message || "Error al crear cliente");
+      await createCustomer({ name: newName, phone: newPhone });
+      toast.success("Cliente creado");
+      setIsNewCustomerOpen(false);
+      setNewName("");
+      setNewPhone("");
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err.message || "Error al crear cliente");
     } finally {
-        setIsSubmittingNew(false);
+      setIsSubmittingNew(false);
+    }
+  };
+
+  const handleUpdateCustomer = async () => {
+    if (!editName || !selectedCustomerId) return;
+    setIsSubmittingEdit(true);
+    try {
+      await updateCustomer(selectedCustomerId, { name: editName, phone: editPhone });
+      toast.success("Cliente actualizado");
+      setIsEditOpen(false);
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err.message || "Error al actualizar");
+    } finally {
+      setIsSubmittingEdit(false);
+    }
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!selectedCustomerId) return;
+    setIsDeleting(true);
+    try {
+      await deleteCustomer(selectedCustomerId);
+      toast.success("Cliente eliminado");
+      setIsDeleteConfirmOpen(false);
+      setSelectedCustomerId(null);
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err.message || "Error al eliminar");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -128,8 +172,8 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
           />
         </div>
         <Button onClick={() => setIsNewCustomerOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo Cliente
+          <Plus className="h-4 w-4 mr-2" />
+          Nuevo Cliente
         </Button>
       </div>
 
@@ -204,7 +248,7 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
               Información de contacto, historial de reservas y estado de cuenta.
             </SheetDescription>
           </SheetHeader>
-          
+
           <ScrollArea className="flex-1 p-6">
             {isLoadingDetail ? (
               <div className="flex justify-center py-8">Cargando...</div>
@@ -228,9 +272,16 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
 
                 {/* Actions */}
                 <div className="flex gap-2">
-                  <Button className="w-full" variant="default" onClick={() => setIsPaymentDialogOpen(true)} disabled={detailData.balance <= 0}>
+                  <Button className="flex-1" variant="default" onClick={() => setIsPaymentDialogOpen(true)} disabled={detailData.balance <= 0}>
                     <CreditCard className="h-4 w-4 mr-2" />
-                    Registrar Pago de Saldo
+                    Registrar Pago
+                  </Button>
+                  <Button className="flex-1" variant="outline" onClick={() => setIsEditOpen(true)}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Editar
+                  </Button>
+                  <Button variant="outline" className="w-12 text-destructive border-destructive/20 hover:bg-destructive/10" onClick={() => setIsDeleteConfirmOpen(true)}>
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
 
@@ -283,11 +334,11 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Monto a abonar</Label>
-              <Input 
-                type="number" 
-                placeholder="0.00" 
-                value={paymentAmount} 
-                onChange={(e) => setPaymentAmount(e.target.value)} 
+              <Input
+                type="number"
+                placeholder="0.00"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
               />
             </div>
             <div className="space-y-2">
@@ -305,10 +356,10 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
             </div>
             <div className="space-y-2">
               <Label>Notas (Opcional)</Label>
-              <Input 
-                placeholder="Ej. Transferencia Banco XX" 
-                value={paymentNotes} 
-                onChange={(e) => setPaymentNotes(e.target.value)} 
+              <Input
+                placeholder="Ej. Transferencia Banco XX"
+                value={paymentNotes}
+                onChange={(e) => setPaymentNotes(e.target.value)}
               />
             </div>
           </div>
@@ -332,18 +383,18 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Nombre Completo</Label>
-              <Input 
-                placeholder="Ej. Juan Pérez" 
-                value={newName} 
-                onChange={(e) => setNewName(e.target.value)} 
+              <Input
+                placeholder="Ej. Juan Pérez"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <Label>Teléfono / WhatsApp (Opcional)</Label>
-              <Input 
-                placeholder="Ej. 11 1234-5678" 
-                value={newPhone} 
-                onChange={(e) => setNewPhone(e.target.value)} 
+              <Input
+                placeholder="Ej. 11 1234-5678"
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
               />
             </div>
           </div>
@@ -351,7 +402,60 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNewCustomerOpen(false)}>Cancelar</Button>
             <Button onClick={handleCreateCustomer} disabled={isSubmittingNew}>
-              Crear Cliente
+              {isSubmittingNew ? "Creando..." : "Crear Cliente"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Customer Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Cliente</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nombre Completo</Label>
+              <Input
+                placeholder="Ej. Juan Pérez"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Teléfono / WhatsApp (Opcional)</Label>
+              <Input
+                placeholder="Ej. 11 1234-5678"
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancelar</Button>
+            <Button onClick={handleUpdateCustomer} disabled={isSubmittingEdit}>
+              {isSubmittingEdit ? "Guardando..." : "Guardar Cambios"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar Cliente</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro que deseas eliminar a {detailData?.name}? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDeleteCustomer} disabled={isDeleting}>
+              {isDeleting ? "Eliminando..." : "Eliminar Cliente"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -206,7 +206,7 @@ export default function ReservationsClient({
     const handleSlotClick = (courtId: string, time: string) => {
         // Check if slot is occupied (basic client side validation)
         const occupied = reservations.some((r) => {
-            if (r.courtId !== courtId && r.status !== "cancelled") return false;
+            if (r.courtId !== courtId || r.status === "cancelled") return false;
             const rStart = format(new Date(r.startTime), "HH:mm");
             const rEnd = format(new Date(r.endTime), "HH:mm");
             return time >= rStart && time < rEnd;
@@ -331,7 +331,7 @@ export default function ReservationsClient({
             // To fix timezone shifts, we treat everything as local time strings
             const rStart = format(new Date(r.startTime), "HH:mm");
             const rEnd = format(new Date(r.endTime), "HH:mm");
-            return time >= rStart && time < rEnd;
+            return r.status !== "cancelled" && time >= rStart && time < rEnd;
         });
     };
 
@@ -646,7 +646,7 @@ export default function ReservationsClient({
                             ) : (
                                 <div className="space-y-2">
                                     {reservations.map(r => (
-                                        <div key={r.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border bg-card hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setDetailReservation(r)}>
+                                        <div key={r.id} className={cn("flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border bg-card hover:bg-muted/50 transition-colors cursor-pointer", r.status === "cancelled" && "opacity-60 grayscale border-dashed")} onClick={() => setDetailReservation(r)}>
                                             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
                                                 <div className="flex items-center gap-2">
                                                     <Badge className={`${statusConfig[r.status]?.class} rounded-full`}>{statusConfig[r.status]?.label}</Badge>
@@ -672,161 +672,176 @@ export default function ReservationsClient({
 
             {/* New Reservation Dialog */}
             <Dialog open={showNewReservation} onOpenChange={setShowNewReservation}>
-                <DialogContent className="sm:max-w-[480px] rounded-2xl">
-                    <DialogHeader>
+                <DialogContent className="sm:max-w-[480px] rounded-2xl p-0 overflow-hidden flex flex-col max-h-[90vh]">
+                    <DialogHeader className="p-6 pb-2">
                         <DialogTitle className="text-xl font-bold">Nueva Reserva</DialogTitle>
                     </DialogHeader>
 
-                    <div className="space-y-4 py-2">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="col-span-2">
-                                <Label>Buscar o Registrar Cliente</Label>
-                                <CustomerSelector
-                                    onSelect={(c) => setNewRes({ ...newRes, customerName: c.name, customerPhone: c.phone, customerId: c.id })}
-                                    initialValue={newRes.customerName}
-                                />
+                    <ScrollArea className="flex-1 px-6 py-2">
+                        <div className="space-y-6 pb-6 pt-2">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <Label className="block mb-2">Buscar o Registrar Cliente</Label>
+                                    <CustomerSelector
+                                        onSelect={(c) => setNewRes({ ...newRes, customerName: c.name, customerPhone: c.phone, customerId: c.id })}
+                                        initialValue={newRes.customerName}
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <Label>Fecha de la Reserva</Label>
+                                    <Input
+                                        type="date"
+                                        value={newRes.date}
+                                        onChange={(e) => setNewRes({ ...newRes, date: e.target.value })}
+                                        className="mt-1.5 rounded-xl"
+                                    />
+                                </div>
                             </div>
-                            <div className="col-span-2">
-                                <Label>Fecha de la Reserva</Label>
-                                <Input
-                                    type="date"
-                                    value={newRes.date}
-                                    onChange={(e) => setNewRes({ ...newRes, date: e.target.value })}
-                                    className="mt-1.5 rounded-xl"
-                                />
-                            </div>
-                        </div>
 
 
-                        <div>
-                            <Label>Cancha</Label>
-                            <Select value={newRes.courtId} onValueChange={(v) => v && setNewRes({ ...newRes, courtId: v })}>
-                                <SelectTrigger className="mt-1.5 rounded-xl">
-                                    <SelectValue placeholder="Seleccionar cancha">
-                                        {newRes.courtId ? courts.find(c => c.id === newRes.courtId)?.name : "Seleccionar cancha"}
-                                    </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {courts.map((court) => (
-                                        <SelectItem key={court.id} value={court.id}>
-                                            {sportEmoji[court.sportType]} {court.name} — ${court.dayRate.toLocaleString()}/{court.nightRate.toLocaleString()}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-3">
                             <div>
-                                <Label>Hora Inicio</Label>
-                                <Select value={newRes.startTime} onValueChange={(v) => {
-                                    if (!v) return;
-                                    const [h, m] = v.split(":").map(Number);
-                                    const endMinutes = h * 60 + m + parseInt(newRes.duration);
-                                    const endH = Math.floor(endMinutes / 60);
-                                    const endM = endMinutes % 60;
-                                    setNewRes({ ...newRes, startTime: v, endTime: `${endH.toString().padStart(2, "0")}:${endM.toString().padStart(2, "0")}` });
-                                }}>
+                                <Label>Cancha</Label>
+                                <Select value={newRes.courtId} onValueChange={(v) => v && setNewRes({ ...newRes, courtId: v })}>
                                     <SelectTrigger className="mt-1.5 rounded-xl">
-                                        <SelectValue>{newRes.startTime || "10:00"}</SelectValue>
+                                        <SelectValue placeholder="Seleccionar cancha">
+                                            {newRes.courtId ? courts.find(c => c.id === newRes.courtId)?.name : "Seleccionar cancha"}
+                                        </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {timeSlots.filter((t) => t.endsWith(":00")).map((t) => {
-                                            // Check if this slot is occupied for the selected court
-                                            const isOccupied = newRes.courtId ? reservations.some((r) => {
-                                                if (r.courtId !== newRes.courtId || r.status === "cancelled") return false;
-                                                const rStart = format(new Date(r.startTime), "HH:mm");
-                                                const rEnd = format(new Date(r.endTime), "HH:mm");
-                                                return t >= rStart && t < rEnd;
-                                            }) : false;
-                                            return (
-                                                <SelectItem key={t} value={t} disabled={isOccupied}>
-                                                    {isOccupied ? `🔴 ${t} — Ocupado` : t}
-                                                </SelectItem>
-                                            );
-                                        })}
+                                        {courts.map((court) => (
+                                            <SelectItem key={court.id} value={court.id}>
+                                                {sportEmoji[court.sportType]} {court.name} — ${court.dayRate.toLocaleString()}/{court.nightRate.toLocaleString()}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div>
-                                <Label>Duración</Label>
-                                <Select value={newRes.duration} onValueChange={(v) => v && handleDurationChange(v)}>
-                                    <SelectTrigger className="mt-1.5 rounded-xl">
-                                        <SelectValue>{newRes.duration === "120" ? "2 horas" : newRes.duration === "90" ? "1.5 horas" : "1 hora"}</SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="60">1 hora</SelectItem>
-                                        <SelectItem value="90">1.5 horas</SelectItem>
-                                        <SelectItem value="120">2 horas</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <Label>Hora Fin</Label>
-                                <Input value={newRes.endTime} readOnly className="mt-1.5 rounded-xl bg-muted" />
-                            </div>
-                        </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <Label>Seña / Abono Inicial (Opcional)</Label>
-                                <Input
-                                    type="number"
-                                    placeholder="0"
-                                    value={newRes.depositAmount}
-                                    onChange={(e) => setNewRes({ ...newRes, depositAmount: e.target.value })}
-                                    className="mt-1.5 rounded-xl"
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <Label>Hora Inicio</Label>
+                                    <Select value={newRes.startTime} onValueChange={(v) => {
+                                        if (!v) return;
+                                        const [h, m] = v.split(":").map(Number);
+                                        const endMinutes = h * 60 + m + parseInt(newRes.duration);
+                                        const endH = Math.floor(endMinutes / 60);
+                                        const endM = endMinutes % 60;
+                                        setNewRes({ ...newRes, startTime: v, endTime: `${endH.toString().padStart(2, "0")}:${endM.toString().padStart(2, "0")}` });
+                                    }}>
+                                        <SelectTrigger className="mt-1.5 rounded-xl">
+                                            <SelectValue>{newRes.startTime || "10:00"}</SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {timeSlots.filter((t) => t.endsWith(":00")).map((t) => {
+                                                // Check if this slot is occupied for the selected court
+                                                const isOccupied = newRes.courtId ? reservations.some((r) => {
+                                                    if (r.courtId !== newRes.courtId || r.status === "cancelled") return false;
+                                                    const rStart = format(new Date(r.startTime), "HH:mm");
+                                                    const rEnd = format(new Date(r.endTime), "HH:mm");
+                                                    return t >= rStart && t < rEnd;
+                                                }) : false;
+                                                return (
+                                                    <SelectItem key={t} value={t} disabled={isOccupied}>
+                                                        {isOccupied ? `🔴 ${t} — Ocupado` : t}
+                                                    </SelectItem>
+                                                );
+                                            })}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <Label>Duración</Label>
+                                    <Select value={newRes.duration} onValueChange={(v) => v && handleDurationChange(v)}>
+                                        <SelectTrigger className="mt-1.5 rounded-xl">
+                                            <SelectValue>{newRes.duration === "120" ? "2 horas" : newRes.duration === "90" ? "1.5 horas" : "1 hora"}</SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="60">1 hora</SelectItem>
+                                            <SelectItem value="90">1.5 horas</SelectItem>
+                                            <SelectItem value="120">2 horas</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <Label>Hora Fin</Label>
+                                    <Input value={newRes.endTime} readOnly className="mt-1.5 rounded-xl bg-muted" />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Label>Seña / Abono Inicial (Opcional)</Label>
+                                    <Input
+                                        type="number"
+                                        placeholder="0"
+                                        value={newRes.depositAmount}
+                                        onChange={(e) => setNewRes({ ...newRes, depositAmount: e.target.value })}
+                                        className="mt-1.5 rounded-xl"
+                                    />
+                                </div>
+                                <div>
+                                    <Label>Método de Pago</Label>
+                                    <Select value={newRes.paymentMethod} onValueChange={(v) => v && setNewRes({ ...newRes, paymentMethod: v })}>
+                                        <SelectTrigger className="mt-1.5 rounded-xl">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="cash">Efectivo</SelectItem>
+                                            <SelectItem value="card">Tarjeta / Mercadopago</SelectItem>
+                                            <SelectItem value="transfer">Transferencia</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="checkbox"
+                                    id="recurring"
+                                    checked={newRes.isRecurring}
+                                    onChange={(e) => setNewRes({ ...newRes, isRecurring: e.target.checked })}
+                                    className="rounded"
                                 />
+                                <Label htmlFor="recurring" className="cursor-pointer">
+                                    <span className="font-semibold">Es Fijo (Recurrente)</span>
+                                    <br />
+                                    <span className="text-xs text-muted-foreground">Crea 52 reservas semanales (1 año)</span>
+                                </Label>
                             </div>
-                            <div>
-                                <Label>Método de Pago</Label>
-                                <Select value={newRes.paymentMethod} onValueChange={(v) => v && setNewRes({ ...newRes, paymentMethod: v })}>
-                                    <SelectTrigger className="mt-1.5 rounded-xl">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="cash">Efectivo</SelectItem>
-                                        <SelectItem value="card">Tarjeta / Mercadopago</SelectItem>
-                                        <SelectItem value="transfer">Transferencia</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+
+                            {newRes.courtId && newRes.startTime && (
+                                <Card className="p-4 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 rounded-xl">
+                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Tarifa estimada</p>
+                                    <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-400">
+                                        ${(() => {
+                                            const court = courts.find((c) => c.id === newRes.courtId);
+                                            if (!court) return "0";
+
+                                            // Calculate mixed rate (Day/Night)
+                                            const startMin = parseInt(newRes.startTime.split(":")[0]) * 60 + parseInt(newRes.startTime.split(":")[1] || "0");
+                                            const duration = parseInt(newRes.duration);
+                                            const endMin = startMin + duration;
+
+                                            const nightStartMin = parseInt(court.nightRateStartTime.split(":")[0]) * 60 + parseInt(court.nightRateStartTime.split(":")[1] || "0");
+
+                                            let total = 0;
+                                            // Calculate in 30min steps
+                                            for (let i = startMin; i < endMin; i += 30) {
+                                                const isNight = i >= nightStartMin;
+                                                const ratePer30 = (isNight ? court.nightRate : court.dayRate) / 2;
+                                                total += ratePer30;
+                                            }
+                                            return total.toLocaleString();
+                                        })()}
+                                    </p>
+                                </Card>
+                            )}
                         </div>
+                    </ScrollArea>
 
-                        <Separator />
-
-                        <div className="flex items-center gap-3">
-                            <input
-                                type="checkbox"
-                                id="recurring"
-                                checked={newRes.isRecurring}
-                                onChange={(e) => setNewRes({ ...newRes, isRecurring: e.target.checked })}
-                                className="rounded"
-                            />
-                            <Label htmlFor="recurring" className="cursor-pointer">
-                                <span className="font-semibold">Es Fijo (Recurrente)</span>
-                                <br />
-                                <span className="text-xs text-muted-foreground">Crea 52 reservas semanales (1 año)</span>
-                            </Label>
-                        </div>
-
-                        {newRes.courtId && newRes.startTime && (
-                            <Card className="p-3 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 rounded-xl">
-                                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-                                    💰 Tarifa estimada: ${(() => {
-                                        const court = courts.find((c) => c.id === newRes.courtId);
-                                        if (!court) return 0;
-                                        const startHour = parseInt(newRes.startTime.split(":")[0]);
-                                        const isNight = startHour >= parseInt(court.nightRateStartTime.split(":")[0]);
-                                        const rate = isNight ? court.nightRate : court.dayRate;
-                                        return (rate * Number(newRes.duration) / 60).toLocaleString();
-                                    })()}
-                                </p>
-                            </Card>
-                        )}
-                    </div>
-
-                    <DialogFooter>
+                    <DialogFooter className="p-6 pt-2 border-t">
                         <Button variant="outline" onClick={() => setShowNewReservation(false)} className="rounded-xl" disabled={isPending}>
                             Cancelar
                         </Button>
@@ -878,6 +893,10 @@ export default function ReservationsClient({
                                             {format(new Date(detailReservation.startTime), "HH:mm")} - {format(new Date(detailReservation.endTime), "HH:mm")}
                                         </p>
                                     </div>
+                                </div>
+                                <div className="mt-4 pt-3 border-t border-white/20">
+                                    <p className="text-[10px] opacity-75 uppercase font-bold tracking-wider">Gestionado por</p>
+                                    <p className="text-sm font-semibold">{detailReservation.user?.name || "Cliente / Sistema"}</p>
                                 </div>
                             </Card>
 
