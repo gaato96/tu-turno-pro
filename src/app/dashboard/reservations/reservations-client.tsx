@@ -46,7 +46,7 @@ import { format, addDays, subDays, isToday, startOfWeek, eachDayOfInterval } fro
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { CustomerSelector } from "@/components/dashboard/customer-selector";
-
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 
 // Types
