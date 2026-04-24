@@ -33,10 +33,13 @@ export async function createCustomer(data: { name: string; phone?: string; email
     const session = await auth();
     const tenantId = getTenantId(session);
 
+    const phone = data.phone?.trim() || null;
+    const email = data.email?.trim() || null;
+
     // Check if phone already exists to avoid unique constraint error
-    if (data.phone) {
+    if (phone) {
         const existing = await prisma.customer.findFirst({
-            where: { tenantId, phone: data.phone }
+            where: { tenantId, phone }
         });
         if (existing) return existing;
     }
@@ -44,7 +47,9 @@ export async function createCustomer(data: { name: string; phone?: string; email
     const customer = await prisma.customer.create({
         data: {
             tenantId,
-            ...data,
+            name: data.name,
+            phone,
+            email,
         },
     });
 
@@ -173,17 +178,24 @@ export async function updateCustomer(id: string, data: { name: string; phone?: s
     const session = await auth();
     const tenantId = getTenantId(session);
 
+    const phone = data.phone?.trim() || null;
+    const email = data.email?.trim() || null;
+
     // Validate phone uniqueness if changed
-    if (data.phone) {
+    if (phone) {
         const existing = await prisma.customer.findFirst({
-            where: { tenantId, phone: data.phone, id: { not: id } }
+            where: { tenantId, phone, id: { not: id } }
         });
         if (existing) throw new Error("Phone number already used by another customer");
     }
 
     const updated = await prisma.customer.update({
         where: { id, tenantId },
-        data
+        data: {
+            ...data,
+            phone,
+            email
+        }
     });
 
     revalidatePath("/dashboard/customers");
