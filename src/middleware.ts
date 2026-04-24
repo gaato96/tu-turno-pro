@@ -12,7 +12,12 @@ export default NextAuth(authConfig).auth((req) => {
         nextUrl.pathname.startsWith("/_next") ||
         nextUrl.pathname.startsWith("/torneos") ||
         nextUrl.pathname.startsWith("/book") ||
-        nextUrl.pathname.startsWith("/api/public");
+        nextUrl.pathname.startsWith("/api/public") ||
+        nextUrl.pathname.includes("manifest") ||
+        nextUrl.pathname.includes("icon") ||
+        nextUrl.pathname.endsWith(".png") ||
+        nextUrl.pathname.endsWith(".svg") ||
+        nextUrl.pathname === "/sw.js";
 
     // Allow API routes and public routes
     if (isApiRoute || isPublicRoute) return NextResponse.next();

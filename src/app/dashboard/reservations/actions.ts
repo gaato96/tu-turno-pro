@@ -102,6 +102,8 @@ export async function getCalendarData(dateStr: string) {
         date: r.date.toISOString().replace("Z", ""),
         startTime: r.startTime.toISOString().replace("Z", ""),
         endTime: r.endTime.toISOString().replace("Z", ""),
+        createdAt: r.createdAt?.toISOString(),
+        updatedAt: r.updatedAt?.toISOString(),
         courtAmount: Number(r.courtAmount),
         consumptionAmount: Number(r.consumptionAmount),
         discount: Number(r.discount),
@@ -110,7 +112,8 @@ export async function getCalendarData(dateStr: string) {
         paidAmount: Number(r.paidAmount || 0),
         sales: r.sales?.map((s: any) => ({
             ...s,
-            createdAt: s.createdAt,
+            createdAt: s.createdAt?.toISOString(),
+            updatedAt: s.updatedAt?.toISOString(),
             subtotal: Number(s.subtotal),
             total: Number(s.total),
             items: s.items?.map((i: any) => ({
@@ -123,7 +126,7 @@ export async function getCalendarData(dateStr: string) {
             id: d.id,
             description: d.description,
             amount: Number(d.amount),
-            createdAt: d.createdAt,
+            createdAt: d.createdAt?.toISOString(),
         })) || []
     }));
 
@@ -133,14 +136,16 @@ export async function getCalendarData(dateStr: string) {
         nightRate: Number(c.nightRate),
     }));
 
-    const serializedEvents = events.map((e: any) => ({
-        ...e,
-        date: e.date.toISOString().replace("Z", ""),
-        startTime: e.startTime.toISOString().replace("Z", ""),
-        endTime: e.endTime.toISOString().replace("Z", ""),
-        totalAmount: Number(e.totalAmount),
-        depositPaid: Number(e.depositPaid),
-        paidAmount: Number(e.paidAmount)
+    const serializedEvents = events.map((ev: any) => ({
+        ...ev,
+        date: ev.date.toISOString().replace("Z", ""),
+        startTime: ev.startTime.toISOString().replace("Z", ""),
+        endTime: ev.endTime.toISOString().replace("Z", ""),
+        createdAt: ev.createdAt?.toISOString(),
+        updatedAt: ev.updatedAt?.toISOString(),
+        totalAmount: Number(ev.totalAmount),
+        depositPaid: Number(ev.depositPaid),
+        paidAmount: Number(ev.paidAmount)
     }));
 
     return {
