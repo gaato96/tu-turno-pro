@@ -39,6 +39,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     tenantName: user.tenant?.name || null,
                     tenantSlug: user.tenant?.slug || null,
                     tenantModules: user.tenant?.modules || [],
+                    userModules: (user as any).modules || [],
                     complexId: (user as any).complexId || null,
                 };
             },

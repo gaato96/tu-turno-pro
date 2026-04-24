@@ -73,7 +73,8 @@ export async function getCashData() {
             }, 0);
 
         const salesTotal = cashTotal + cardTotal + transferTotal;
-        const expectedBalance = Number(openSession.openingBalance) + cashTotal - expensesTotal;
+        const netCashExpected = cashTotal - expensesTotal;
+        const expectedBalance = Number(openSession.openingBalance) + netCashExpected;
 
         return {
             openSession: {
@@ -101,6 +102,7 @@ export async function getCashData() {
                 cardTotal,
                 transferTotal,
                 salesTotal,
+                netCashExpected,
                 expectedBalance,
             },
 

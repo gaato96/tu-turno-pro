@@ -88,8 +88,9 @@ export function CashPanel({ openSession, history }: { openSession: any, history:
                                 <p className="text-[10px] text-muted-foreground">{openSession.salesCount} operaciones</p>
                             </Card>
                             <Card className="p-4 text-center">
-                                <p className="text-xs text-muted-foreground mb-1">Esperado en Caja</p>
-                                <p className="text-xl font-bold">${openSession.expectedBalance.toLocaleString()}</p>
+                                <p className="text-xs text-muted-foreground mb-1">Ingresos Netos Efectivo</p>
+                                <p className="text-xl font-bold text-emerald-600">${openSession.netCashExpected?.toLocaleString() ?? 0}</p>
+                                <p className="text-[10px] text-muted-foreground">Sin incluir apertura</p>
                             </Card>
                             <Card className="p-4 text-center">
                                 <p className="text-xs text-muted-foreground mb-1">Desglose</p>
@@ -271,7 +272,9 @@ export function CashPanel({ openSession, history }: { openSession: any, history:
                                 <div className="flex justify-between border-t pt-2"><span className="text-muted-foreground">Ventas Efectivo:</span><span className="font-semibold">${openSession.cashTotal.toLocaleString()}</span></div>
                                 <div className="flex justify-between"><span className="text-muted-foreground">Ventas Tarjeta:</span><span className="font-semibold">${openSession.cardTotal.toLocaleString()}</span></div>
                                 <div className="flex justify-between"><span className="text-muted-foreground">Ventas Transf.:</span><span className="font-semibold">${openSession.transferTotal.toLocaleString()}</span></div>
-                                <div className="flex justify-between border-t pt-2"><span className="font-bold">Esperado en Caja:</span><span className="font-bold text-emerald-600">${openSession.expectedBalance.toLocaleString()}</span></div>
+                                <div className="flex justify-between border-t pt-2"><span className="font-bold">Ingresos Netos Efectivo:</span><span className="font-bold text-emerald-600">${openSession.netCashExpected?.toLocaleString() ?? 0}</span></div>
+                                <div className="flex justify-between mt-1"><span className="text-muted-foreground text-xs">+ Apertura (fondo fijo):</span><span className="text-xs">${openSession.openingBalance.toLocaleString()}</span></div>
+                                <div className="flex justify-between border-t pt-2 mt-2"><span className="font-bold">Esperado Total en Caja:</span><span className="font-bold text-emerald-600">${openSession.expectedBalance.toLocaleString()}</span></div>
 
                             </div>
                         )}

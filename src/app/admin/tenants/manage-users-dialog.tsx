@@ -49,6 +49,7 @@ interface TenantUser {
     isActive: boolean;
     complexId: string | null;
     complexName: string | null;
+    modules: string[];
     createdAt: string;
 }
 
@@ -79,6 +80,7 @@ export function ManageUsersDialog({
         phone: "",
         role: "staff",
         complexId: "",
+        modules: [] as string[],
     });
 
     const loadData = async () => {
@@ -102,7 +104,7 @@ export function ManageUsersDialog({
     }, [tenantId]);
 
     const resetForm = () => {
-        setFormData({ name: "", email: "", password: "", phone: "", role: "staff", complexId: "" });
+        setFormData({ name: "", email: "", password: "", phone: "", role: "staff", complexId: "", modules: [] });
         setEditingUser(null);
         setShowForm(false);
     };
@@ -116,6 +118,7 @@ export function ManageUsersDialog({
             phone: user.phone || "",
             role: user.role,
             complexId: user.complexId || "",
+            modules: user.modules || [],
         });
         setShowForm(true);
     };
@@ -131,6 +134,7 @@ export function ManageUsersDialog({
                     phone: formData.phone,
                     role: formData.role,
                     complexId: formData.role === "staff" ? (formData.complexId || null) : null,
+                    modules: formData.modules,
                     ...(formData.password ? { password: formData.password } : {}),
                 });
                 toast.success("Usuario actualizado");
@@ -148,6 +152,7 @@ export function ManageUsersDialog({
                     phone: formData.phone,
                     role: formData.role,
                     complexId: formData.role === "staff" ? formData.complexId : undefined,
+                    modules: formData.modules,
                 });
                 toast.success("Usuario creado");
             }
@@ -372,6 +377,40 @@ export function ManageUsersDialog({
                                     </Button>
                                 </div>
                             </form>
+
+                            {/* Per-user module visibility */}
+                            <div className="mt-4 pt-4 border-t">
+                                <h4 className="text-sm font-semibold text-emerald-600 mb-2">Módulos Visibles</h4>
+                                <p className="text-xs text-muted-foreground mb-3">Si no seleccionás ninguno, se usan los módulos por defecto del rol.</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {[
+                                        { key: "reservations", label: "Reservas" },
+                                        { key: "events", label: "Eventos" },
+                                        { key: "tournaments", label: "Torneos" },
+                                        { key: "pos", label: "Kiosko (POS)" },
+                                        { key: "inventory", label: "Productos" },
+                                        { key: "cash", label: "Caja" },
+                                        { key: "customers", label: "Clientes" },
+                                        { key: "expenses", label: "Gastos" },
+                                        { key: "complexes", label: "Complejos" },
+                                        { key: "settings", label: "Configuración" },
+                                    ].map((mod) => (
+                                        <label key={mod.key} className="flex items-center gap-2 p-2 border rounded-lg hover:bg-accent cursor-pointer text-sm">
+                                            <Switch
+                                                checked={formData.modules.includes(mod.key)}
+                                                onCheckedChange={(c) => {
+                                                    if (c) {
+                                                        setFormData({ ...formData, modules: [...formData.modules, mod.key] });
+                                                    } else {
+                                                        setFormData({ ...formData, modules: formData.modules.filter(m => m !== mod.key) });
+                                                    }
+                                                }}
+                                            />
+                                            <span>{mod.label}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>

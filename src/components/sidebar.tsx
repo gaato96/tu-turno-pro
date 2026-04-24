@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
@@ -49,14 +49,16 @@ const adminNavigation = [
     { name: "Suscripciones", href: "/admin/subscriptions", icon: Shield },
 ];
 
-export function Sidebar({ activeComplexName, userRoleProp, activeModules }: { activeComplexName?: string, userRoleProp?: string, activeModules?: string[] }) {
+export function Sidebar({ activeComplexName, userRoleProp, activeModules, userModules: userModulesProp }: { activeComplexName?: string, userRoleProp?: string, activeModules?: string[], userModules?: string[] }) {
     const pathname = usePathname();
+    const router = useRouter();
     const { data: session } = useSession();
     const { theme, toggleTheme } = useTheme();
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     const isSuperAdmin = session?.user?.role === "super_admin";
     const userRole = userRoleProp || session?.user?.role;
+    const userModules = userModulesProp || [];
 
     const initials = session?.user?.name
         ? session.user.name.split(" ").map((n) => n[0]).join("").toUpperCase()
@@ -133,12 +135,33 @@ export function Sidebar({ activeComplexName, userRoleProp, activeModules }: { ac
                 ) : (
                     <>
                         {navigation.map((item) => {
-                            // Manager (Encargado) can only see these specific modules
-                            if (userRole !== "admin" && !["Dashboard", "Reservas", "Eventos", "Kiosko (POS)", "Caja", "Clientes"].includes(item.name)) {
-                                return null;
+                            // Module name mapping for filtering
+                            const moduleMap: Record<string, string> = {
+                                "Reservas": "reservations",
+                                "Eventos": "events",
+                                "Torneos": "tournaments",
+                                "Kiosko (POS)": "pos",
+                                "Productos": "inventory",
+                                "Caja": "cash",
+                                "Clientes": "customers",
+                                "Gastos": "expenses",
+                                "Complejos": "complexes",
+                                "Configuración": "settings",
+                            };
+
+                            // Default modules for staff when no custom modules set
+                            const defaultStaffModules = ["reservations", "events", "pos", "cash", "customers"];
+
+                            // For non-admin users, filter by their custom modules or defaults
+                            if (userRole !== "admin" && item.name !== "Dashboard") {
+                                const moduleKey = moduleMap[item.name];
+                                if (moduleKey) {
+                                    const allowedModules = userModules.length > 0 ? userModules : defaultStaffModules;
+                                    if (!allowedModules.includes(moduleKey)) return null;
+                                }
                             }
 
-                            // Filter by active Modules
+                            // Filter by active tenant modules
                             if (activeModules) {
                                 if (item.name === "Torneos" && !activeModules.includes("tournaments")) return null;
                                 if (item.name === "Eventos" && !activeModules.includes("events")) return null;
@@ -149,11 +172,25 @@ export function Sidebar({ activeComplexName, userRoleProp, activeModules }: { ac
 
                             const isActive = pathname === item.href ||
                                 (item.href !== "/dashboard" && pathname.startsWith(item.href));
+
+                            // Special handling for Dashboard link to fix navigation issue
+                            const handleClick = (e: React.MouseEvent) => {
+                                setMobileOpen(false);
+                                if (item.href === "/dashboard") {
+                                    e.preventDefault();
+                                    if (pathname === "/dashboard") {
+                                        router.refresh();
+                                    } else {
+                                        router.push("/dashboard");
+                                    }
+                                }
+                            };
+
                             return (
                                 <Link
                                     key={item.href}
                                     href={item.href}
-                                    onClick={() => setMobileOpen(false)}
+                                    onClick={handleClick}
                                     className={cn(
                                         "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
                                         collapsed && "justify-center px-2",

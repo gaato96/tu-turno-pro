@@ -167,6 +167,7 @@ export async function getTenantUsers(tenantId: string) {
         isActive: u.isActive,
         complexId: u.complexId,
         complexName: u.complex?.name || null,
+        modules: u.modules || [],
         createdAt: u.createdAt.toISOString(),
     }));
 }
@@ -188,6 +189,7 @@ export async function createTenantUser(data: {
     phone?: string;
     role: string;
     complexId?: string;
+    modules?: string[];
 }) {
     const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
     if (existingUser) throw new Error("El email ya está en uso");
@@ -203,6 +205,7 @@ export async function createTenantUser(data: {
             role: data.role,
             tenantId: data.tenantId,
             complexId: data.role === "staff" ? (data.complexId || null) : null,
+            modules: data.modules || [],
         }
     });
 
@@ -217,6 +220,7 @@ export async function updateTenantUser(userId: string, data: {
     complexId?: string | null;
     isActive?: boolean;
     password?: string;
+    modules?: string[];
 }) {
     if (data.email) {
         const existing = await prisma.user.findFirst({
@@ -232,6 +236,7 @@ export async function updateTenantUser(userId: string, data: {
     if (data.role !== undefined) updateData.role = data.role;
     if (data.complexId !== undefined) updateData.complexId = data.complexId || null;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.modules !== undefined) updateData.modules = data.modules;
     if (data.password) updateData.hashedPassword = await bcrypt.hash(data.password, 12);
 
     await prisma.user.update({

@@ -75,6 +75,7 @@ export async function getCalendarData(dateStr: string) {
         include: {
             court: { select: { name: true } },
             user: { select: { name: true } },
+            discounts: { orderBy: { createdAt: "asc" } },
             sales: {
                 where: { status: { not: "cancelled" } },
                 include: { items: { include: { product: { select: { name: true } } } } }
@@ -117,6 +118,12 @@ export async function getCalendarData(dateStr: string) {
                 unitPrice: Number(i.unitPrice),
                 subtotal: Number(i.subtotal)
             })) || []
+        })) || [],
+        discounts: r.discounts?.map((d: any) => ({
+            id: d.id,
+            description: d.description,
+            amount: Number(d.amount),
+            createdAt: d.createdAt,
         })) || []
     }));
 
@@ -536,6 +543,86 @@ export async function cancelReservation(reservationId: string) {
     await prisma.reservation.update({
         where: { id: reservationId },
         data: { status: "cancelled" }
+    });
+
+    revalidatePath("/dashboard/reservations");
+    revalidatePath("/dashboard");
+    return { success: true };
+}
+
+// ── Add Discount ──
+
+export async function addDiscount(reservationId: string, description: string, amount: number) {
+    const session = await auth();
+    const tenantId = getTenantId(session);
+
+    if (!description || amount <= 0) throw new Error("Concepto y monto son requeridos");
+
+    const reservation = await prisma.reservation.findFirst({
+        where: { id: reservationId, tenantId },
+        include: { discounts: true }
+    });
+    if (!reservation) throw new Error("Reserva no encontrada");
+
+    const currentDiscountTotal = reservation.discounts.reduce((sum, d) => sum + Number(d.amount), 0);
+    const newDiscountTotal = currentDiscountTotal + amount;
+    const courtAmount = Number(reservation.courtAmount);
+    const consumptionAmount = Number(reservation.consumptionAmount);
+    const newTotal = Math.max(0, courtAmount + consumptionAmount - newDiscountTotal);
+
+    await prisma.$transaction(async (tx) => {
+        await tx.reservationDiscount.create({
+            data: {
+                reservationId,
+                description,
+                amount,
+            }
+        });
+
+        await tx.reservation.update({
+            where: { id: reservationId },
+            data: {
+                discount: newDiscountTotal,
+                totalAmount: newTotal,
+            }
+        });
+    });
+
+    revalidatePath("/dashboard/reservations");
+    revalidatePath("/dashboard");
+    return { success: true };
+}
+
+// ── Remove Discount ──
+
+export async function removeDiscount(discountId: string) {
+    const session = await auth();
+    const tenantId = getTenantId(session);
+
+    const discount = await prisma.reservationDiscount.findFirst({
+        where: { id: discountId },
+        include: { reservation: { include: { discounts: true } } }
+    });
+    if (!discount) throw new Error("Descuento no encontrado");
+    if (discount.reservation.tenantId !== tenantId) throw new Error("No autorizado");
+
+    const remainingDiscounts = discount.reservation.discounts
+        .filter(d => d.id !== discountId)
+        .reduce((sum, d) => sum + Number(d.amount), 0);
+
+    const courtAmount = Number(discount.reservation.courtAmount);
+    const consumptionAmount = Number(discount.reservation.consumptionAmount);
+    const newTotal = Math.max(0, courtAmount + consumptionAmount - remainingDiscounts);
+
+    await prisma.$transaction(async (tx) => {
+        await tx.reservationDiscount.delete({ where: { id: discountId } });
+        await tx.reservation.update({
+            where: { id: discount.reservationId },
+            data: {
+                discount: remainingDiscounts,
+                totalAmount: newTotal,
+            }
+        });
     });
 
     revalidatePath("/dashboard/reservations");

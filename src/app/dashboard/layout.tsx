@@ -15,8 +15,10 @@ export default async function DashboardLayout({
     const activeComplexId = await getActiveComplexOrRedirect();
     let activeComplexName = undefined;
     let tenantModules: string[] = ["reservations"];
+    let userModules: string[] = [];
 
     const tenantId = (session?.user as any)?.tenantId;
+    const userId = (session?.user as any)?.id;
     if (tenantId) {
         const tenantInfo = await prisma.tenant.findUnique({
             where: { id: tenantId },
@@ -24,6 +26,17 @@ export default async function DashboardLayout({
         });
         if (tenantInfo) {
             tenantModules = tenantInfo.modules;
+        }
+    }
+
+    // Fetch user-level modules for per-user visibility control
+    if (userId) {
+        const userInfo = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { modules: true }
+        });
+        if (userInfo) {
+            userModules = userInfo.modules;
         }
     }
 
@@ -39,7 +52,7 @@ export default async function DashboardLayout({
 
     return (
         <div className="flex min-h-screen">
-            <Sidebar activeComplexName={activeComplexName} userRoleProp={userRole} activeModules={tenantModules} />
+            <Sidebar activeComplexName={activeComplexName} userRoleProp={userRole} activeModules={tenantModules} userModules={userModules} />
             <main className="flex-1 lg:pl-0">
                 <div className="p-4 lg:p-8 pt-16 lg:pt-8 max-w-[1600px] mx-auto">
                     {children}

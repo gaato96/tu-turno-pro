@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { createReservation, changeReservationStatus, payReservation, getAvailableSlots } from "./actions";
+import { createReservation, changeReservationStatus, payReservation, getAvailableSlots, addDiscount, removeDiscount } from "./actions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +41,9 @@ import {
     RotateCcw,
     ShoppingCart,
     Link as LinkIcon,
+    Percent,
+    Trash2,
+    Users,
 } from "lucide-react";
 import { format, addDays, subDays, isToday, startOfWeek, eachDayOfInterval } from "date-fns";
 import { es } from "date-fns/locale";
@@ -192,6 +195,10 @@ export default function ReservationsClient({
     const [detailReservation, setDetailReservation] = useState<any | null>(null);
     const [paymentReservation, setPaymentReservation] = useState<any | null>(null);
 
+    // Discount form state
+    const [discountDesc, setDiscountDesc] = useState("");
+    const [discountAmount, setDiscountAmount] = useState("");
+
     // Auto-open reservation detail if openResId is passed
     useEffect(() => {
         if (openResId && reservations.length > 0) {
@@ -320,6 +327,38 @@ export default function ReservationsClient({
             `¡Hola ${name}! Te recordamos tu reserva en ${complex.name}. ¡Te esperamos! 🏆`
         );
         window.open(`https://wa.me/${phone.replace(/\D/g, "")}?text=${message}`, "_blank");
+    };
+
+    const handleAddDiscount = (reservationId: string) => {
+        if (!discountDesc.trim() || !discountAmount || Number(discountAmount) <= 0) {
+            toast.error("Ingresá concepto y monto del descuento");
+            return;
+        }
+        startTransition(async () => {
+            try {
+                await addDiscount(reservationId, discountDesc.trim(), Number(discountAmount));
+                toast.success("Descuento aplicado");
+                setDiscountDesc("");
+                setDiscountAmount("");
+                setDetailReservation(null);
+                router.refresh();
+            } catch (error: any) {
+                toast.error(error.message || "Error al agregar descuento");
+            }
+        });
+    };
+
+    const handleRemoveDiscount = (discountId: string) => {
+        startTransition(async () => {
+            try {
+                await removeDiscount(discountId);
+                toast.success("Descuento eliminado");
+                setDetailReservation(null);
+                router.refresh();
+            } catch (error: any) {
+                toast.error(error.message || "Error al eliminar descuento");
+            }
+        });
     };
 
     const getReservationForSlot = (courtId: string, time: string, dateStr?: string): any | undefined => {
@@ -639,12 +678,39 @@ export default function ReservationsClient({
                             <h3 className="font-bold">Registro de Turnos ({format(selectedDate, "dd/MM/yyyy")})</h3>
                             <p className="text-xs text-muted-foreground">Vista de todos los turnos del día corriente. Solo visible para administradores.</p>
                         </div>
+
+                        {/* User Management Summary - Turnos por usuario */}
+                        {reservations.length > 0 && (
+                            <div className="p-4 border-b bg-emerald-50/30 dark:bg-emerald-500/5">
+                                <h4 className="text-sm font-bold flex items-center gap-2 mb-3">
+                                    <Users className="w-4 h-4 text-emerald-600" />
+                                    Turnos por Usuario
+                                </h4>
+                                <div className="flex flex-wrap gap-2">
+                                    {(() => {
+                                        const userCounts: Record<string, number> = {};
+                                        reservations.forEach((r: any) => {
+                                            const userName = r.user?.name || "Cliente / Sistema";
+                                            userCounts[userName] = (userCounts[userName] || 0) + 1;
+                                        });
+                                        return Object.entries(userCounts)
+                                            .sort((a, b) => b[1] - a[1])
+                                            .map(([name, count]) => (
+                                                <Badge key={name} variant="secondary" className="rounded-full px-3 py-1 text-xs">
+                                                    {name}: <span className="font-bold ml-1">{count}</span>
+                                                </Badge>
+                                            ));
+                                    })()}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="p-4">
                             {reservations.length === 0 ? (
                                 <p className="text-sm text-center py-8 text-muted-foreground">No hay turnos registrados para esta fecha.</p>
                             ) : (
                                 <div className="space-y-2">
-                                    {reservations.map(r => (
+                                    {reservations.map((r: any) => (
                                         <div key={r.id} className={cn("flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border bg-card hover:bg-muted/50 transition-colors cursor-pointer", r.status === "cancelled" && "opacity-60 grayscale border-dashed")} onClick={() => setDetailReservation(r)}>
                                             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
                                                 <div className="flex items-center gap-2">
@@ -656,8 +722,11 @@ export default function ReservationsClient({
                                                     <p className="text-xs text-muted-foreground">{courts.find(c => c.id === r.courtId)?.name}</p>
                                                 </div>
                                             </div>
-                                            <div className="mt-2 sm:mt-0 text-right">
-                                                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">${Number(r.paidAmount).toLocaleString()} <span className="text-muted-foreground font-normal text-xs">/ ${Number(r.totalAmount).toLocaleString()}</span></p>
+                                            <div className="mt-2 sm:mt-0 flex items-center gap-3">
+                                                <Badge variant="outline" className="rounded-full text-[10px] shrink-0">
+                                                    {r.user?.name || "Cliente / Sistema"}
+                                                </Badge>
+                                                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">${Number(r.paidAmount).toLocaleString()} <span className="text-muted-foreground font-normal text-xs">/ ${Number(r.totalAmount).toLocaleString()}</span></p>
                                             </div>
                                         </div>
                                     ))}
@@ -953,6 +1022,80 @@ export default function ReservationsClient({
                                                     ${Number(detailReservation.consumptionAmount).toLocaleString()}
                                                 </span>
                                             </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Discounts Section */}
+                                {detailReservation.status !== "cancelled" && detailReservation.status !== "paid" && (
+                                    <div className="space-y-2 px-2">
+                                        <h4 className="text-sm font-bold flex items-center gap-2">
+                                            <Percent className="w-4 h-4" /> Descuentos
+                                        </h4>
+
+                                        {/* Existing discounts */}
+                                        {detailReservation.discounts && detailReservation.discounts.length > 0 && (
+                                            <div className="bg-amber-50/50 dark:bg-amber-500/5 rounded-xl p-3 space-y-2 border border-amber-200/50 dark:border-amber-500/20">
+                                                {detailReservation.discounts.map((d: any) => (
+                                                    <div key={d.id} className="flex items-center justify-between text-xs">
+                                                        <span className="text-muted-foreground">{d.description}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-semibold text-red-600 dark:text-red-400">-${Number(d.amount).toLocaleString()}</span>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-5 w-5 text-destructive hover:text-destructive"
+                                                                onClick={() => handleRemoveDiscount(d.id)}
+                                                                disabled={isPending}
+                                                            >
+                                                                <Trash2 className="w-3 h-3" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Add new discount */}
+                                        <div className="flex gap-2">
+                                            <Input
+                                                placeholder="Concepto..."
+                                                value={discountDesc}
+                                                onChange={(e) => setDiscountDesc(e.target.value)}
+                                                className="text-xs h-8 rounded-lg flex-1"
+                                            />
+                                            <Input
+                                                type="number"
+                                                placeholder="$"
+                                                value={discountAmount}
+                                                onChange={(e) => setDiscountAmount(e.target.value)}
+                                                className="text-xs h-8 rounded-lg w-24"
+                                            />
+                                            <Button
+                                                size="sm"
+                                                className="h-8 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs"
+                                                onClick={() => handleAddDiscount(detailReservation.id)}
+                                                disabled={isPending || !discountDesc || !discountAmount}
+                                            >
+                                                Aplicar
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Show existing discounts for paid/cancelled (read-only) */}
+                                {(detailReservation.status === "paid" || detailReservation.status === "cancelled") && detailReservation.discounts && detailReservation.discounts.length > 0 && (
+                                    <div className="space-y-2 px-2">
+                                        <h4 className="text-sm font-bold flex items-center gap-2">
+                                            <Percent className="w-4 h-4" /> Descuentos
+                                        </h4>
+                                        <div className="bg-amber-50/50 dark:bg-amber-500/5 rounded-xl p-3 space-y-2 border border-amber-200/50 dark:border-amber-500/20">
+                                            {detailReservation.discounts.map((d: any) => (
+                                                <div key={d.id} className="flex justify-between text-xs">
+                                                    <span className="text-muted-foreground">{d.description}</span>
+                                                    <span className="font-semibold text-red-600 dark:text-red-400">-${Number(d.amount).toLocaleString()}</span>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 )}

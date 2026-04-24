@@ -51,6 +51,7 @@ model User {
   hashedPassword String
   role           String   @default("staff") // super_admin, admin, staff
   phone          String?
+  modules        String[] @default([]) // Per-user module visibility (empty = default for role)
   tenantId       String?
   tenant         Tenant?  @relation(fields: [tenantId], references: [id])
   complexId      String?
@@ -196,11 +197,23 @@ model Reservation {
   sales            Sale[]
   payments          Payment[]
   tournamentMatches TournamentMatch[]
+  discounts         ReservationDiscount[]
 
   @@index([complexId, date])
   @@index([courtId, date])
   @@index([status])
   @@index([customerId])
+}
+
+model ReservationDiscount {
+  id            String      @id @default(cuid())
+  reservationId String
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  description   String
+  amount        Decimal     @db.Decimal(10, 2)
+  createdAt     DateTime    @default(now())
+
+  @@index([reservationId])
 }
 
 // ============================================

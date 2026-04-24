@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import SelectComplexClient from "./select-complex-client";
+import NoComplexesClient from "./no-complexes-client";
 import { ThemeProvider } from "@/components/theme-provider";
 
 export const dynamic = "force-dynamic";
@@ -29,12 +30,9 @@ export default async function SelectComplexPage() {
 
     if (complexes.length === 0) {
         return (
-            <div className="flex h-screen items-center justify-center bg-muted/20">
-                <div className="text-center">
-                    <h2 className="text-2xl font-bold mb-2">No tienes complejos creados.</h2>
-                    <p className="text-muted-foreground">Por favor, contacta con soporte técnico para inicializar un complejo.</p>
-                </div>
-            </div>
+            <ThemeProvider>
+                <NoComplexesClient tenantName={session.user?.tenantName || "Tu Turno Pro"} />
+            </ThemeProvider>
         );
     }
 
