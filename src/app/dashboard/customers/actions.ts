@@ -96,10 +96,77 @@ export async function getCustomerDetail(id: string) {
 
     if (!customer) throw new Error("Customer not found");
 
+    // Fetch future recurring reservations to allow canceling them
+    const futureRecurring = await prisma.reservation.findMany({
+        where: {
+            customerId: id,
+            tenantId,
+            isRecurring: true,
+            status: { notIn: ["cancelled"] },
+            date: { gte: new Date() }
+        },
+        distinct: ['startTime', 'courtId'], // Try to group them by the time slot and court
+        select: {
+            id: true,
+            courtId: true,
+            court: { select: { name: true } },
+            date: true,
+            startTime: true,
+            endTime: true,
+            reservationType: true
+        }
+    });
+
     return {
         ...customer,
+        futureRecurring,
         balance: Number(customer.balance)
     };
+}
+
+export async function cancelFutureRecurringReservations(reservationId: string) {
+    const session = await auth();
+    const tenantId = getTenantId(session);
+
+    // Find the base reservation
+    const baseRes = await prisma.reservation.findFirst({
+        where: { id: reservationId, tenantId }
+    });
+    if (!baseRes || !baseRes.isRecurring) throw new Error("Turno fijo no encontrado");
+
+    // Cancel all future recurring reservations for this customer that match the given time and court
+    const startTimeTime = new Date(baseRes.startTime);
+    const hour = startTimeTime.getHours();
+    const minute = startTimeTime.getMinutes();
+
+    // Find all future reservations for this customer/court combination
+    const futureRes = await prisma.reservation.findMany({
+        where: {
+            customerId: baseRes.customerId,
+            tenantId,
+            isRecurring: true,
+            status: { notIn: ["cancelled", "paid", "in_game", "finished"] },
+            courtId: baseRes.courtId,
+            date: { gte: new Date() }
+        }
+    });
+
+    // Filter down to the specific time slot
+    const toCancelIds = futureRes.filter(r => {
+        const d = new Date(r.startTime);
+        return d.getHours() === hour && d.getMinutes() === minute;
+    }).map(r => r.id);
+
+    if (toCancelIds.length > 0) {
+        await prisma.reservation.updateMany({
+            where: { id: { in: toCancelIds } },
+            data: { status: "cancelled", notes: "Turno fijo cancelado desde módulo clientes" }
+        });
+    }
+
+    revalidatePath("/dashboard/customers");
+    revalidatePath("/dashboard/reservations");
+    return { count: toCancelIds.length };
 }
 
 export async function updateCustomer(id: string, data: { name: string; phone?: string; email?: string; notes?: string }) {

@@ -127,54 +127,7 @@ export function SettingsClient({ initialComplex }: { initialComplex: any }) {
 
             {/* Complex Info - REMOVED (managed by SuperAdmin/Complexes) */}
 
-            {/* Operating Hours (Per Day) */}
-            <Card className="card-elevated p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <CalendarClock className="w-5 h-5 text-emerald-600" />
-                        <div>
-                            <h2 className="text-lg font-bold">Horarios por Día</h2>
-                            <p className="text-xs text-muted-foreground">Configura los horarios de apertura y cierre para cada día de la semana.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="space-y-3 pt-2">
-                    {schedules.map((schedule) => (
-                        <div key={schedule.dayOfWeek} className={`flex items-center gap-4 p-3 rounded-xl border ${schedule.isActive ? 'border-border' : 'border-dashed bg-muted/30 opacity-70'}`}>
-                            <div className="w-28 flex items-center gap-3 shrink-0">
-                                <Switch checked={schedule.isActive} onCheckedChange={(c) => handleScheduleChange(schedule.dayOfWeek, 'isActive', c)} />
-                                <Label className={`font-medium ${schedule.isActive ? '' : 'text-muted-foreground line-through'}`}>
-                                    {DAYS_OF_WEEK[schedule.dayOfWeek]}
-                                </Label>
-                            </div>
-
-                            {schedule.isActive ? (
-                                <div className="flex-1 flex items-center gap-3 flex-wrap sm:flex-nowrap">
-                                    <div className="flex-1 min-w-[120px]">
-                                        <Label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Apertura</Label>
-                                        <Input type="time" value={schedule.openingTime} onChange={(e) => handleScheduleChange(schedule.dayOfWeek, 'openingTime', e.target.value)} className="rounded-xl h-9" />
-                                    </div>
-                                    <div className="flex-1 min-w-[120px]">
-                                        <Label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Cierre</Label>
-                                        <Input type="time" value={schedule.closingTime} onChange={(e) => handleScheduleChange(schedule.dayOfWeek, 'closingTime', e.target.value)} className="rounded-xl h-9" />
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="flex-1 flex items-center text-muted-foreground text-sm italic">
-                                    Cerrado este día
-                                </div>
-                            )}
-                        </div>
-                    ))}
-                </div>
-
-                <div className="flex justify-end pt-4">
-                    <Button onClick={handleSaveSchedules} disabled={isPending} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md">
-                        <Save className="w-4 h-4 mr-2" /> Guardar Horarios
-                    </Button>
-                </div>
-            </Card>
+            {/* Operating Hours - REMOVED (managed by Complex/Court settings) */}
 
             {/* Online Payments Settings */}
             <Card className="card-elevated p-6 space-y-4">

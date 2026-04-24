@@ -459,7 +459,7 @@ export default function ReservationsClient({
             {/* Date Navigation */}
             <Card className="p-4 card-elevated border-border/50">
                 <div className="flex items-center justify-between">
-                    <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/reservations?date=${format(subDays(selectedDate, 1), "yyyy-MM-dd")}`)} className="rounded-xl">
+                    <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/reservations?date=${format(subDays(selectedDate, viewType === "week" ? 7 : 1), "yyyy-MM-dd")}`)} className="rounded-xl">
                         <ChevronLeft className="w-5 h-5" />
                     </Button>
                     <div className="text-center">
@@ -478,7 +478,7 @@ export default function ReservationsClient({
                                 Hoy
                             </Button>
                         )}
-                        <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/reservations?date=${format(addDays(selectedDate, 1), "yyyy-MM-dd")}`)} className="rounded-xl">
+                        <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/reservations?date=${format(addDays(selectedDate, viewType === "week" ? 7 : 1), "yyyy-MM-dd")}`)} className="rounded-xl">
                             <ChevronRight className="w-5 h-5" />
                         </Button>
                     </div>

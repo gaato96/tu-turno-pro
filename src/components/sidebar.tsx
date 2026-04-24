@@ -31,7 +31,7 @@ import {
 import { useState } from "react";
 
 const navigation = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Inicio", href: "/dashboard", icon: LayoutDashboard },
     { name: "Complejos", href: "/dashboard/complexes", icon: Building2 },
     { name: "Reservas", href: "/dashboard/reservations", icon: CalendarDays },
     { name: "Eventos", href: "/dashboard/events", icon: Trophy },

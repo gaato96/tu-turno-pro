@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Phone, History, CreditCard, Eye, Plus, ArrowRight, Edit, Trash2 } from "lucide-react";
+import { Search, Phone, History, CreditCard, Eye, Plus, ArrowRight, Edit, Trash2, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -21,7 +21,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { getCustomerDetail, addCustomerPayment, createCustomer, updateCustomer, deleteCustomer } from "./actions";
+import { getCustomerDetail, addCustomerPayment, createCustomer, updateCustomer, deleteCustomer, cancelFutureRecurringReservations } from "./actions";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 type CustomerSummary = {
@@ -61,6 +61,11 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
   // Delete confirm
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Cancel Recurring confirm
+  const [isCancelRecurringOpen, setIsCancelRecurringOpen] = useState(false);
+  const [selectedRecurring, setSelectedRecurring] = useState<any | null>(null);
+  const [isCancelingRecurring, setIsCancelingRecurring] = useState(false);
 
   const filteredCustomers = customers.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -156,6 +161,22 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
       toast.error(err.message || "Error al eliminar");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleCancelRecurring = async () => {
+    if (!selectedRecurring) return;
+    setIsCancelingRecurring(true);
+    try {
+      const res = await cancelFutureRecurringReservations(selectedRecurring.id);
+      toast.success(`Se cancelaron ${res.count} turnos fijos`);
+      setIsCancelRecurringOpen(false);
+      setSelectedRecurring(null);
+      await openCustomerDetail(selectedCustomerId!);
+    } catch (e: any) {
+        toast.error(e.message || "Error al cancelar turnos fijos");
+    } finally {
+        setIsCancelingRecurring(false);
     }
   };
 
@@ -284,6 +305,35 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
+
+                {/* Recurring reservations */}
+                {detailData.futureRecurring && detailData.futureRecurring.length > 0 && (
+                  <div className="mb-8">
+                    <h4 className="font-semibold mb-4 flex items-center text-amber-700 dark:text-amber-500">
+                      <RotateCcw className="h-4 w-4 mr-2" /> Turnos Fijos (Próximos)
+                    </h4>
+                    <div className="space-y-3">
+                      {detailData.futureRecurring.map((res: any) => (
+                        <div key={res.id} className="flex justify-between items-center p-3 border border-amber-200 bg-amber-50/30 dark:border-amber-900/50 dark:bg-amber-900/10 rounded-lg">
+                          <div>
+                            <p className="font-medium text-sm">
+                                {res.court?.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                {format(new Date(res.startTime), "EEEE", { locale: es })} a las {format(new Date(res.startTime), "HH:mm")}
+                            </p>
+                          </div>
+                          <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => {
+                              setSelectedRecurring(res);
+                              setIsCancelRecurringOpen(true);
+                          }}>
+                              Borrar turno fijo
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* History */}
                 <div>
@@ -456,6 +506,25 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
             <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancelar</Button>
             <Button variant="destructive" onClick={handleDeleteCustomer} disabled={isDeleting}>
               {isDeleting ? "Eliminando..." : "Eliminar Cliente"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Recurring Confirmation */}
+      <Dialog open={isCancelRecurringOpen} onOpenChange={setIsCancelRecurringOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Borrar Turno Fijo</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro que deseas eliminar el turno fijo de los {selectedRecurring && format(new Date(selectedRecurring.startTime), "EEEE", { locale: es })} a las {selectedRecurring && format(new Date(selectedRecurring.startTime), "HH:mm")} en {selectedRecurring?.court?.name}?
+              Se cancelarán todos los turnos futuros asociados a esta reserva.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCancelRecurringOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleCancelRecurring} disabled={isCancelingRecurring}>
+              {isCancelingRecurring ? "Cancelando..." : "Sí, borrar turno fijo"}
             </Button>
           </DialogFooter>
         </DialogContent>
