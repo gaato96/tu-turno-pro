@@ -136,6 +136,12 @@ export async function getCalendarData(dateStr: string) {
         nightRate: Number(c.nightRate),
     }));
 
+    const serializedComplex = {
+        ...complex,
+        createdAt: complex.createdAt?.toISOString(),
+        updatedAt: complex.updatedAt?.toISOString(),
+    };
+
     const serializedEvents = events.map((ev: any) => ({
         ...ev,
         date: ev.date.toISOString().replace("Z", ""),
@@ -149,7 +155,7 @@ export async function getCalendarData(dateStr: string) {
     }));
 
     return {
-        complex: { id: complex.id, name: complex.name, openingTime: complex.openingTime, closingTime: complex.closingTime },
+        complex: serializedComplex,
         complexes: allComplexes,
         courts: serializedCourts,
         reservations: serializedReservations,

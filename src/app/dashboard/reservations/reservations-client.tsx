@@ -502,7 +502,7 @@ export default function ReservationsClient({
                                         <div className="flex items-center justify-center gap-1 mt-1">
                                             <span className="text-[10px]">{sportEmoji[court.sportType]}</span>
                                             <span className="text-[10px] text-muted-foreground">
-                                                ${court.dayRate.toLocaleString()} / ${court.nightRate.toLocaleString()}
+                                                ${court.dayRate.toLocaleString("es-AR")} / ${court.nightRate.toLocaleString("es-AR")}
                                             </span>
                                         </div>
                                     </div>
@@ -726,7 +726,7 @@ export default function ReservationsClient({
                                                 <Badge variant="outline" className="rounded-full text-[10px] shrink-0">
                                                     {r.user?.name || "Cliente / Sistema"}
                                                 </Badge>
-                                                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">${Number(r.paidAmount).toLocaleString()} <span className="text-muted-foreground font-normal text-xs">/ ${Number(r.totalAmount).toLocaleString()}</span></p>
+                                                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">${Number(r.paidAmount).toLocaleString("es-AR")} <span className="text-muted-foreground font-normal text-xs">/ ${Number(r.totalAmount).toLocaleString("es-AR")}</span></p>
                                             </div>
                                         </div>
                                     ))}
@@ -778,7 +778,7 @@ export default function ReservationsClient({
                                     <SelectContent>
                                         {courts.map((court) => (
                                             <SelectItem key={court.id} value={court.id}>
-                                                {sportEmoji[court.sportType]} {court.name} — ${court.dayRate.toLocaleString()}/{court.nightRate.toLocaleString()}
+                                                {sportEmoji[court.sportType]} {court.name} — ${court.dayRate.toLocaleString("es-AR")}/{court.nightRate.toLocaleString("es-AR")}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -901,7 +901,7 @@ export default function ReservationsClient({
                                                 const ratePer30 = (isNight ? court.nightRate : court.dayRate) / 2;
                                                 total += ratePer30;
                                             }
-                                            return total.toLocaleString();
+                                            return total.toLocaleString("es-AR");
                                         })()}
                                     </p>
                                 </Card>
@@ -982,14 +982,14 @@ export default function ReservationsClient({
                                     <div className="flex justify-between items-center">
                                         <span className="text-sm text-muted-foreground">Total de la reserva</span>
                                         <span className={`text-xl font-bold ${Number(detailReservation.paidAmount) === 0 ? "text-emerald-600 dark:text-emerald-400 text-2xl" : ""}`}>
-                                            ${Number(detailReservation.totalAmount).toLocaleString()}
+                                            ${Number(detailReservation.totalAmount).toLocaleString("es-AR")}
                                         </span>
                                     </div>
                                     {Number(detailReservation.paidAmount) > 0 && (
                                         <div className="flex justify-between items-center text-sm">
                                             <span className="text-muted-foreground">Monto abonado</span>
                                             <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                                - ${Number(detailReservation.paidAmount).toLocaleString()}
+                                                - ${Number(detailReservation.paidAmount).toLocaleString("es-AR")}
                                             </span>
                                         </div>
                                     )}
@@ -997,7 +997,7 @@ export default function ReservationsClient({
                                         <div className="flex justify-between items-center pt-2 border-t border-border/50">
                                             <span className="text-sm font-semibold">Restante a pagar</span>
                                             <span className="text-2xl font-bold text-destructive">
-                                                ${Math.max(0, Number(detailReservation.totalAmount) - Number(detailReservation.paidAmount)).toLocaleString()}
+                                                ${Math.max(0, Number(detailReservation.totalAmount) - Number(detailReservation.paidAmount)).toLocaleString("es-AR")}
                                             </span>
                                         </div>
                                     )}
@@ -1013,13 +1013,13 @@ export default function ReservationsClient({
                                             {detailReservation.sales.flatMap((s: any) => s.items).map((item: any, idx: number) => (
                                                 <div key={idx} className="flex justify-between text-xs">
                                                     <span>{item.quantity}x {item.product?.name || "Producto"}</span>
-                                                    <span className="font-semibold">${Number(item.subtotal).toLocaleString()}</span>
+                                                    <span className="font-semibold">${Number(item.subtotal).toLocaleString("es-AR")}</span>
                                                 </div>
                                             ))}
                                             <div className="pt-2 border-t flex justify-between text-[11px] text-muted-foreground uppercase font-bold tracking-tighter">
                                                 <span>Subtotal Consumo</span>
                                                 <span className="text-emerald-600 dark:text-emerald-400">
-                                                    ${Number(detailReservation.consumptionAmount).toLocaleString()}
+                                                    ${Number(detailReservation.consumptionAmount).toLocaleString("es-AR")}
                                                 </span>
                                             </div>
                                         </div>
@@ -1040,7 +1040,7 @@ export default function ReservationsClient({
                                                     <div key={d.id} className="flex items-center justify-between text-xs">
                                                         <span className="text-muted-foreground">{d.description}</span>
                                                         <div className="flex items-center gap-2">
-                                                            <span className="font-semibold text-red-600 dark:text-red-400">-${Number(d.amount).toLocaleString()}</span>
+                                                            <span className="font-semibold text-red-600 dark:text-red-400">-${Number(d.amount).toLocaleString("es-AR")}</span>
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
@@ -1093,7 +1093,7 @@ export default function ReservationsClient({
                                             {detailReservation.discounts.map((d: any) => (
                                                 <div key={d.id} className="flex justify-between text-xs">
                                                     <span className="text-muted-foreground">{d.description}</span>
-                                                    <span className="font-semibold text-red-600 dark:text-red-400">-${Number(d.amount).toLocaleString()}</span>
+                                                    <span className="font-semibold text-red-600 dark:text-red-400">-${Number(d.amount).toLocaleString("es-AR")}</span>
                                                 </div>
                                             ))}
                                         </div>
