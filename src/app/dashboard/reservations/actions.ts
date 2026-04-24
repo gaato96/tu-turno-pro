@@ -96,62 +96,101 @@ export async function getCalendarData(dateStr: string) {
         }
     });
 
-    // Serialize Decimal fields and fix Timezone shift for client
+    // Serialize ALL fields explicitly — never use spread on Prisma objects
+    // because Prisma Decimal and Date types are not serializable in Next.js RSC
     const serializedReservations = reservations.map((r: any) => ({
-        ...r,
+        id: r.id,
+        tenantId: r.tenantId,
+        complexId: r.complexId,
+        courtId: r.courtId,
+        userId: r.userId,
+        customerName: r.customerName,
+        customerPhone: r.customerPhone,
+        customerEmail: r.customerEmail,
+        customerId: r.customerId,
         date: r.date.toISOString().replace("Z", ""),
         startTime: r.startTime.toISOString().replace("Z", ""),
         endTime: r.endTime.toISOString().replace("Z", ""),
-        createdAt: r.createdAt?.toISOString(),
-        updatedAt: r.updatedAt?.toISOString(),
+        status: r.status,
+        reservationType: r.reservationType,
+        source: r.source,
         courtAmount: Number(r.courtAmount),
         consumptionAmount: Number(r.consumptionAmount),
         discount: Number(r.discount),
         totalAmount: Number(r.totalAmount),
         depositAmount: Number(r.depositAmount || 0),
         paidAmount: Number(r.paidAmount || 0),
-        sales: r.sales?.map((s: any) => ({
-            ...s,
-            createdAt: s.createdAt?.toISOString(),
-            updatedAt: s.updatedAt?.toISOString(),
+        activeForConsumption: r.activeForConsumption,
+        paymentMethod: r.paymentMethod,
+        paymentDetails: r.paymentDetails,
+        isRecurring: r.isRecurring,
+        parentReservationId: r.parentReservationId,
+        isEvent: r.isEvent,
+        notes: r.notes,
+        createdAt: r.createdAt?.toISOString(),
+        updatedAt: r.updatedAt?.toISOString(),
+        // Relations — pick only safe fields
+        court: r.court ? { name: r.court.name } : null,
+        user: r.user ? { name: r.user.name } : null,
+        sales: (r.sales || []).map((s: any) => ({
+            id: s.id,
+            invoiceNumber: s.invoiceNumber,
             subtotal: Number(s.subtotal),
             total: Number(s.total),
-            items: s.items?.map((i: any) => ({
-                ...i,
+            status: s.status,
+            paymentMethod: s.paymentMethod,
+            isStaffConsumption: s.isStaffConsumption,
+            createdAt: s.createdAt?.toISOString(),
+            items: (s.items || []).map((i: any) => ({
+                id: i.id,
+                quantity: i.quantity,
                 unitPrice: Number(i.unitPrice),
-                subtotal: Number(i.subtotal)
-            })) || []
-        })) || [],
-        discounts: r.discounts?.map((d: any) => ({
+                subtotal: Number(i.subtotal),
+                product: i.product ? { name: i.product.name } : null,
+            })),
+        })),
+        discounts: (r.discounts || []).map((d: any) => ({
             id: d.id,
             description: d.description,
             amount: Number(d.amount),
             createdAt: d.createdAt?.toISOString(),
-        })) || []
+        })),
     }));
 
     const serializedCourts = complex.courts.map((c: any) => ({
-        ...c,
+        id: c.id,
+        complexId: c.complexId,
+        name: c.name,
+        sportType: c.sportType,
         dayRate: Number(c.dayRate),
         nightRate: Number(c.nightRate),
+        nightRateStartTime: c.nightRateStartTime,
+        isActive: c.isActive,
+        displayOrder: c.displayOrder,
+        parentCourtId: c.parentCourtId,
     }));
 
     const serializedComplex = {
-        ...complex,
-        createdAt: complex.createdAt?.toISOString(),
-        updatedAt: complex.updatedAt?.toISOString(),
+        id: complex.id,
+        name: complex.name,
+        openingTime: complex.openingTime,
+        closingTime: complex.closingTime,
+        depositAmount: complex.depositAmount ? Number(complex.depositAmount) : null,
+        requiresDeposit: complex.requiresDeposit,
     };
 
     const serializedEvents = events.map((ev: any) => ({
-        ...ev,
+        id: ev.id,
+        name: ev.name,
+        description: ev.description,
         date: ev.date.toISOString().replace("Z", ""),
         startTime: ev.startTime.toISOString().replace("Z", ""),
         endTime: ev.endTime.toISOString().replace("Z", ""),
-        createdAt: ev.createdAt?.toISOString(),
-        updatedAt: ev.updatedAt?.toISOString(),
         totalAmount: Number(ev.totalAmount),
         depositPaid: Number(ev.depositPaid),
-        paidAmount: Number(ev.paidAmount)
+        paidAmount: Number(ev.paidAmount),
+        status: ev.status,
+        notes: ev.notes,
     }));
 
     return {
