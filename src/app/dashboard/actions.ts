@@ -69,7 +69,11 @@ export async function getDashboardData() {
             orderBy: { createdAt: "desc" }
         }),
         prisma.reservation.findMany({
-            where: { tenantId, complexId: targetComplexId, status: "finished", date: { gte: startOfDay, lte: endOfDay } },
+            where: {
+                tenantId,
+                complexId: targetComplexId,
+                status: "finished",
+            },
             include: {
                 court: { select: { name: true } },
                 sales: {
@@ -182,11 +186,11 @@ export async function getDashboardData() {
         upcomingReservations: upcomingReservations.map(mapReservation),
         finishedReservations: finishedReservations.map(mapReservation),
         pendingReservations: pendingReservations.map(mapReservation),
-        todaySales,
+        todaySales: todaySales.map(s => ({ id: s.id, total: Number(s.total) })),
         topProducts: topProducts.map(tp => ({
             name: nameMap[tp.productId] || "Producto desconocido",
             quantity: tp._sum.quantity,
-            revenue: tp._sum.subtotal
+            revenue: Number(tp._sum.subtotal || 0)
         })),
         complexes,
         isCashOpen: !!openCashSession,

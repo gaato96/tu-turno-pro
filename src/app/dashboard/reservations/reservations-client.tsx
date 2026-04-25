@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { createReservation, changeReservationStatus, payReservation, getAvailableSlots, addDiscount, removeDiscount } from "./actions";
+import { createReservation, changeReservationStatus, payReservation, getAvailableSlots, addDiscount, removeDiscount, extendReservation } from "./actions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,7 @@ import {
     Percent,
     Trash2,
     Users,
+    Timer,
 } from "lucide-react";
 import { format, addDays, subDays, isToday, startOfWeek, eachDayOfInterval } from "date-fns";
 import { es } from "date-fns/locale";
@@ -1113,9 +1114,30 @@ export default function ReservationsClient({
                                         </Button>
                                     )}
                                     {detailReservation.status === "in_game" && (
-                                        <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white rounded-xl h-12" onClick={() => updateStatus(detailReservation.id, "finished")} disabled={isPending}>
-                                            <Square className="w-4 h-4 mr-2" /> Finalizar Turno
-                                        </Button>
+                                        <>
+                                            <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white rounded-xl h-12" onClick={() => updateStatus(detailReservation.id, "finished")} disabled={isPending}>
+                                                <Square className="w-4 h-4 mr-2" /> Finalizar Turno
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                className="w-full rounded-xl h-12 border-blue-500/30 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                                disabled={isPending}
+                                                onClick={() => {
+                                                    startTransition(async () => {
+                                                        try {
+                                                            const result = await extendReservation(detailReservation.id);
+                                                            toast.success(`Turno extendido +30 min (+$${result.extraAmount.toLocaleString("es-AR")})`);
+                                                            setDetailReservation(null);
+                                                            router.refresh();
+                                                        } catch (e: any) {
+                                                            toast.error(e.message || "Error al extender el turno");
+                                                        }
+                                                    });
+                                                }}
+                                            >
+                                                <Timer className="w-4 h-4 mr-2" /> Extender +30 min
+                                            </Button>
+                                        </>
                                     )}
                                     {(detailReservation.status === "pending" || detailReservation.status === "confirmed") && (
                                         <Button variant="outline" className="w-full rounded-xl h-12 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30" onClick={() => updateStatus(detailReservation.id, "cancelled")} disabled={isPending}>

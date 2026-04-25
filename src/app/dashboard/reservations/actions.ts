@@ -462,6 +462,88 @@ export async function changeReservationStatus(reservationId: string, newStatus: 
     return { success: true };
 }
 
+// ── Extend Reservation (add 30 min) ──
+
+export async function extendReservation(reservationId: string) {
+    const session = await auth();
+    const tenantId = getTenantId(session);
+
+    const reservation = await prisma.reservation.findFirst({
+        where: { id: reservationId, tenantId },
+        include: {
+            court: { include: { childCourts: true, parentCourt: true } }
+        }
+    });
+    if (!reservation) throw new Error("Reserva no encontrada");
+    if (reservation.status !== "in_game" && reservation.status !== "confirmed") {
+        throw new Error("Solo se puede extender un turno en juego o confirmado.");
+    }
+
+    const newEndTime = new Date(reservation.endTime);
+    newEndTime.setMinutes(newEndTime.getMinutes() + 30);
+
+    // Check overlap with other reservations on same court (and linked courts)
+    const courtIdsToCheck = [reservation.courtId];
+    if (reservation.court.parentCourtId) courtIdsToCheck.push(reservation.court.parentCourtId);
+    if (reservation.court.childCourts.length > 0) {
+        courtIdsToCheck.push(...reservation.court.childCourts.map(c => c.id));
+    }
+
+    const overlapping = await prisma.reservation.findFirst({
+        where: {
+            id: { not: reservationId },
+            courtId: { in: courtIdsToCheck },
+            status: { notIn: ["cancelled"] },
+            startTime: { lt: newEndTime },
+            endTime: { gt: reservation.endTime },
+        }
+    });
+
+    if (overlapping) {
+        throw new Error("No se puede extender: hay otra reserva en el siguiente horario.");
+    }
+
+    // Also check events
+    const overlappingEvent = await (prisma as any).event.findFirst({
+        where: {
+            complexId: reservation.complexId,
+            status: { notIn: ["cancelled"] },
+            startTime: { lt: newEndTime },
+            endTime: { gt: reservation.endTime },
+        }
+    });
+
+    if (overlappingEvent) {
+        throw new Error("No se puede extender: hay un evento programado en el siguiente horario.");
+    }
+
+    // Calculate the rate for the extra 30 min
+    const court = reservation.court;
+    const nightStartHour = parseInt(court.nightRateStartTime.split(":")[0]);
+    const nightStartMinute = parseInt(court.nightRateStartTime.split(":")[1] || "0");
+
+    const extraSlotHour = reservation.endTime.getHours();
+    const extraSlotMinute = reservation.endTime.getMinutes();
+    const isNight = extraSlotHour > nightStartHour || (extraSlotHour === nightStartHour && extraSlotMinute >= nightStartMinute);
+    const extraAmount = (isNight ? Number(court.nightRate) : Number(court.dayRate)) / 2;
+
+    const newCourtAmount = Number(reservation.courtAmount) + extraAmount;
+    const newTotalAmount = Number(reservation.totalAmount) + extraAmount;
+
+    await prisma.reservation.update({
+        where: { id: reservationId },
+        data: {
+            endTime: newEndTime,
+            courtAmount: newCourtAmount,
+            totalAmount: newTotalAmount,
+        }
+    });
+
+    revalidatePath("/dashboard/reservations");
+    revalidatePath("/dashboard");
+    return { success: true, extraAmount, newEndTime: newEndTime.toISOString() };
+}
+
 export async function payReservation(
     reservationId: string,
     paymentMethod: string,

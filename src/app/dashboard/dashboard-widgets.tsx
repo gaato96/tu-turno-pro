@@ -334,7 +334,7 @@ export function FinishedReservationsWidget({ finishedReservations }: { finishedR
                                         </span>
                                     </div>
                                 </div>
-                                <Button size="sm" className="shrink-0 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white" disabled>
+                                <Button size="sm" className="shrink-0 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white">
                                     <DollarSign className="w-3.5 h-3.5 mr-1" />
                                     Cobrar
                                 </Button>
