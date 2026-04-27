@@ -181,6 +181,13 @@ export function CashPanel({ openSession, history, userRole }: { openSession: any
                                                 </summary>
                                                 <div className="mt-2 text-xs bg-muted/50 p-3 rounded-lg flex flex-col gap-1 border">
                                                     <p><span className="font-medium text-muted-foreground">ID Operación:</span> {s.id}</p>
+                                                    {s.reservation && (
+                                                        <div className="pl-4 border-l-2 border-emerald-500/20 mt-1 mb-1 space-y-1 py-1">
+                                                            <p className="text-muted-foreground font-semibold">Datos del Turno:</p>
+                                                            <p>• Titular: {s.reservation.customerName}</p>
+                                                            <p>• Horario: {s.reservation.startTime ? format(new Date(s.reservation.startTime), "HH:mm") : ''} a {s.reservation.endTime ? format(new Date(s.reservation.endTime), "HH:mm") : ''}</p>
+                                                        </div>
+                                                    )}
                                                     <p><span className="font-medium text-muted-foreground">Método Principal:</span> <Badge variant="outline" className="text-[10px] ml-1">{s.paymentMethod?.toUpperCase() || 'N/A'}</Badge></p>
                                                     {s.paymentMethod === 'mixed' && s.paymentDetails && (
                                                         <div className="pl-4 border-l-2 border-emerald-500/20 mt-1 space-y-1">

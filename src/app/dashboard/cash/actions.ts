@@ -24,7 +24,10 @@ export async function getCashData() {
             openedBy: { select: { name: true } },
             sales: {
                 where: { status: { not: "cancelled" } },
-                include: { items: { include: { product: { select: { name: true } } } } }
+                include: {
+                    items: { include: { product: { select: { name: true } } } },
+                    reservation: { select: { customerName: true, date: true, startTime: true, endTime: true, status: true, customerId: true } }
+                }
             },
             payments: {
                 where: { concept: "seña" }
@@ -85,6 +88,12 @@ export async function getCashData() {
                     subtotal: Number(s.subtotal),
                     createdAt: s.createdAt?.toISOString?.() || s.createdAt,
                     paymentDetails: s.paymentDetails || null,
+                    reservation: s.reservation ? {
+                        ...s.reservation,
+                        date: s.reservation.date?.toISOString?.() || s.reservation.date,
+                        startTime: s.reservation.startTime?.toISOString?.() || s.reservation.startTime,
+                        endTime: s.reservation.endTime?.toISOString?.() || s.reservation.endTime,
+                    } : null,
                     items: (s.items || []).map((i: any) => ({
                         ...i,
                         productName: i.product?.name || i.productName || 'Producto',
