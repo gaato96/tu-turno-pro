@@ -218,3 +218,52 @@ export async function closeCashSession(closingBalance: number, notes?: string) {
 
     revalidatePath("/dashboard/cash");
 }
+
+// ── Delete Sale ──
+
+export async function deleteSale(saleId: string) {
+    const session = await auth();
+    const tenantId = getTenantId(session);
+    const userRole = (session?.user as any)?.role;
+
+    if (userRole !== "admin" && userRole !== "super_admin") {
+        throw new Error("No tienes permisos para eliminar operaciones");
+    }
+
+    const sale = await prisma.sale.findFirst({
+        where: { id: saleId, tenantId }
+    });
+    if (!sale) throw new Error("Venta no encontrada");
+
+    await prisma.$transaction(async (tx) => {
+        await tx.saleItem.deleteMany({ where: { saleId } });
+        await tx.sale.delete({ where: { id: saleId } });
+    });
+
+    revalidatePath("/dashboard/cash");
+    revalidatePath("/dashboard");
+    return { success: true };
+}
+
+// ── Delete Expense ──
+
+export async function deleteExpense(expenseId: string) {
+    const session = await auth();
+    const tenantId = getTenantId(session);
+    const userRole = (session?.user as any)?.role;
+
+    if (userRole !== "admin" && userRole !== "super_admin") {
+        throw new Error("No tienes permisos para eliminar gastos");
+    }
+
+    const expense = await prisma.expense.findFirst({
+        where: { id: expenseId, tenantId }
+    });
+    if (!expense) throw new Error("Gasto no encontrado");
+
+    await prisma.expense.delete({ where: { id: expenseId } });
+
+    revalidatePath("/dashboard/cash");
+    revalidatePath("/dashboard");
+    return { success: true };
+}

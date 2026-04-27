@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { createReservation, changeReservationStatus, payReservation, getAvailableSlots, addDiscount, removeDiscount, extendReservation } from "./actions";
+import { createReservation, changeReservationStatus, payReservation, getAvailableSlots, addDiscount, removeDiscount, extendReservation, deleteReservation } from "./actions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1140,9 +1140,26 @@ export default function ReservationsClient({
                                         </>
                                     )}
                                     {(detailReservation.status === "pending" || detailReservation.status === "confirmed") && (
-                                        <Button variant="outline" className="w-full rounded-xl h-12 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30" onClick={() => updateStatus(detailReservation.id, "cancelled")} disabled={isPending}>
-                                            Cancelar Turno
-                                        </Button>
+                                        userRole === "admin" ? (
+                                            <Button variant="outline" className="w-full rounded-xl h-12 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30" onClick={() => {
+                                                if (!confirm("¿Estás seguro de eliminar este turno?")) return;
+                                                startTransition(async () => {
+                                                    try {
+                                                        await deleteReservation(detailReservation.id);
+                                                        toast.success("Turno eliminado");
+                                                        setDetailReservation(null);
+                                                    } catch (error: any) {
+                                                        toast.error(error.message);
+                                                    }
+                                                });
+                                            }} disabled={isPending}>
+                                                Eliminar Turno
+                                            </Button>
+                                        ) : (
+                                            <Button variant="outline" className="w-full rounded-xl h-12 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30" onClick={() => updateStatus(detailReservation.id, "cancelled")} disabled={isPending}>
+                                                Cancelar Turno
+                                            </Button>
+                                        )
                                     )}
 
                                     {detailReservation.customerPhone && (

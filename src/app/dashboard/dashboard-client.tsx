@@ -275,7 +275,7 @@ export default function DashboardClient({ initialData, greeting }: { initialData
             )}
 
             {/* Pending Web Reservations Alert */}
-            <PendingReservationsAlert pendingReservations={data?.pendingReservations ?? []} />
+            <PendingReservationsAlert pendingReservations={data?.pendingReservations ?? []} userRole={data?.userRole} />
 
             {/* Imminent Turn Alert (<=15 mins) */}
             <ImminentTurnAlert reservations={data?.upcomingReservations ?? []} />
@@ -283,9 +283,9 @@ export default function DashboardClient({ initialData, greeting }: { initialData
             {/* KPI Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
                 <KPICard
-                    title="Ingresos del Día"
-                    value={`$${(data?.todayRevenue ?? 0).toLocaleString()}`}
-                    subtitle={`${data?.salesCount ?? 0} cobros realizados`}
+                    title="Cantidad de Cobros"
+                    value={String(data?.salesCount ?? 0)}
+                    subtitle="operaciones en el día"
                     icon={DollarSign}
                     color="emerald"
                 />
@@ -314,15 +314,15 @@ export default function DashboardClient({ initialData, greeting }: { initialData
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
-                    <ActiveReservationsWidget activeReservations={data?.activeReservations ?? []} />
+                    <ActiveReservationsWidget activeReservations={data?.activeReservations ?? []} userRole={data?.userRole} />
                 </div>
 
                 {/* Notifications / Upcoming */}
                 <div className="space-y-4 animate-slide-up">
                     <h2 className="text-xl font-bold">Próximos Turnos</h2>
-                    <UpcomingReservationsWidget upcomingReservations={data?.upcomingReservations ?? []} />
+                    <UpcomingReservationsWidget upcomingReservations={data?.upcomingReservations ?? []} userRole={data?.userRole} />
 
-                    <FinishedReservationsWidget finishedReservations={data?.finishedReservations ?? []} />
+                    <FinishedReservationsWidget finishedReservations={data?.finishedReservations ?? []} userRole={data?.userRole} />
 
                     <Link href="/dashboard/reservations" className="block">
                         <Button variant="ghost" className="w-full rounded-xl text-sm text-muted-foreground mt-4">

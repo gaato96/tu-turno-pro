@@ -10,13 +10,13 @@ import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Lock, Unlock, DollarSign, CreditCard, ArrowRightLeft, TrendingUp, TrendingDown, Clock } from "lucide-react";
-import { openCashSession, closeCashSession } from "./actions";
+import { openCashSession, closeCashSession, deleteSale, deleteExpense } from "./actions";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
-export function CashPanel({ openSession, history }: { openSession: any, history: any[] }) {
+export function CashPanel({ openSession, history, userRole }: { openSession: any, history: any[], userRole?: string }) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [openDialogVisible, setOpenDialogVisible] = useState(false);
@@ -45,6 +45,32 @@ export function CashPanel({ openSession, history }: { openSession: any, history:
                 await closeCashSession(parseFloat(closingBalance) || 0, closeNotes || undefined);
                 toast.success("Caja cerrada");
                 setCloseDialogVisible(false);
+                router.refresh();
+            } catch (err: any) {
+                toast.error(err?.message || "Error");
+            }
+        });
+    };
+
+    const handleDeleteSale = (saleId: string) => {
+        if (!confirm("¿Seguro de eliminar esta operación? Esta acción es permanente.")) return;
+        startTransition(async () => {
+            try {
+                await deleteSale(saleId);
+                toast.success("Operación eliminada");
+                router.refresh();
+            } catch (err: any) {
+                toast.error(err?.message || "Error");
+            }
+        });
+    };
+
+    const handleDeleteExpense = (expenseId: string) => {
+        if (!confirm("¿Seguro de eliminar este gasto? Esta acción es permanente.")) return;
+        startTransition(async () => {
+            try {
+                await deleteExpense(expenseId);
+                toast.success("Gasto eliminado");
                 router.refresh();
             } catch (err: any) {
                 toast.error(err?.message || "Error");
@@ -130,57 +156,135 @@ export function CashPanel({ openSession, history }: { openSession: any, history:
                         {/* Transaction Details */}
                         <div className="mt-8 space-y-4">
                             <h4 className="font-bold text-lg">Operaciones Detalladas del Turno</h4>
-                            <div className="bg-white dark:bg-slate-900 rounded-xl border p-4 space-y-3">
-                                {openSession.sales?.map((s: any) => (
-                                    <details key={s.id} className="group border-b dark:border-border/50 pb-2 last:border-0 last:pb-0">
-                                        <summary className="flex justify-between items-center text-sm font-medium cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:bg-muted/30 p-1 -mx-1 rounded-lg transition-colors">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-bold text-emerald-600 dark:text-emerald-400 opacity-70 group-open:opacity-100 transition-opacity">▶</span>
-                                                <span className="font-bold text-emerald-600 dark:text-emerald-400">{s.invoiceNumber || 'Ticket'}</span>
-                                                <span className="text-muted-foreground">{s.reservationId ? 'Cobro de Reserva' : 'Venta de Kiosco'}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs text-muted-foreground">{s.createdAt ? format(new Date(s.createdAt), "HH:mm") : ""}</span>
-                                                <span className="font-bold text-foreground">${s.total.toLocaleString()}</span>
-                                            </div>
-                                        </summary>
-                                        <div className="mt-2 text-xs bg-muted/50 p-3 rounded-lg flex flex-col gap-1 border">
-                                            <p><span className="font-medium text-muted-foreground">ID Operación:</span> {s.id}</p>
-                                            <p><span className="font-medium text-muted-foreground">Método Principal:</span> <Badge variant="outline" className="text-[10px] ml-1">{s.paymentMethod?.toUpperCase() || 'N/A'}</Badge></p>
-                                            {s.paymentMethod === 'mixed' && s.paymentDetails && (
-                                                <div className="pl-4 border-l-2 border-emerald-500/20 mt-1 space-y-1">
-                                                    <p className="text-muted-foreground font-semibold">Detalle Mixto:</p>
-                                                    {s.paymentDetails.cash > 0 && <p>• Efectivo: ${Number(s.paymentDetails.cash).toLocaleString()}</p>}
-                                                    {s.paymentDetails.card > 0 && <p>• Tarjeta: ${Number(s.paymentDetails.card).toLocaleString()}</p>}
-                                                    {s.paymentDetails.transfer > 0 && <p>• Transferencia: ${Number(s.paymentDetails.transfer).toLocaleString()}</p>}
+
+                            {/* Reservas */}
+                            {openSession.sales?.filter((s: any) => s.reservationId).length > 0 && (
+                                <div className="space-y-3">
+                                    <h5 className="font-semibold text-emerald-700 dark:text-emerald-400 border-b pb-1">Cobros de Reservas</h5>
+                                    <div className="bg-white dark:bg-slate-900 rounded-xl border p-4 space-y-3">
+                                        {openSession.sales.filter((s: any) => s.reservationId).map((s: any) => (
+                                            <details key={s.id} className="group border-b dark:border-border/50 pb-2 last:border-0 last:pb-0">
+                                                <summary className="flex justify-between items-center text-sm font-medium cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:bg-muted/30 p-1 -mx-1 rounded-lg transition-colors">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-emerald-600 dark:text-emerald-400 opacity-70 group-open:opacity-100 transition-opacity">▶</span>
+                                                        <span className="font-bold text-emerald-600 dark:text-emerald-400">{s.invoiceNumber || 'Ticket'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-xs">
+                                                        <span>{s.createdAt ? format(new Date(s.createdAt), "HH:mm") : ""}</span>
+                                                        <span className="font-bold text-foreground text-sm ml-2">${s.total.toLocaleString()}</span>
+                                                        {userRole === "admin" && (
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={(e) => { e.preventDefault(); handleDeleteSale(s.id); }} disabled={isPending}>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </summary>
+                                                <div className="mt-2 text-xs bg-muted/50 p-3 rounded-lg flex flex-col gap-1 border">
+                                                    <p><span className="font-medium text-muted-foreground">ID Operación:</span> {s.id}</p>
+                                                    <p><span className="font-medium text-muted-foreground">Método Principal:</span> <Badge variant="outline" className="text-[10px] ml-1">{s.paymentMethod?.toUpperCase() || 'N/A'}</Badge></p>
+                                                    {s.paymentMethod === 'mixed' && s.paymentDetails && (
+                                                        <div className="pl-4 border-l-2 border-emerald-500/20 mt-1 space-y-1">
+                                                            <p className="text-muted-foreground font-semibold">Detalle Mixto:</p>
+                                                            {s.paymentDetails.cash > 0 && <p>• Efectivo: ${Number(s.paymentDetails.cash).toLocaleString()}</p>}
+                                                            {s.paymentDetails.card > 0 && <p>• Tarjeta: ${Number(s.paymentDetails.card).toLocaleString()}</p>}
+                                                            {s.paymentDetails.transfer > 0 && <p>• Transferencia: ${Number(s.paymentDetails.transfer).toLocaleString()}</p>}
+                                                        </div>
+                                                    )}
+                                                    {s.items && s.items.length > 0 && (
+                                                        <div className="mt-2 text-xs">
+                                                            <p className="font-medium text-muted-foreground mb-1">Ítems adicionales de la reserva:</p>
+                                                            <ul className="list-disc pl-4 space-y-0.5 text-[10px]">
+                                                                {s.items.map((i: any) => (
+                                                                    <li key={i.id}>{i.quantity}x {i.productName || 'Producto'} (${Number(i.subtotal).toLocaleString()})</li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                            {s.items && s.items.length > 0 && (
-                                                <div className="mt-2">
-                                                    <p className="font-medium text-muted-foreground mb-1">Ítems comprados:</p>
-                                                    <ul className="list-disc pl-4 space-y-0.5">
-                                                        {s.items.map((i: any) => (
-                                                            <li key={i.id}>{i.quantity}x {i.productName || 'Producto'} (Subtotal: ${Number(i.subtotal).toLocaleString()})</li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </details>
-                                ))}
-                                {openSession.expenses?.map((e: any) => (
-                                    <div key={e.id} className="flex justify-between items-center text-sm font-medium border-b dark:border-border/50 pb-2 last:border-0 last:pb-0">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-bold text-red-600 dark:text-red-400">Gasto</span>
-                                            <span className="text-muted-foreground">{e.description}</span>
-                                        </div>
-                                        <span className="font-bold text-red-600 dark:text-red-400">-${e.amount.toLocaleString()}</span>
+                                            </details>
+                                        ))}
                                     </div>
-                                ))}
-                                {(!openSession.sales?.length && !openSession.expenses?.length) && (
-                                    <p className="text-sm text-muted-foreground text-center py-4">No hay operaciones registradas en esta caja.</p>
-                                )}
-                            </div>
+                                </div>
+                            )}
+
+                            {/* Kiosko */}
+                            {openSession.sales?.filter((s: any) => !s.reservationId).length > 0 && (
+                                <div className="space-y-3 mt-4">
+                                    <h5 className="font-semibold text-blue-700 dark:text-blue-400 border-b pb-1">Venta de Kiosco</h5>
+                                    <div className="bg-white dark:bg-slate-900 rounded-xl border p-4 space-y-3">
+                                        {openSession.sales.filter((s: any) => !s.reservationId).map((s: any) => (
+                                            <details key={s.id} className="group border-b dark:border-border/50 pb-2 last:border-0 last:pb-0">
+                                                <summary className="flex justify-between items-center text-sm font-medium cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:bg-muted/30 p-1 -mx-1 rounded-lg transition-colors">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-blue-600 dark:text-blue-400 opacity-70 group-open:opacity-100 transition-opacity">▶</span>
+                                                        <span className="font-bold text-blue-600 dark:text-blue-400">{s.invoiceNumber || 'Ticket'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-xs">
+                                                        <span>{s.createdAt ? format(new Date(s.createdAt), "HH:mm") : ""}</span>
+                                                        <span className="font-bold text-foreground text-sm ml-2">${s.total.toLocaleString()}</span>
+                                                        {userRole === "admin" && (
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={(e) => { e.preventDefault(); handleDeleteSale(s.id); }} disabled={isPending}>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </summary>
+                                                <div className="mt-2 text-xs bg-muted/50 p-3 rounded-lg flex flex-col gap-1 border">
+                                                    <p><span className="font-medium text-muted-foreground">ID Operación:</span> {s.id}</p>
+                                                    <p><span className="font-medium text-muted-foreground">Método Principal:</span> <Badge variant="outline" className="text-[10px] ml-1">{s.paymentMethod?.toUpperCase() || 'N/A'}</Badge></p>
+                                                    {s.paymentMethod === 'mixed' && s.paymentDetails && (
+                                                        <div className="pl-4 border-l-2 border-blue-500/20 mt-1 space-y-1">
+                                                            <p className="text-muted-foreground font-semibold">Detalle Mixto:</p>
+                                                            {s.paymentDetails.cash > 0 && <p>• Efectivo: ${Number(s.paymentDetails.cash).toLocaleString()}</p>}
+                                                            {s.paymentDetails.card > 0 && <p>• Tarjeta: ${Number(s.paymentDetails.card).toLocaleString()}</p>}
+                                                            {s.paymentDetails.transfer > 0 && <p>• Transferencia: ${Number(s.paymentDetails.transfer).toLocaleString()}</p>}
+                                                        </div>
+                                                    )}
+                                                    {s.items && s.items.length > 0 && (
+                                                        <div className="mt-2 text-xs">
+                                                            <p className="font-medium text-muted-foreground mb-1">Ítems comprados:</p>
+                                                            <ul className="list-disc pl-4 space-y-0.5 text-[10px]">
+                                                                {s.items.map((i: any) => (
+                                                                    <li key={i.id}>{i.quantity}x {i.productName || 'Producto'} (${Number(i.subtotal).toLocaleString()})</li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </details>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Gastos */}
+                            {openSession.expenses?.length > 0 && (
+                                <div className="space-y-3 mt-4">
+                                    <h5 className="font-semibold text-red-700 dark:text-red-400 border-b pb-1">Gastos Registrados</h5>
+                                    <div className="bg-white dark:bg-slate-900 rounded-xl border p-4 space-y-3">
+                                        {openSession.expenses.map((e: any) => (
+                                            <div key={e.id} className="flex justify-between items-center text-sm font-medium border-b dark:border-border/50 pb-2 last:border-0 last:pb-0 hover:bg-muted/30 p-1 -mx-1 px-1 rounded-lg transition-colors">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-red-600 dark:text-red-400">Gasto</span>
+                                                    <span className="text-muted-foreground text-xs">{e.description}</span>
+                                                </div>
+                                                <div className="flex flex-row items-center gap-2">
+                                                    <span className="font-bold text-red-600 dark:text-red-400">-${e.amount.toLocaleString()}</span>
+                                                    {userRole === "admin" && (
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDeleteExpense(e.id)} disabled={isPending}>
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {(!openSession.sales?.length && !openSession.expenses?.length) && (
+                                <p className="text-sm text-muted-foreground text-center py-4">No hay operaciones registradas en esta caja.</p>
+                            )}
                         </div>
                     </Card>
                 </>

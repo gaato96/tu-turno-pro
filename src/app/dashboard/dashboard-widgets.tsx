@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Timer, Play, Clock, AlertCircle, Square, DollarSign, Activity, MessageCircle, ShoppingCart, Check, X } from "lucide-react";
-import { changeReservationStatus, payReservation } from "./reservations/actions";
+import { changeReservationStatus, payReservation, deleteReservation } from "./reservations/actions";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -21,7 +21,7 @@ const statusConfig: Record<string, { label: string; class: string }> = {
     cancelled: { label: "Cancelada", class: "status-cancelled" },
 };
 
-export function DashboardReservationModal({ reservation, onClose }: { reservation: any | null, onClose: () => void }) {
+export function DashboardReservationModal({ reservation, onClose, userRole }: { reservation: any | null, onClose: () => void, userRole?: string }) {
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
     const [paymentOpen, setPaymentOpen] = useState(false);
@@ -61,10 +61,24 @@ export function DashboardReservationModal({ reservation, onClose }: { reservatio
         });
     };
 
+    const handleDelete = () => {
+        if (!confirm("¿Estás seguro de eliminar este turno? Esta acción no se puede deshacer y borrará los consumos asociados.")) return;
+        startTransition(async () => {
+            try {
+                await deleteReservation(reservation.id);
+                toast.success("Turno eliminado permanentemente");
+                router.refresh();
+                onClose();
+            } catch (e: any) {
+                toast.error(e.message || "Error al eliminar");
+            }
+        });
+    };
+
     return (
         <Dialog open={!!reservation} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-[420px] rounded-2xl">
-                <DialogHeader>
+            <DialogContent className="sm:max-w-[420px] rounded-2xl p-0 overflow-hidden flex flex-col max-h-[90vh]">
+                <DialogHeader className="p-6 pb-2 shrink-0">
                     <DialogTitle className="text-xl font-bold flex items-center justify-between">
                         <span>Detalle de Reserva</span>
                         <Badge className={`${statusConfig[reservation.status]?.class} rounded-full`}>
@@ -73,100 +87,108 @@ export function DashboardReservationModal({ reservation, onClose }: { reservatio
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-6 py-2">
-                    <Card className={`p-4 rounded-xl border-dashed ${statusConfig[reservation.status]?.class || ""}`}>
-                        <h3 className="text-lg font-bold mb-1">{reservation.customerName}</h3>
-                        {reservation.customerPhone && (
-                            <p className="text-sm font-medium mb-3 opacity-90">{reservation.customerPhone}</p>
+                <div className="flex-1 overflow-y-auto px-6 py-2">
+                    <div className="space-y-6 pb-6">
+                        <Card className={`p-4 rounded-xl border-dashed ${statusConfig[reservation.status]?.class || ""}`}>
+                            <h3 className="text-lg font-bold mb-1">{reservation.customerName}</h3>
+                            {reservation.customerPhone && (
+                                <p className="text-sm font-medium mb-3 opacity-90">{reservation.customerPhone}</p>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-4 mt-4">
+                                <div>
+                                    <p className="text-xs opacity-75 mb-1">Cancha</p>
+                                    <p className="font-semibold text-sm">{reservation.courtName}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs opacity-75 mb-1">Horario</p>
+                                    <p className="font-semibold text-sm flex items-center">
+                                        <Clock className="w-3.5 h-3.5 mr-1" />
+                                        {new Date(reservation.startTime).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                                        {" - "}
+                                        {new Date(reservation.endTime).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                                    </p>
+                                </div>
+                            </div>
+                        </Card>
+
+                        {/* Consumptions List */}
+                        {reservation.sales && reservation.sales.length > 0 && (
+                            <div className="space-y-2 px-2">
+                                <h4 className="text-sm font-bold flex items-center gap-2 text-muted-foreground">
+                                    <ShoppingCart className="w-4 h-4" /> Consumos vinculado
+                                </h4>
+                                <div className="bg-muted/50 rounded-xl p-3 space-y-2 border border-border/50">
+                                    {reservation.sales.flatMap((s: any) => s.items).map((item: any, idx: number) => (
+                                        <div key={idx} className="flex justify-between text-xs">
+                                            <span>{item.quantity}x {item.product?.name || "Producto"}</span>
+                                            <span className="font-semibold">${Number(item.subtotal).toLocaleString()}</span>
+                                        </div>
+                                    ))}
+                                    <div className="pt-2 border-t flex justify-between text-[11px] text-muted-foreground uppercase font-bold tracking-tighter">
+                                        <span>Subtotal Consumo</span>
+                                        <span className="text-emerald-600 dark:text-emerald-400">
+                                            ${Number(reservation.consumptionAmount).toLocaleString()}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
                         )}
 
-                        <div className="grid grid-cols-2 gap-4 mt-4">
-                            <div>
-                                <p className="text-xs opacity-75 mb-1">Cancha</p>
-                                <p className="font-semibold text-sm">{reservation.courtName}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs opacity-75 mb-1">Horario</p>
-                                <p className="font-semibold text-sm flex items-center">
-                                    <Clock className="w-3.5 h-3.5 mr-1" />
-                                    {new Date(reservation.startTime).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
-                                    {" - "}
-                                    {new Date(reservation.endTime).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
-                                </p>
-                            </div>
-                        </div>
-                    </Card>
-
-                    {/* Consumptions List */}
-                    {reservation.sales && reservation.sales.length > 0 && (
-                        <div className="space-y-2 px-2">
-                            <h4 className="text-sm font-bold flex items-center gap-2 text-muted-foreground">
-                                <ShoppingCart className="w-4 h-4" /> Consumos vinculado
-                            </h4>
-                            <div className="bg-muted/50 rounded-xl p-3 space-y-2 border border-border/50">
-                                {reservation.sales.flatMap((s: any) => s.items).map((item: any, idx: number) => (
-                                    <div key={idx} className="flex justify-between text-xs">
-                                        <span>{item.quantity}x {item.product?.name || "Producto"}</span>
-                                        <span className="font-semibold">${Number(item.subtotal).toLocaleString()}</span>
+                        <div className="flex justify-between items-center px-2">
+                            <span className="text-sm text-muted-foreground">Total restante a pagar</span>
+                            <div className="text-right">
+                                <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                                    ${(reservation.totalAmount - (reservation.paidAmount || 0)).toLocaleString()}
+                                </div>
+                                {(reservation.paidAmount || 0) > 0 && (
+                                    <div className="text-[11px] text-muted-foreground font-semibold">
+                                        Pagado parcial: ${reservation.paidAmount.toLocaleString()} / Total: ${reservation.totalAmount.toLocaleString()}
                                     </div>
-                                ))}
-                                <div className="pt-2 border-t flex justify-between text-[11px] text-muted-foreground uppercase font-bold tracking-tighter">
-                                    <span>Subtotal Consumo</span>
-                                    <span className="text-emerald-600 dark:text-emerald-400">
-                                        ${Number(reservation.consumptionAmount).toLocaleString()}
-                                    </span>
-                                </div>
+                                )}
                             </div>
                         </div>
-                    )}
 
-                    <div className="flex justify-between items-center px-2">
-                        <span className="text-sm text-muted-foreground">Total restante a pagar</span>
-                        <div className="text-right">
-                            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                                ${(reservation.totalAmount - (reservation.paidAmount || 0)).toLocaleString()}
-                            </div>
-                            {(reservation.paidAmount || 0) > 0 && (
-                                <div className="text-[11px] text-muted-foreground font-semibold">
-                                    Pagado parcial: ${reservation.paidAmount.toLocaleString()} / Total: ${reservation.totalAmount.toLocaleString()}
-                                </div>
+                        <div className="grid grid-cols-2 gap-2 mt-4">
+                            {reservation.status === "pending" && (
+                                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-12" onClick={() => updateStatus("confirmed")} disabled={isPending}>
+                                    <Check className="w-4 h-4 mr-2" /> Confirmar
+                                </Button>
+                            )}
+                            {reservation.status === "confirmed" && (
+                                <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-12" onClick={() => updateStatus("in_game")} disabled={isPending}>
+                                    <Play className="w-4 h-4 mr-2" /> Iniciar (Check-in)
+                                </Button>
+                            )}
+                            {reservation.status === "in_game" && (
+                                <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white rounded-xl h-12" onClick={() => updateStatus("finished")} disabled={isPending}>
+                                    <Square className="w-4 h-4 mr-2" /> Finalizar Turno
+                                </Button>
+                            )}
+                            {(reservation.status === "pending" || reservation.status === "confirmed") && (
+                                userRole === "admin" ? (
+                                    <Button variant="outline" className="w-full rounded-xl h-12 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30" onClick={handleDelete} disabled={isPending}>
+                                        Eliminar Turno
+                                    </Button>
+                                ) : (
+                                    <Button variant="outline" className="w-full rounded-xl h-12 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30" onClick={() => updateStatus("cancelled")} disabled={isPending}>
+                                        Cancelar Turno
+                                    </Button>
+                                )
+                            )}
+
+                            {reservation.customerPhone && (
+                                <Button variant="outline" className="w-full rounded-xl h-12 border-emerald-500/30 text-emerald-600 hover:bg-emerald-50" onClick={handleWhatsApp}>
+                                    <MessageCircle className="w-4 h-4 mr-2" /> WhatsApp
+                                </Button>
+                            )}
+
+                            {(reservation.status === "in_game" || reservation.status === "confirmed" || reservation.status === "finished") && (
+                                <Button variant="outline" className="col-span-2 w-full rounded-xl h-12 border-emerald-500/30 font-medium" onClick={() => router.push(`/dashboard/pos?reservationId=${reservation.id}`)}>
+                                    <ShoppingCart className="w-4 h-4 mr-2" /> Agregar Consumo al Turno
+                                </Button>
                             )}
                         </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 mt-4">
-                        {reservation.status === "pending" && (
-                            <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-12" onClick={() => updateStatus("confirmed")} disabled={isPending}>
-                                <Check className="w-4 h-4 mr-2" /> Confirmar
-                            </Button>
-                        )}
-                        {reservation.status === "confirmed" && (
-                            <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-12" onClick={() => updateStatus("in_game")} disabled={isPending}>
-                                <Play className="w-4 h-4 mr-2" /> Iniciar (Check-in)
-                            </Button>
-                        )}
-                        {reservation.status === "in_game" && (
-                            <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white rounded-xl h-12" onClick={() => updateStatus("finished")} disabled={isPending}>
-                                <Square className="w-4 h-4 mr-2" /> Finalizar Turno
-                            </Button>
-                        )}
-                        {(reservation.status === "pending" || reservation.status === "confirmed") && (
-                            <Button variant="outline" className="w-full rounded-xl h-12 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30" onClick={() => updateStatus("cancelled")} disabled={isPending}>
-                                Cancelar Turno
-                            </Button>
-                        )}
-
-                        {reservation.customerPhone && (
-                            <Button variant="outline" className="w-full rounded-xl h-12 border-emerald-500/30 text-emerald-600 hover:bg-emerald-50" onClick={handleWhatsApp}>
-                                <MessageCircle className="w-4 h-4 mr-2" /> WhatsApp
-                            </Button>
-                        )}
-
-                        {(reservation.status === "in_game" || reservation.status === "confirmed" || reservation.status === "finished") && (
-                            <Button variant="outline" className="col-span-2 w-full rounded-xl h-12 border-emerald-500/30 font-medium" onClick={() => router.push(`/dashboard/pos?reservationId=${reservation.id}`)}>
-                                <ShoppingCart className="w-4 h-4 mr-2" /> Agregar Consumo al Turno
-                            </Button>
-                        )}
                     </div>
 
                     {reservation.status === "finished" && (
@@ -195,7 +217,7 @@ export function DashboardReservationModal({ reservation, onClose }: { reservatio
     );
 }
 
-export function ActiveReservationsWidget({ activeReservations }: { activeReservations: any[] }) {
+export function ActiveReservationsWidget({ activeReservations, userRole }: { activeReservations: any[], userRole?: string }) {
     const [isPending, startTransition] = useTransition();
     const [paymentReservation, setPaymentReservation] = useState<any | null>(null);
     const router = useRouter();
@@ -270,12 +292,12 @@ export function ActiveReservationsWidget({ activeReservations }: { activeReserva
                 </Card>
             )}
 
-            <DashboardReservationModal reservation={selectedReservation} onClose={() => setSelectedReservation(null)} />
+            <DashboardReservationModal reservation={selectedReservation} onClose={() => setSelectedReservation(null)} userRole={userRole} />
         </div>
     );
 }
 
-export function UpcomingReservationsWidget({ upcomingReservations }: { upcomingReservations: any[] }) {
+export function UpcomingReservationsWidget({ upcomingReservations, userRole }: { upcomingReservations: any[], userRole?: string }) {
     const [selectedReservation, setSelectedReservation] = useState<any | null>(null);
 
     return (
@@ -306,12 +328,12 @@ export function UpcomingReservationsWidget({ upcomingReservations }: { upcomingR
                 </div>
             )}
 
-            <DashboardReservationModal reservation={selectedReservation} onClose={() => setSelectedReservation(null)} />
+            <DashboardReservationModal reservation={selectedReservation} onClose={() => setSelectedReservation(null)} userRole={userRole} />
         </div>
     );
 }
 
-export function FinishedReservationsWidget({ finishedReservations }: { finishedReservations: any[] }) {
+export function FinishedReservationsWidget({ finishedReservations, userRole }: { finishedReservations: any[], userRole?: string }) {
     const [selectedReservation, setSelectedReservation] = useState<any | null>(null);
 
     if (!finishedReservations || finishedReservations.length === 0) return null;
@@ -344,12 +366,12 @@ export function FinishedReservationsWidget({ finishedReservations }: { finishedR
                 })}
             </div>
 
-            <DashboardReservationModal reservation={selectedReservation} onClose={() => setSelectedReservation(null)} />
+            <DashboardReservationModal reservation={selectedReservation} onClose={() => setSelectedReservation(null)} userRole={userRole} />
         </div>
     );
 }
 
-export function PendingReservationsAlert({ pendingReservations }: { pendingReservations: any[] }) {
+export function PendingReservationsAlert({ pendingReservations, userRole }: { pendingReservations: any[], userRole?: string }) {
     const [selectedReservation, setSelectedReservation] = useState<any | null>(null);
 
     if (!pendingReservations || pendingReservations.length === 0) return null;
@@ -389,7 +411,7 @@ export function PendingReservationsAlert({ pendingReservations }: { pendingReser
                     </Card>
                 ))}
             </div>
-            <DashboardReservationModal reservation={selectedReservation} onClose={() => setSelectedReservation(null)} />
+            <DashboardReservationModal reservation={selectedReservation} onClose={() => setSelectedReservation(null)} userRole={userRole} />
         </div>
     );
 }

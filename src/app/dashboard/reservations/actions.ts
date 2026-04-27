@@ -682,6 +682,39 @@ export async function cancelReservation(reservationId: string) {
     return { success: true };
 }
 
+// ── Delete Reservation ──
+
+export async function deleteReservation(reservationId: string) {
+    const session = await auth();
+    const tenantId = getTenantId(session);
+    const userRole = (session?.user as any)?.role;
+
+    if (userRole !== "admin" && userRole !== "super_admin") {
+        throw new Error("No tienes permisos para eliminar reservas");
+    }
+
+    const reservation = await prisma.reservation.findFirst({
+        where: { id: reservationId, tenantId }
+    });
+    if (!reservation) throw new Error("Reservation not found");
+
+    await prisma.$transaction(async (tx) => {
+        await tx.reservationDiscount.deleteMany({ where: { reservationId } });
+        const sales = await tx.sale.findMany({ where: { reservationId } });
+        for (const sale of sales) {
+            await tx.saleItem.deleteMany({ where: { saleId: sale.id } });
+            await tx.sale.delete({ where: { id: sale.id } });
+        }
+        await tx.payment.deleteMany({ where: { reservationId } });
+        await tx.reservation.delete({ where: { id: reservationId } });
+    });
+
+    revalidatePath("/dashboard/reservations");
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/cash");
+    return { success: true };
+}
+
 // ── Add Discount ──
 
 export async function addDiscount(reservationId: string, description: string, amount: number) {
