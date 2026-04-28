@@ -8,7 +8,7 @@ export default async function CashPage() {
     } catch {
         data = { openSession: null, history: [] };
     }
-    const { openSession, history } = data;
+    const { openSession, history, userRole } = data;
 
     return (
         <div className="space-y-6">
@@ -16,7 +16,7 @@ export default async function CashPage() {
                 <h1 className="text-3xl font-bold tracking-tight">Caja</h1>
                 <p className="text-muted-foreground mt-1">Gestiona la apertura y cierre de caja diaria</p>
             </div>
-            <CashPanel openSession={openSession} history={history} />
+            <CashPanel openSession={openSession} history={history} userRole={userRole} />
         </div>
     );
 }

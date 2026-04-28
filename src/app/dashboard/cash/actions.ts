@@ -124,7 +124,8 @@ export async function getCashData() {
                 cashTotal: h.cashTotal ? Number(h.cashTotal) : null,
                 cardTotal: h.cardTotal ? Number(h.cardTotal) : null,
                 transferTotal: h.transferTotal ? Number(h.transferTotal) : null,
-            }))
+            })),
+            userRole: (session?.user as any)?.role
         };
     }
 
@@ -139,7 +140,8 @@ export async function getCashData() {
             cashTotal: h.cashTotal ? Number(h.cashTotal) : null,
             cardTotal: h.cardTotal ? Number(h.cardTotal) : null,
             transferTotal: h.transferTotal ? Number(h.transferTotal) : null,
-        }))
+        })),
+        userRole: (session?.user as any)?.role
     };
 }
 
