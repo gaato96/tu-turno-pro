@@ -13,9 +13,11 @@ export async function createEvent(data: {
     endTime: string;
     totalAmount?: number;
     depositPaid?: number;
+    depositMethod?: string;
+    depositMixedDetails?: string; // JSON stringify de {cash, card, transfer}
     notes?: string;
 }) {
-    const { tenantId, complexId, name, description, date, startTime, endTime, totalAmount, depositPaid, notes } = data;
+    const { tenantId, complexId, name, description, date, startTime, endTime, totalAmount, depositPaid, depositMethod, depositMixedDetails, notes } = data;
 
     if (!complexId || complexId === "") {
         throw new Error("Debes seleccionar un complejo válido.");
@@ -26,20 +28,43 @@ export async function createEvent(data: {
     const parsedStartTime = new Date(`${date}T${startTime}:00`);
     const parsedEndTime = new Date(`${date}T${endTime}:00`);
 
-    await prisma.event.create({
-        data: {
-            tenantId,
-            complexId,
-            name,
-            description,
-            date: parsedDate,
-            startTime: parsedStartTime,
-            endTime: parsedEndTime,
-            totalAmount: totalAmount || 0,
-            depositPaid: depositPaid || 0,
-            paidAmount: depositPaid || 0, // initially paidAmount is the deposit
-            status: depositPaid ? "confirmed" : "pending",
-            notes
+    await prisma.$transaction(async (tx) => {
+        const event = await tx.event.create({
+            data: {
+                tenantId,
+                complexId,
+                name,
+                description,
+                date: parsedDate,
+                startTime: parsedStartTime,
+                endTime: parsedEndTime,
+                totalAmount: totalAmount || 0,
+                depositPaid: depositPaid || 0,
+                paidAmount: depositPaid || 0,
+                status: depositPaid ? "confirmed" : "pending",
+                notes
+            }
+        });
+
+        if (depositPaid && depositPaid > 0) {
+            const method = depositMethod || "cash";
+            const paymentBase = {
+                tenantId,
+                eventId: event.id,
+                amount: depositPaid,
+                paymentMethod: method,
+                concept: "deposit",
+                notes: "Seña inicial de evento"
+            };
+
+            if (method === "mixed" && depositMixedDetails) {
+                const details = JSON.parse(depositMixedDetails);
+                if (details.cash > 0) await tx.payment.create({ data: { ...paymentBase, amount: details.cash, paymentMethod: "cash", notes: "Seña mixta: Efectivo" } });
+                if (details.card > 0) await tx.payment.create({ data: { ...paymentBase, amount: details.card, paymentMethod: "card", notes: "Seña mixta: Tarjeta" } });
+                if (details.transfer > 0) await tx.payment.create({ data: { ...paymentBase, amount: details.transfer, paymentMethod: "transfer", notes: "Seña mixta: Transferencia" } });
+            } else {
+                await tx.payment.create({ data: paymentBase });
+            }
         }
     });
 

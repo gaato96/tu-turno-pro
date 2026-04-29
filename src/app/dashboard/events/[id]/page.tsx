@@ -24,9 +24,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     // Serialize Decimal fields
     const serialized = {
         ...event,
-        date: event.date.toISOString(),
-        startTime: event.startTime.toISOString(),
-        endTime: event.endTime.toISOString(),
+        date: event.date.toISOString().replace("Z", ""),
+        startTime: event.startTime.toISOString().replace("Z", ""),
+        endTime: event.endTime.toISOString().replace("Z", ""),
         totalAmount: Number(event.totalAmount),
         depositPaid: Number(event.depositPaid),
         paidAmount: Number(event.paidAmount),

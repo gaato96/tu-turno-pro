@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { ArrowLeft, Calendar, Clock, MapPin, DollarSign, CheckCircle, XCircle, Trash2, CreditCard, Banknote, ArrowLeftRight } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, MapPin, DollarSign, CheckCircle, XCircle, Trash2, CreditCard, Banknote, ArrowLeftRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { registerEventPayment, updateEventStatus, deleteEventFromDetail } from "./actions";
+import { registerEventPayment, updateEventStatus, deleteEventFromDetail, addEventExtraHour } from "./actions";
+import { PaymentDialog } from "@/components/payment-dialog";
 import Link from "next/link";
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -28,25 +29,41 @@ export default function EventDetailClient({ event, tenantId }: { event: any; ten
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [payOpen, setPayOpen] = useState(false);
-    const [payAmount, setPayAmount] = useState(String(Math.max(0, event.totalAmount - event.paidAmount)));
-    const [payMethod, setPayMethod] = useState("cash");
-    const [payNotes, setPayNotes] = useState("");
+    const [extraHourOpen, setExtraHourOpen] = useState(false);
+    const [extraHourAmount, setExtraHourAmount] = useState("");
 
     const remaining = event.totalAmount - event.paidAmount;
     const status = STATUS_MAP[event.status] || STATUS_MAP.pending;
     const paidPercent = event.totalAmount > 0 ? Math.min(100, (event.paidAmount / event.totalAmount) * 100) : 0;
 
-    const handlePayment = () => {
-        const amount = Number(payAmount);
-        if (!amount || amount <= 0) { toast.error("Ingresa un monto válido"); return; }
+    const handlePayment = (method: string, amount: number, leaveOnAccount: boolean, details?: any) => {
         startTransition(async () => {
             try {
-                await registerEventPayment(event.id, amount, payMethod, payNotes);
+                await registerEventPayment(event.id, amount, method, details ? JSON.stringify(details) : undefined);
                 toast.success("Pago registrado correctamente");
                 setPayOpen(false);
                 router.refresh();
             } catch (e: any) {
                 toast.error(e.message || "Error al registrar pago");
+            }
+        });
+    };
+
+    const handleExtraHour = () => {
+        const amount = Number(extraHourAmount);
+        if (isNaN(amount) || amount < 0) {
+            toast.error("Ingresa un monto válido");
+            return;
+        }
+        startTransition(async () => {
+            try {
+                await addEventExtraHour(event.id, amount);
+                toast.success("Hora extra agregada");
+                setExtraHourOpen(false);
+                setExtraHourAmount("");
+                router.refresh();
+            } catch (e: any) {
+                toast.error(e.message || "Error");
             }
         });
     };
@@ -196,7 +213,12 @@ export default function EventDetailClient({ event, tenantId }: { event: any; ten
             <Card className="p-5 space-y-3">
                 <h2 className="font-bold text-base">Acciones del Evento</h2>
                 <div className="flex flex-wrap gap-2">
-                    {event.status !== "in_progress" && (
+                    {event.status === "in_progress" && (
+                        <Button variant="outline" className="rounded-xl bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100" onClick={() => setExtraHourOpen(true)} disabled={isPending}>
+                            <Plus className="w-4 h-4 mr-2" /> Agregar Hora Extra
+                        </Button>
+                    )}
+                    {event.status !== "in_progress" && event.status !== "completed" && event.status !== "cancelled" && (
                         <Button variant="outline" className="rounded-xl" onClick={() => handleStatus("in_progress")} disabled={isPending}>
                             <Clock className="w-4 h-4 mr-2" /> Marcar En Curso
                         </Button>
@@ -218,35 +240,37 @@ export default function EventDetailClient({ event, tenantId }: { event: any; ten
             </Card>
 
             {/* Payment Dialog */}
-            <Dialog open={payOpen} onOpenChange={setPayOpen}>
+            <PaymentDialog
+                open={payOpen}
+                onOpenChange={setPayOpen}
+                totalAmount={remaining}
+                onConfirm={handlePayment}
+                isPending={isPending}
+                hasCustomer={false}
+            />
+
+            {/* Extra Hour Dialog */}
+            <Dialog open={extraHourOpen} onOpenChange={setExtraHourOpen}>
                 <DialogContent className="rounded-2xl">
-                    <DialogHeader><DialogTitle>Registrar Cobro al Evento</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle>Agregar Hora Extra</DialogTitle></DialogHeader>
                     <div className="space-y-4 py-2">
+                        <p className="text-sm text-muted-foreground">Se extenderá 1 hora la duración del evento y se sumará el monto al total.</p>
                         <div>
-                            <Label>Monto a cobrar ($)</Label>
-                            <Input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} className="rounded-xl mt-1.5 text-lg font-bold" placeholder="0" />
-                            <p className="text-xs text-muted-foreground mt-1">Saldo total: ${remaining.toLocaleString()}</p>
-                        </div>
-                        <div>
-                            <Label>Método de pago</Label>
-                            <Select value={payMethod} onValueChange={v => setPayMethod(v || "cash")}>
-                                <SelectTrigger className="rounded-xl mt-1.5"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="cash">Efectivo</SelectItem>
-                                    <SelectItem value="card">Tarjeta</SelectItem>
-                                    <SelectItem value="transfer">Transferencia</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label>Notas (opcional)</Label>
-                            <Input value={payNotes} onChange={e => setPayNotes(e.target.value)} className="rounded-xl mt-1.5" placeholder="Ej. Seña, saldo final..." />
+                            <Label>Monto a cobrar por la hora extra ($)</Label>
+                            <Input
+                                type="number"
+                                value={extraHourAmount}
+                                onChange={e => setExtraHourAmount(e.target.value)}
+                                className="rounded-xl mt-1.5 text-lg font-bold"
+                                placeholder="0"
+                                autoFocus
+                            />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setPayOpen(false)} className="rounded-xl">Cancelar</Button>
-                        <Button onClick={handlePayment} disabled={isPending} className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white">
-                            {isPending ? "Registrando..." : "Confirmar Cobro"}
+                        <Button variant="outline" onClick={() => setExtraHourOpen(false)} className="rounded-xl">Cancelar</Button>
+                        <Button onClick={handleExtraHour} disabled={isPending} className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white">
+                            {isPending ? "Agregando..." : "Confirmar Hora Extra"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

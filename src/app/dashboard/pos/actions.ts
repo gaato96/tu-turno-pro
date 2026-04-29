@@ -69,6 +69,7 @@ export async function getPOSData() {
 export async function processSale(data: {
     items: { productId: string; quantity: number; unitPrice: number }[];
     paymentMethod: string;
+    paymentDetails?: any;
     reservationId?: string;
     isStaffConsumption?: boolean;
 }) {
@@ -109,6 +110,7 @@ export async function processSale(data: {
             total,
             status: isOnTab ? "on_tab" : "completed",
             paymentMethod: data.isStaffConsumption ? "staff" : (isOnTab ? null : data.paymentMethod),
+            paymentDetails: data.paymentDetails || null,
             isStaffConsumption: data.isStaffConsumption || false,
             items: {
                 create: data.items.map(i => ({

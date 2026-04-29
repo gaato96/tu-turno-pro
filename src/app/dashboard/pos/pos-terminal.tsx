@@ -34,6 +34,7 @@ export function POSTerminal({ categories, products, activeReservations }: any) {
     const [checkoutOpen, setCheckoutOpen] = useState(false);
     const [checkoutType, setCheckoutType] = useState<"direct" | "tab">(defaultRes ? "tab" : "direct");
     const [payMethod, setPayMethod] = useState("cash");
+    const [mixedPayment, setMixedPayment] = useState({ cash: "", card: "", transfer: "" });
     const [selectedReservationId, setSelectedReservationId] = useState(defaultRes);
     const [isStaffConsumption, setIsStaffConsumption] = useState(false);
 
@@ -72,6 +73,11 @@ export function POSTerminal({ categories, products, activeReservations }: any) {
                 const result = await processSale({
                     items: cart.map(i => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice })),
                     paymentMethod: checkoutType === "direct" ? payMethod : "on_tab",
+                    paymentDetails: (checkoutType === "direct" && payMethod === "mixed") ? {
+                        cash: Number(mixedPayment.cash) || 0,
+                        card: Number(mixedPayment.card) || 0,
+                        transfer: Number(mixedPayment.transfer) || 0,
+                    } : undefined,
                     reservationId: checkoutType === "tab" ? selectedReservationId : undefined,
                     isStaffConsumption,
                 });
@@ -214,20 +220,52 @@ export function POSTerminal({ categories, products, activeReservations }: any) {
                         </div>
 
                         {checkoutType === "direct" ? (
-                            <div className="space-y-2">
-                                <Label>Método de Pago</Label>
-                                <Select value={payMethod} onValueChange={(v) => setPayMethod(v ?? "cash")}>
-                                    <SelectTrigger>
-                                        <SelectValue>
-                                            {payMethod === "cash" ? "Efectivo" : payMethod === "card" ? "Tarjeta" : "Transferencia"}
-                                        </SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="cash">Efectivo</SelectItem>
-                                        <SelectItem value="card">Tarjeta</SelectItem>
-                                        <SelectItem value="transfer">Transferencia</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Método de Pago</Label>
+                                    <Select value={payMethod} onValueChange={(v) => setPayMethod(v ?? "cash")}>
+                                        <SelectTrigger>
+                                            <SelectValue>
+                                                {payMethod === "cash" ? "Efectivo" : payMethod === "card" ? "Tarjeta" : payMethod === "transfer" ? "Transferencia" : "Mixto"}
+                                            </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="cash">Efectivo</SelectItem>
+                                            <SelectItem value="card">Tarjeta</SelectItem>
+                                            <SelectItem value="transfer">Transferencia</SelectItem>
+                                            <SelectItem value="mixed">Mixto</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {payMethod === "mixed" && (
+                                    <div className="grid grid-cols-3 gap-2 p-3 bg-muted/50 rounded-xl animate-in fade-in slide-in-from-top-1">
+                                        <div>
+                                            <Label className="text-[10px] uppercase">Efectivo</Label>
+                                            <Input type="number" placeholder="0" value={mixedPayment.cash} onChange={e => setMixedPayment({ ...mixedPayment, cash: e.target.value })} className="h-8" />
+                                        </div>
+                                        <div>
+                                            <Label className="text-[10px] uppercase">Tarjeta</Label>
+                                            <Input type="number" placeholder="0" value={mixedPayment.card} onChange={e => setMixedPayment({ ...mixedPayment, card: e.target.value })} className="h-8" />
+                                        </div>
+                                        <div>
+                                            <Label className="text-[10px] uppercase">Transferencia</Label>
+                                            <Input type="number" placeholder="0" value={mixedPayment.transfer} onChange={e => setMixedPayment({ ...mixedPayment, transfer: e.target.value })} className="h-8" />
+                                        </div>
+                                        <div className="col-span-3 text-[10px] text-right space-y-1">
+                                            <div className="flex justify-between">
+                                                <span>Suma:</span>
+                                                <span className="font-bold">${(Number(mixedPayment.cash) + Number(mixedPayment.card) + Number(mixedPayment.transfer)).toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>Faltante:</span>
+                                                <span className={`font-bold ${cartTotal - (Number(mixedPayment.cash) + Number(mixedPayment.card) + Number(mixedPayment.transfer)) > 0 ? "text-destructive" : "text-emerald-600"}`}>
+                                                    ${Math.max(0, cartTotal - (Number(mixedPayment.cash) + Number(mixedPayment.card) + Number(mixedPayment.transfer))).toLocaleString()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <div className="space-y-2">
@@ -272,7 +310,11 @@ export function POSTerminal({ categories, products, activeReservations }: any) {
                             <Button variant="outline" onClick={() => setCheckoutOpen(false)}>Cancelar</Button>
                             <Button
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                disabled={isPending || (checkoutType === "tab" && !selectedReservationId)}
+                                disabled={
+                                    isPending ||
+                                    (checkoutType === "tab" && !selectedReservationId) ||
+                                    (payMethod === "mixed" && (Number(mixedPayment.cash) + Number(mixedPayment.card) + Number(mixedPayment.transfer)) < cartTotal)
+                                }
                                 onClick={handleCheckout}
                             >
                                 {isPending ? "Procesando..." : checkoutType === "direct" ? "Confirmar Pago" : "Agregar a la Cuenta"}

@@ -33,6 +33,8 @@ export default function EventsClient({ initialEvents, complexes, tenantId }: { i
         endTime: "20:00",
         totalAmount: "",
         depositPaid: "",
+        depositMethod: "cash",
+        depositMixed: { cash: "", card: "", transfer: "" }
     });
 
     const handleCreate = () => {
@@ -51,6 +53,12 @@ export default function EventsClient({ initialEvents, complexes, tenantId }: { i
                     endTime: newEvent.endTime,
                     totalAmount: Number(newEvent.totalAmount) || 0,
                     depositPaid: Number(newEvent.depositPaid) || 0,
+                    depositMethod: newEvent.depositMethod,
+                    depositMixedDetails: newEvent.depositMethod === "mixed" ? JSON.stringify({
+                        cash: Number(newEvent.depositMixed.cash) || 0,
+                        card: Number(newEvent.depositMixed.card) || 0,
+                        transfer: Number(newEvent.depositMixed.transfer) || 0,
+                    }) : undefined,
                 });
                 toast.success("Evento creado exitosamente.");
                 setShowNew(false);
@@ -64,9 +72,9 @@ export default function EventsClient({ initialEvents, complexes, tenantId }: { i
     const handleDelete = (id: string) => {
         if (!confirm("¿Está seguro de eliminar este evento?")) return;
         startTransition(async () => {
-             await deleteEvent(id);
-             setEvents(events.filter(e => e.id !== id));
-             toast.success("Evento eliminado");
+            await deleteEvent(id);
+            setEvents(events.filter(e => e.id !== id));
+            toast.success("Evento eliminado");
         });
     };
 
@@ -123,11 +131,11 @@ export default function EventsClient({ initialEvents, complexes, tenantId }: { i
                     <div className="grid grid-cols-2 gap-4">
                         <div className="col-span-2">
                             <Label>Nombre del Evento</Label>
-                            <Input value={newEvent.name} onChange={e => setNewEvent({...newEvent, name: e.target.value})} placeholder="Ej. Torneo Relámpago o Cumpleaños" />
+                            <Input value={newEvent.name} onChange={e => setNewEvent({ ...newEvent, name: e.target.value })} placeholder="Ej. Torneo Relámpago o Cumpleaños" />
                         </div>
                         <div className="col-span-2">
                             <Label>Sede / Complejo</Label>
-                            <Select value={newEvent.complexId} onValueChange={v => setNewEvent({...newEvent, complexId: v || ""})}>
+                            <Select value={newEvent.complexId} onValueChange={v => setNewEvent({ ...newEvent, complexId: v || "" })}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Seleccionar complejo" />
                                 </SelectTrigger>
@@ -138,24 +146,59 @@ export default function EventsClient({ initialEvents, complexes, tenantId }: { i
                         </div>
                         <div className="col-span-2">
                             <Label>Fecha</Label>
-                            <Input type="date" value={newEvent.date} onChange={e => setNewEvent({...newEvent, date: e.target.value})} />
+                            <Input type="date" value={newEvent.date} onChange={e => setNewEvent({ ...newEvent, date: e.target.value })} />
                         </div>
                         <div>
                             <Label>Hora Inicio</Label>
-                            <Input type="time" value={newEvent.startTime} onChange={e => setNewEvent({...newEvent, startTime: e.target.value})} />
+                            <Input type="time" value={newEvent.startTime} onChange={e => setNewEvent({ ...newEvent, startTime: e.target.value })} />
                         </div>
                         <div>
                             <Label>Hora Fin</Label>
-                            <Input type="time" value={newEvent.endTime} onChange={e => setNewEvent({...newEvent, endTime: e.target.value})} />
+                            <Input type="time" value={newEvent.endTime} onChange={e => setNewEvent({ ...newEvent, endTime: e.target.value })} />
                         </div>
                         <div>
                             <Label>Costo Total (Opcional)</Label>
-                            <Input type="number" placeholder="100000" value={newEvent.totalAmount} onChange={e => setNewEvent({...newEvent, totalAmount: e.target.value})} />
+                            <Input type="number" placeholder="100000" value={newEvent.totalAmount} onChange={e => setNewEvent({ ...newEvent, totalAmount: e.target.value })} />
                         </div>
                         <div>
                             <Label>Seña Pagada (Opcional)</Label>
-                            <Input type="number" placeholder="20000" value={newEvent.depositPaid} onChange={e => setNewEvent({...newEvent, depositPaid: e.target.value})} />
+                            <Input type="number" placeholder="20000" value={newEvent.depositPaid} onChange={e => setNewEvent({ ...newEvent, depositPaid: e.target.value })} />
                         </div>
+                        {Number(newEvent.depositPaid) > 0 && (
+                            <div className="col-span-2 space-y-4 pt-2 border-t mt-2">
+                                <div>
+                                    <Label>Método de Seña</Label>
+                                    <Select value={newEvent.depositMethod} onValueChange={v => setNewEvent({ ...newEvent, depositMethod: v || "cash" })}>
+                                        <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="cash">Efectivo</SelectItem>
+                                            <SelectItem value="card">Tarjeta</SelectItem>
+                                            <SelectItem value="transfer">Transferencia</SelectItem>
+                                            <SelectItem value="mixed">Mixto</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                {newEvent.depositMethod === "mixed" && (
+                                    <div className="grid grid-cols-3 gap-2 animate-in fade-in slide-in-from-top-1">
+                                        <div>
+                                            <Label className="text-[10px] uppercase text-muted-foreground">Efectivo</Label>
+                                            <Input type="number" placeholder="0" value={newEvent.depositMixed.cash} onChange={e => setNewEvent({ ...newEvent, depositMixed: { ...newEvent.depositMixed, cash: e.target.value } })} className="h-8" />
+                                        </div>
+                                        <div>
+                                            <Label className="text-[10px] uppercase text-muted-foreground">Tarjeta</Label>
+                                            <Input type="number" placeholder="0" value={newEvent.depositMixed.card} onChange={e => setNewEvent({ ...newEvent, depositMixed: { ...newEvent.depositMixed, card: e.target.value } })} className="h-8" />
+                                        </div>
+                                        <div>
+                                            <Label className="text-[10px] uppercase text-muted-foreground">Transferencia</Label>
+                                            <Input type="number" placeholder="0" value={newEvent.depositMixed.transfer} onChange={e => setNewEvent({ ...newEvent, depositMixed: { ...newEvent.depositMixed, transfer: e.target.value } })} className="h-8" />
+                                        </div>
+                                        <div className="col-span-3 text-[10px] text-right text-muted-foreground">
+                                            Suma: ${(Number(newEvent.depositMixed.cash) + Number(newEvent.depositMixed.card) + Number(newEvent.depositMixed.transfer)).toLocaleString()}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShowNew(false)}>Cancelar</Button>
