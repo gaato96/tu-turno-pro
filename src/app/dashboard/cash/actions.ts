@@ -18,7 +18,7 @@ export async function getCashData() {
     const targetComplexId = await getActiveComplexOrRedirect();
     if (!targetComplexId) throw new Error("No active complex");
 
-    const openSession = await prisma.cashSession.findFirst({
+    let openSession = await prisma.cashSession.findFirst({
         where: { tenantId, complexId: targetComplexId, status: "open" },
         include: {
             openedBy: { select: { name: true } },
@@ -36,6 +36,59 @@ export async function getCashData() {
             expenses: true
         }
     });
+
+    // Reparación automática: vincular ventas de eventos creadas hoy (o durante esta sesión) que no tienen cashSessionId
+    if (openSession) {
+        const orphans = await prisma.sale.findMany({
+            where: {
+                tenantId,
+                cashSessionId: null,
+                eventId: { not: null },
+                event: { complexId: targetComplexId },
+                createdAt: { gte: openSession.openingDate }
+            },
+            select: { id: true }
+        });
+
+        if (orphans.length > 0) {
+            await prisma.$transaction([
+                prisma.sale.updateMany({
+                    where: { id: { in: orphans.map(o => o.id) } },
+                    data: { cashSessionId: openSession.id }
+                }),
+                prisma.payment.updateMany({
+                    where: {
+                        tenantId,
+                        cashSessionId: null,
+                        eventId: { not: null },
+                        event: { complexId: targetComplexId },
+                        createdAt: { gte: openSession.openingDate }
+                    },
+                    data: { cashSessionId: openSession.id }
+                })
+            ]);
+
+            // Refrescar openSession para incluir las ventas recién vinculadas
+            openSession = await prisma.cashSession.findFirst({
+                where: { id: openSession.id },
+                include: {
+                    openedBy: { select: { name: true } },
+                    sales: {
+                        where: { status: { not: "cancelled" } },
+                        include: {
+                            items: { include: { product: { select: { name: true } } } },
+                            reservation: { select: { customerName: true, date: true, startTime: true, endTime: true, status: true, customerId: true } },
+                            event: { select: { name: true, date: true, startTime: true, endTime: true } }
+                        }
+                    },
+                    payments: {
+                        where: { concept: "seña" }
+                    },
+                    expenses: true
+                }
+            });
+        }
+    }
 
     const history = await prisma.cashSession.findMany({
         where: { tenantId, complexId: targetComplexId, status: "closed" },
