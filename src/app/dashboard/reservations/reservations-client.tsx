@@ -367,10 +367,21 @@ export default function ReservationsClient({
             if (r.courtId !== courtId) return false;
             if (dateStr && r.date.split("T")[0] !== dateStr) return false;
 
-            // To fix timezone shifts, we treat everything as local time strings
             const rStart = format(new Date(r.startTime), "HH:mm");
             const rEnd = format(new Date(r.endTime), "HH:mm");
-            return r.status !== "cancelled" && time >= rStart && time < rEnd;
+
+            if (r.status === "cancelled") return false;
+
+            // Convert to minutes for safe comparison
+            const toMinutes = (t: string) => parseInt(t.split(':')[0]) * 60 + parseInt(t.split(':')[1]);
+            let startMin = toMinutes(rStart);
+            let endMin = toMinutes(rEnd);
+            let currentMin = toMinutes(time);
+
+            if (endMin <= startMin) endMin += 24 * 60; // Crosses midnight
+            if (currentMin < 6 * 60 && startMin >= 12 * 60) currentMin += 24 * 60; // Time slot displayed after midnight
+
+            return currentMin >= startMin && currentMin < endMin;
         });
     };
 
@@ -388,7 +399,11 @@ export default function ReservationsClient({
         const sm = new Date(reservation.startTime).getMinutes();
         const eh = new Date(reservation.endTime).getHours();
         const em = new Date(reservation.endTime).getMinutes();
-        return ((eh * 60 + em) - (sh * 60 + sm)) / 30;
+
+        let diffMinutes = (eh * 60 + em) - (sh * 60 + sm);
+        if (diffMinutes <= 0) diffMinutes += 24 * 60; // Crosses midnight
+
+        return diffMinutes / 30;
     };
 
     // Update duration → endTime

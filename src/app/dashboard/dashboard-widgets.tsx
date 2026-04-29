@@ -4,8 +4,8 @@ import { useTransition, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Timer, Play, Clock, AlertCircle, Square, DollarSign, Activity, MessageCircle, ShoppingCart, Check, X } from "lucide-react";
-import { changeReservationStatus, payReservation, deleteReservation } from "./reservations/actions";
+import { Timer, Play, Clock, AlertCircle, Square, DollarSign, Activity, MessageCircle, ShoppingCart, Check, X, Percent, Trash2 } from "lucide-react";
+import { changeReservationStatus, payReservation, deleteReservation, extendReservation, addDiscount, removeDiscount } from "./reservations/actions";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -25,6 +25,10 @@ export function DashboardReservationModal({ reservation, onClose, userRole }: { 
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
     const [paymentOpen, setPaymentOpen] = useState(false);
+
+    // Discount form state
+    const [discountDesc, setDiscountDesc] = useState("");
+    const [discountAmount, setDiscountAmount] = useState("");
 
     if (!reservation) return null;
 
@@ -75,6 +79,36 @@ export function DashboardReservationModal({ reservation, onClose, userRole }: { 
         });
     };
 
+    const handleAddDiscount = () => {
+        if (!discountDesc.trim() || !discountAmount || Number(discountAmount) <= 0) {
+            toast.error("Ingresá concepto y monto del descuento");
+            return;
+        }
+        startTransition(async () => {
+            try {
+                await addDiscount(reservation.id, discountDesc.trim(), Number(discountAmount));
+                toast.success("Descuento aplicado");
+                setDiscountDesc("");
+                setDiscountAmount("");
+                router.refresh();
+            } catch (error: any) {
+                toast.error(error.message || "Error al agregar descuento");
+            }
+        });
+    };
+
+    const handleRemoveDiscount = (discountId: string) => {
+        startTransition(async () => {
+            try {
+                await removeDiscount(discountId);
+                toast.success("Descuento eliminado");
+                router.refresh();
+            } catch (error: any) {
+                toast.error(error.message || "Error al eliminar descuento");
+            }
+        });
+    };
+
     return (
         <Dialog open={!!reservation} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="sm:max-w-[420px] rounded-2xl p-0 overflow-hidden flex flex-col max-h-[90vh]">
@@ -112,6 +146,17 @@ export function DashboardReservationModal({ reservation, onClose, userRole }: { 
                             </div>
                         </Card>
 
+                        {/* Gestión Info */}
+                        <div className="flex items-center gap-2 p-3 bg-muted/60 border border-border rounded-xl">
+                            <div className="bg-primary/10 p-2 rounded-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                            </div>
+                            <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Gestionado por</p>
+                                <p className="text-sm font-semibold text-foreground">{reservation.user?.name || "Cliente / Sistema"}</p>
+                            </div>
+                        </div>
+
                         {/* Consumptions List */}
                         {reservation.sales && reservation.sales.length > 0 && (
                             <div className="space-y-2 px-2">
@@ -131,6 +176,55 @@ export function DashboardReservationModal({ reservation, onClose, userRole }: { 
                                             ${Number(reservation.consumptionAmount).toLocaleString()}
                                         </span>
                                     </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Descuentos Section */}
+                        {reservation.status !== "cancelled" && reservation.status !== "paid" && (
+                            <div className="space-y-2 px-2">
+                                <h4 className="text-sm font-bold flex items-center gap-2">
+                                    <Percent className="w-4 h-4" /> Descuentos
+                                </h4>
+
+                                {reservation.discounts && reservation.discounts.length > 0 && (
+                                    <div className="bg-amber-50/50 dark:bg-amber-500/5 rounded-xl p-3 space-y-2 border border-amber-200/50 dark:border-amber-500/20">
+                                        {reservation.discounts.map((d: any) => (
+                                            <div key={d.id} className="flex items-center justify-between text-xs">
+                                                <span className="text-muted-foreground">{d.description}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-semibold text-red-600 dark:text-red-400">-${Number(d.amount).toLocaleString("es-AR")}</span>
+                                                    <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:text-destructive" onClick={() => handleRemoveDiscount(d.id)} disabled={isPending}>
+                                                        <Trash2 className="w-3 h-3" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div className="flex gap-2">
+                                    <input type="text" placeholder="Concepto..." value={discountDesc} onChange={(e) => setDiscountDesc(e.target.value)} className="flex h-8 w-full rounded-lg border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50" />
+                                    <input type="number" placeholder="$" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value)} className="flex h-8 w-24 rounded-lg border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50" />
+                                    <Button size="sm" className="h-8 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs" onClick={handleAddDiscount} disabled={isPending || !discountDesc || !discountAmount}>
+                                        Aplicar
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {(reservation.status === "paid" || reservation.status === "cancelled") && reservation.discounts && reservation.discounts.length > 0 && (
+                            <div className="space-y-2 px-2">
+                                <h4 className="text-sm font-bold flex items-center gap-2">
+                                    <Percent className="w-4 h-4" /> Descuentos
+                                </h4>
+                                <div className="bg-amber-50/50 dark:bg-amber-500/5 rounded-xl p-3 space-y-2 border border-amber-200/50 dark:border-amber-500/20">
+                                    {reservation.discounts.map((d: any) => (
+                                        <div key={d.id} className="flex justify-between text-xs">
+                                            <span className="text-muted-foreground">{d.description}</span>
+                                            <span className="font-semibold text-red-600 dark:text-red-400">-${Number(d.amount).toLocaleString("es-AR")}</span>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}
@@ -161,9 +255,30 @@ export function DashboardReservationModal({ reservation, onClose, userRole }: { 
                                 </Button>
                             )}
                             {reservation.status === "in_game" && (
-                                <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white rounded-xl h-12" onClick={() => updateStatus("finished")} disabled={isPending}>
-                                    <Square className="w-4 h-4 mr-2" /> Finalizar Turno
-                                </Button>
+                                <>
+                                    <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white rounded-xl h-12" onClick={() => updateStatus("finished")} disabled={isPending}>
+                                        <Square className="w-4 h-4 mr-2" /> Finalizar Turno
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        className="w-full rounded-xl h-12 border-blue-500/30 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                        disabled={isPending}
+                                        onClick={() => {
+                                            startTransition(async () => {
+                                                try {
+                                                    const result = await extendReservation(reservation.id);
+                                                    toast.success(`Turno extendido +30 min (+$${result.extraAmount.toLocaleString("es-AR")})`);
+                                                    router.refresh();
+                                                    onClose();
+                                                } catch (e: any) {
+                                                    toast.error(e.message || "Error al extender el turno");
+                                                }
+                                            });
+                                        }}
+                                    >
+                                        <Timer className="w-4 h-4 mr-2" /> Extender +30 min
+                                    </Button>
+                                </>
                             )}
                             {(reservation.status === "pending" || reservation.status === "confirmed") && (
                                 userRole === "admin" ? (
