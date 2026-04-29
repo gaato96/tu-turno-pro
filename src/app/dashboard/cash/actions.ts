@@ -37,38 +37,52 @@ export async function getCashData() {
         }
     });
 
-    // Reparación automática: vincular ventas de eventos creadas hoy (o durante esta sesión) que no tienen cashSessionId
+    // Reparación automática: detectar pagos de eventos de HOY que no tienen sesión de caja O no tienen venta
     if (openSession) {
-        const orphans = await prisma.sale.findMany({
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+
+        const orphanPayments = await prisma.payment.findMany({
             where: {
                 tenantId,
                 cashSessionId: null,
-                eventId: { not: null },
+                concept: { in: ["deposit", "event"] },
                 event: { complexId: targetComplexId },
-                createdAt: { gte: openSession.openingDate }
-            },
-            select: { id: true }
+                createdAt: { gte: todayStart }
+            }
         });
 
-        if (orphans.length > 0) {
-            await prisma.$transaction([
-                prisma.sale.updateMany({
-                    where: { id: { in: orphans.map(o => o.id) } },
-                    data: { cashSessionId: openSession.id }
-                }),
-                prisma.payment.updateMany({
-                    where: {
-                        tenantId,
-                        cashSessionId: null,
-                        eventId: { not: null },
-                        event: { complexId: targetComplexId },
-                        createdAt: { gte: openSession.openingDate }
-                    },
-                    data: { cashSessionId: openSession.id }
-                })
-            ]);
+        if (orphanPayments.length > 0) {
+            for (const p of orphanPayments) {
+                await prisma.$transaction(async (tx) => {
+                    // 1. Vincular pago a la sesión
+                    await tx.payment.update({
+                        where: { id: p.id },
+                        data: { cashSessionId: openSession.id }
+                    });
 
-            // Refrescar openSession para incluir las ventas recién vinculadas
+                    // 2. Crear la venta (Sale)
+                    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+                    const count = await tx.sale.count({ where: { tenantId } });
+                    const invoiceNumber = `RE-${dateStr}-${(count + 1).toString().padStart(4, "0")}`;
+
+                    await tx.sale.create({
+                        data: {
+                            tenantId,
+                            eventId: p.eventId,
+                            cashSessionId: openSession.id,
+                            invoiceNumber,
+                            subtotal: p.amount,
+                            total: p.amount,
+                            status: "completed",
+                            paymentMethod: p.paymentMethod,
+                            createdAt: p.createdAt
+                        }
+                    });
+                });
+            }
+
+            // Refrescar openSession para incluir las ventas recién creadas
             openSession = await prisma.cashSession.findFirst({
                 where: { id: openSession.id },
                 include: {
