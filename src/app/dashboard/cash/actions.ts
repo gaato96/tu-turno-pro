@@ -37,17 +37,14 @@ export async function getCashData() {
         }
     });
 
-    // Reparación automática: detectar eventos de HOY que fueron pagados pero no tienen ticket de venta
+    // Reparación automática: detectar eventos que fueron pagados en esta sesión pero no tienen ticket de venta
     if (openSession) {
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-
         const orphanEvents = await prisma.event.findMany({
             where: {
                 tenantId,
                 complexId: targetComplexId,
                 paidAmount: { gt: 0 },
-                createdAt: { gte: todayStart },
+                createdAt: { gte: openSession.openingDate }, // Utilizar la apertura de caja para no sufrir desfases UTC
                 sales: { none: {} }
             }
         });
