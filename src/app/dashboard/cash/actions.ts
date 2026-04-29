@@ -53,12 +53,13 @@ export async function getCashData() {
         });
 
         if (orphanPayments.length > 0) {
+            const currentSessionId = openSession.id;
             for (const p of orphanPayments) {
                 await prisma.$transaction(async (tx) => {
                     // 1. Vincular pago a la sesión
                     await tx.payment.update({
                         where: { id: p.id },
-                        data: { cashSessionId: openSession.id }
+                        data: { cashSessionId: currentSessionId }
                     });
 
                     // 2. Crear la venta (Sale)
@@ -70,7 +71,7 @@ export async function getCashData() {
                         data: {
                             tenantId,
                             eventId: p.eventId,
-                            cashSessionId: openSession.id,
+                            cashSessionId: currentSessionId,
                             invoiceNumber,
                             subtotal: p.amount,
                             total: p.amount,
