@@ -37,32 +37,39 @@ export async function getCashData() {
         }
     });
 
-    // Reparación automática: detectar pagos de eventos de HOY que no tienen sesión de caja O no tienen venta
+    // Reparación automática: detectar eventos de HOY que fueron pagados pero no tienen ticket de venta
     if (openSession) {
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
 
-        const orphanPayments = await prisma.payment.findMany({
+        const orphanEvents = await prisma.event.findMany({
             where: {
                 tenantId,
-                cashSessionId: null,
-                concept: { in: ["deposit", "event"] },
-                event: { complexId: targetComplexId },
-                createdAt: { gte: todayStart }
+                complexId: targetComplexId,
+                paidAmount: { gt: 0 },
+                createdAt: { gte: todayStart },
+                sales: { none: {} }
             }
         });
 
-        if (orphanPayments.length > 0) {
-            const currentSessionId = openSession.id;
-            for (const p of orphanPayments) {
+        if (orphanEvents.length > 0) {
+            for (const event of orphanEvents) {
                 await prisma.$transaction(async (tx) => {
-                    // 1. Vincular pago a la sesión
-                    await tx.payment.update({
-                        where: { id: p.id },
-                        data: { cashSessionId: currentSessionId }
+                    // 1. Crear el Payment que falta
+                    const p = await tx.payment.create({
+                        data: {
+                            tenantId,
+                            eventId: event.id,
+                            cashSessionId: openSession?.id,
+                            amount: event.paidAmount,
+                            paymentMethod: "cash", // Fallback por defecto ya que la data original no se guardó
+                            concept: "event",
+                            notes: "Generado por auto-recuperación de sistema",
+                            createdAt: event.createdAt
+                        }
                     });
 
-                    // 2. Crear la venta (Sale)
+                    // 2. Crear la Venta (Sale)
                     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
                     const count = await tx.sale.count({ where: { tenantId } });
                     const invoiceNumber = `RE-${dateStr}-${(count + 1).toString().padStart(4, "0")}`;
@@ -70,14 +77,14 @@ export async function getCashData() {
                     await tx.sale.create({
                         data: {
                             tenantId,
-                            eventId: p.eventId,
-                            cashSessionId: currentSessionId,
+                            eventId: event.id,
+                            cashSessionId: openSession?.id,
                             invoiceNumber,
-                            subtotal: p.amount,
-                            total: p.amount,
+                            subtotal: event.paidAmount,
+                            total: event.paidAmount,
                             status: "completed",
-                            paymentMethod: p.paymentMethod,
-                            createdAt: p.createdAt
+                            paymentMethod: "cash",
+                            createdAt: event.createdAt
                         }
                     });
                 });
