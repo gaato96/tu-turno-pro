@@ -26,7 +26,8 @@ export async function getCashData() {
                 where: { status: { not: "cancelled" } },
                 include: {
                     items: { include: { product: { select: { name: true } } } },
-                    reservation: { select: { customerName: true, date: true, startTime: true, endTime: true, status: true, customerId: true } }
+                    reservation: { select: { customerName: true, date: true, startTime: true, endTime: true, status: true, customerId: true } },
+                    event: { select: { name: true, date: true, startTime: true, endTime: true } }
                 }
             },
             payments: {
@@ -47,11 +48,13 @@ export async function getCashData() {
         // Calculate X Report data
         const sales = openSession.sales.filter(s => s.status === "completed");
 
-        // Separation of Reservation vs Kiosk income
+        // Separation of Reservation vs Kiosk vs Event income
         const reservationSales = sales.filter(s => s.reservationId !== null);
-        const kioskSales = sales.filter(s => s.reservationId === null);
+        const eventSales = sales.filter(s => s.eventId !== null);
+        const kioskSales = sales.filter(s => s.reservationId === null && s.eventId === null);
 
         const resTotal = reservationSales.reduce((sum, s) => sum + Number(s.total), 0);
+        const eventTotal = eventSales.reduce((sum, s) => sum + Number(s.total), 0);
         const kioskTotal = kioskSales.reduce((sum, s) => sum + Number(s.total), 0);
         const senasTotal = openSession.payments ? openSession.payments.reduce((sum: number, p: any) => sum + Number(p.amount), 0) : 0;
 
@@ -94,6 +97,12 @@ export async function getCashData() {
                         startTime: s.reservation.startTime?.toISOString?.() || s.reservation.startTime,
                         endTime: s.reservation.endTime?.toISOString?.() || s.reservation.endTime,
                     } : null,
+                    event: s.event ? {
+                        ...s.event,
+                        date: s.event.date?.toISOString?.() || s.event.date,
+                        startTime: s.event.startTime?.toISOString?.() || s.event.startTime,
+                        endTime: s.event.endTime?.toISOString?.() || s.event.endTime,
+                    } : null,
                     items: (s.items || []).map((i: any) => ({
                         ...i,
                         productName: i.product?.name || i.productName || 'Producto',
@@ -104,6 +113,7 @@ export async function getCashData() {
                 openingBalance: Number(openSession.openingBalance),
                 salesCount: sales.length,
                 resTotal,
+                eventTotal,
                 kioskTotal,
                 senasTotal,
                 expensesTotal,

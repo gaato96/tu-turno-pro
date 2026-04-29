@@ -126,6 +126,10 @@ export function CashPanel({ openSession, history, userRole }: { openSession: any
                                         <span className="font-bold text-emerald-600">${openSession.resTotal.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between border-b pb-1 mb-1">
+                                        <span className="font-medium">Ingresos por Eventos</span>
+                                        <span className="font-bold text-emerald-600">${openSession.eventTotal?.toLocaleString() || 0}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b pb-1 mb-1">
                                         <span className="font-medium">Ingresos por Señas</span>
                                         <span className="font-bold text-emerald-600">${openSession.senasTotal?.toLocaleString() || 0}</span>
                                     </div>
@@ -214,8 +218,55 @@ export function CashPanel({ openSession, history, userRole }: { openSession: any
                                 </div>
                             )}
 
+                            {/* Eventos */}
+                            {openSession.sales?.filter((s: any) => s.eventId).length > 0 && (
+                                <div className="space-y-3 mt-4">
+                                    <h5 className="font-semibold text-emerald-700 dark:text-emerald-400 border-b pb-1">Cobros de Eventos</h5>
+                                    <div className="bg-white dark:bg-slate-900 rounded-xl border p-4 space-y-3">
+                                        {openSession.sales.filter((s: any) => s.eventId).map((s: any) => (
+                                            <details key={s.id} className="group border-b dark:border-border/50 pb-2 last:border-0 last:pb-0">
+                                                <summary className="flex justify-between items-center text-sm font-medium cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:bg-muted/30 p-1 -mx-1 rounded-lg transition-colors">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-emerald-600 dark:text-emerald-400 opacity-70 group-open:opacity-100 transition-opacity">▶</span>
+                                                        <span className="font-bold text-emerald-600 dark:text-emerald-400">{s.invoiceNumber || 'Ticket'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-xs">
+                                                        <span>{s.createdAt ? format(new Date(s.createdAt), "HH:mm") : ""}</span>
+                                                        <span className="font-bold text-foreground text-sm ml-2">${s.total.toLocaleString()}</span>
+                                                        {userRole === "admin" && (
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={(e) => { e.preventDefault(); handleDeleteSale(s.id); }} disabled={isPending}>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </summary>
+                                                <div className="mt-2 text-xs bg-muted/50 p-3 rounded-lg flex flex-col gap-1 border">
+                                                    <p><span className="font-medium text-muted-foreground">ID Operación:</span> {s.id}</p>
+                                                    {s.event && (
+                                                        <div className="pl-4 border-l-2 border-emerald-500/20 mt-1 mb-1 space-y-1 py-1">
+                                                            <p className="text-muted-foreground font-semibold">Datos del Evento:</p>
+                                                            <p>• Evento: {s.event.name}</p>
+                                                            <p>• Fecha: {s.event.date ? format(new Date(s.event.date), "dd/MM/yyyy") : ''}</p>
+                                                        </div>
+                                                    )}
+                                                    <p><span className="font-medium text-muted-foreground">Método Principal:</span> <Badge variant="outline" className="text-[10px] ml-1">{s.paymentMethod?.toUpperCase() || 'N/A'}</Badge></p>
+                                                    {s.paymentMethod === 'mixed' && s.paymentDetails && (
+                                                        <div className="pl-4 border-l-2 border-emerald-500/20 mt-1 space-y-1">
+                                                            <p className="text-muted-foreground font-semibold">Detalle Mixto:</p>
+                                                            {s.paymentDetails.cash > 0 && <p>• Efectivo: ${Number(s.paymentDetails.cash).toLocaleString()}</p>}
+                                                            {s.paymentDetails.card > 0 && <p>• Tarjeta: ${Number(s.paymentDetails.card).toLocaleString()}</p>}
+                                                            {s.paymentDetails.transfer > 0 && <p>• Transferencia: ${Number(s.paymentDetails.transfer).toLocaleString()}</p>}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </details>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Kiosko */}
-                            {openSession.sales?.filter((s: any) => !s.reservationId).length > 0 && (
+                            {openSession.sales?.filter((s: any) => !s.reservationId && !s.eventId).length > 0 && (
                                 <div className="space-y-3 mt-4">
                                     <h5 className="font-semibold text-blue-700 dark:text-blue-400 border-b pb-1">Venta de Kiosco</h5>
                                     <div className="bg-white dark:bg-slate-900 rounded-xl border p-4 space-y-3">
@@ -378,6 +429,7 @@ export function CashPanel({ openSession, history, userRole }: { openSession: any
                             <div className="p-4 bg-accent/50 rounded-xl border space-y-2 text-sm">
                                 <div className="flex justify-between"><span className="text-muted-foreground">Apertura:</span><span className="font-semibold">${openSession.openingBalance.toLocaleString()}</span></div>
                                 <div className="flex justify-between"><span className="text-muted-foreground">Ingresos Reservas:</span><span className="font-semibold text-emerald-600">${openSession.resTotal.toLocaleString()}</span></div>
+                                <div className="flex justify-between"><span className="text-muted-foreground">Ingresos Eventos:</span><span className="font-semibold text-emerald-600">${openSession.eventTotal?.toLocaleString() || 0}</span></div>
                                 <div className="flex justify-between"><span className="text-muted-foreground">Ingresos Kiosco:</span><span className="font-semibold text-blue-600">${openSession.kioskTotal.toLocaleString()}</span></div>
                                 <div className="flex justify-between"><span className="text-muted-foreground w-1/2">Retiros / Egresos:</span><span className="font-semibold text-red-600 text-right">-${openSession.expensesTotal.toLocaleString()}</span></div>
                                 <div className="flex justify-between border-t pt-2"><span className="text-muted-foreground">Ventas Efectivo:</span><span className="font-semibold">${openSession.cashTotal.toLocaleString()}</span></div>
