@@ -407,6 +407,11 @@ export function CashPanel({ openSession, history, userRole }: { openSession: any
                                                     <span>{s.invoiceNumber || 'Ticket'} — {(s.reservation?.customerName || s.event?.name || 'Kiosco')}</span>
                                                     <span className="text-emerald-600">${s.total.toLocaleString()}</span>
                                                 </div>
+                                                {s.items?.length > 0 && (
+                                                    <div className="text-[10px] text-muted-foreground ml-2 mt-0.5">
+                                                        {s.items.map((i: any) => `${i.quantity}x ${i.product?.name || 'Ítem'}`).join(", ")}
+                                                    </div>
+                                                )}
                                                 <div className="text-muted-foreground flex gap-2 mt-0.5">
                                                     <span>{format(new Date(s.createdAt), "HH:mm")}</span>
                                                     <span>•</span>

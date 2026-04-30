@@ -103,7 +103,7 @@ export async function getCustomerDetail(id: string) {
     if (!customer) throw new Error("Customer not found");
 
     // Fetch future recurring reservations to allow canceling them
-    const futureRecurring = await prisma.reservation.findMany({
+    const futureRecurringRaw = await prisma.reservation.findMany({
         where: {
             customerId: id,
             tenantId,
@@ -111,7 +111,6 @@ export async function getCustomerDetail(id: string) {
             status: { notIn: ["cancelled"] },
             date: { gte: new Date() }
         },
-        distinct: ['startTime', 'courtId'], // Try to group them by the time slot and court
         orderBy: { date: 'asc' },
         select: {
             id: true,
@@ -122,6 +121,14 @@ export async function getCustomerDetail(id: string) {
             endTime: true,
             reservationType: true
         }
+    });
+
+    const seenTimes = new Set();
+    const futureRecurring = futureRecurringRaw.filter((r: any) => {
+        const timeKey = `${r.courtId}-${r.startTime.toISOString().split('T')[1]}`;
+        if (seenTimes.has(timeKey)) return false;
+        seenTimes.add(timeKey);
+        return true;
     });
 
     return {

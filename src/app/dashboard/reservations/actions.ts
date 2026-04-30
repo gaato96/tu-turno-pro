@@ -55,12 +55,14 @@ export async function getCalendarData(dateStr: string) {
     const closingH = parseInt(complex.closingTime?.split(":")[0] || "23");
 
     const businessStart = new Date(dateStr + "T" + (complex.openingTime || "08:00") + ":00");
+    businessStart.setDate(businessStart.getDate() - 7);
 
     // If closing time is before or same hour as opening, it means next day
     let businessEnd = new Date(dateStr + "T" + (complex.closingTime || "23:00") + ":00");
     if (closingH <= openingH) {
         businessEnd.setDate(businessEnd.getDate() + 1);
     }
+    businessEnd.setDate(businessEnd.getDate() + 7);
 
     const reservations = await prisma.reservation.findMany({
         where: {
