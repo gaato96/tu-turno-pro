@@ -140,16 +140,20 @@ export default function ReservationsClient({
     const [events] = useState(initialEvents);
 
     // Check if a time slot is blocked by an event (applies to ALL courts)
-    const getEventForSlot = (time: string): any | undefined => {
+    const getEventForSlot = (time: string, dateStr?: string): any | undefined => {
         return events.find((ev: any) => {
+            if (dateStr && ev.date.split("T")[0] !== dateStr) return false;
             const evStart = format(new Date(ev.startTime), "HH:mm");
             const evEnd = format(new Date(ev.endTime), "HH:mm");
             return time >= evStart && time < evEnd;
         });
     };
 
-    const isEventStart = (time: string): boolean => {
-        return events.some((ev: any) => format(new Date(ev.startTime), "HH:mm") === time);
+    const isEventStart = (time: string, dateStr?: string): boolean => {
+        return events.some((ev: any) => {
+            if (dateStr && ev.date.split("T")[0] !== dateStr) return false;
+            return format(new Date(ev.startTime), "HH:mm") === time;
+        });
     };
 
     // New reservation form state
@@ -212,9 +216,11 @@ export default function ReservationsClient({
     }, [openResId, reservations]);
 
     const handleSlotClick = (courtId: string, time: string) => {
+        const dStr = format(selectedDate, "yyyy-MM-dd");
         // Check if slot is occupied (basic client side validation)
         const occupied = reservations.some((r) => {
             if (r.courtId !== courtId || r.status === "cancelled") return false;
+            if (r.date.split("T")[0] !== dStr) return false;
             const rStart = format(new Date(r.startTime), "HH:mm");
             const rEnd = format(new Date(r.endTime), "HH:mm");
             return time >= rStart && time < rEnd;
@@ -222,7 +228,7 @@ export default function ReservationsClient({
         if (occupied) return;
 
         // Block if an event covers this slot
-        if (getEventForSlot(time)) {
+        if (getEventForSlot(time, dStr)) {
             toast.error("Este horario está bloqueado por un evento.");
             return;
         }
@@ -535,6 +541,7 @@ export default function ReservationsClient({
                                 const isHour = time.endsWith(":00");
                                 const hour = parseInt(time.split(":")[0]);
                                 const isNightStart = hour >= 19 || hour < 6;
+                                const dStr = format(selectedDate, "yyyy-MM-dd");
 
                                 return (
                                     <div
@@ -548,8 +555,8 @@ export default function ReservationsClient({
 
                                         {courts.map((court, courtIndex) => {
                                             // Check event FIRST (events block ALL courts)
-                                            const eventBlock = getEventForSlot(time);
-                                            const isEvStart = eventBlock && isEventStart(time);
+                                            const eventBlock = getEventForSlot(time, dStr);
+                                            const isEvStart = eventBlock && isEventStart(time, dStr);
 
                                             if (eventBlock && !isEvStart) return <div key={court.id} className="border-r border-border/30 last:border-r-0" />;
 
@@ -576,8 +583,8 @@ export default function ReservationsClient({
                                                 );
                                             }
 
-                                            const reservation = getReservationForSlot(court.id, time);
-                                            const isStart = reservation && isSlotStart(court.id, time);
+                                            const reservation = getReservationForSlot(court.id, time, dStr);
+                                            const isStart = reservation && isSlotStart(court.id, time, dStr);
                                             const span = reservation && isStart ? getSlotSpan(reservation) : 0;
                                             const isNight = hour >= parseInt(court.nightRateStartTime.split(":")[0]);
 
