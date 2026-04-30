@@ -165,6 +165,7 @@ export default function ReservationsClient({
         depositAmount: "",
         paymentMethod: "cash",
         isRecurring: false,
+        defaultDiscount: undefined as number | undefined,
     });
 
 
@@ -249,6 +250,7 @@ export default function ReservationsClient({
             depositAmount: "",
             paymentMethod: "cash",
             isRecurring: false,
+            defaultDiscount: undefined,
         });
         setSelectedSlot({ courtId, time });
         setShowNewReservation(true);
@@ -278,6 +280,9 @@ export default function ReservationsClient({
                 if (newRes.isRecurring) {
                     formData.append("isRecurring", "true");
                     formData.append("reservationType", "fixed");
+                    if (newRes.defaultDiscount && newRes.defaultDiscount > 0) {
+                        formData.append("defaultDiscount", String(newRes.defaultDiscount));
+                    }
                 }
 
 
@@ -736,6 +741,11 @@ export default function ReservationsClient({
                                                 <div>
                                                     <p className="font-bold text-sm">{r.customerName}</p>
                                                     <p className="text-xs text-muted-foreground">{courts.find(c => c.id === r.courtId)?.name}</p>
+                                                    {r.discounts && r.discounts.length > 0 && (
+                                                        <p className="text-[11px] text-red-500 font-medium mt-0.5 line-clamp-1" title={r.discounts.map((d: any) => `-$${d.amount} (${d.description})`).join(', ')}>
+                                                            Descuento: {r.discounts.map((d: any) => d.description).join(', ')}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="mt-2 sm:mt-0 flex items-center gap-3">

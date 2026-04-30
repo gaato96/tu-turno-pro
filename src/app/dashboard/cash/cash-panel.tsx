@@ -395,6 +395,38 @@ export function CashPanel({ openSession, history, userRole }: { openSession: any
                                         </p>
                                     </div>
                                 </div>
+                                <details className="mt-4 group border-t pt-2">
+                                    <summary className="text-xs text-emerald-600 font-medium cursor-pointer list-none flex items-center justify-between">
+                                        <span>Ver Detalles de Operaciones</span>
+                                        <span className="group-open:rotate-90 transition-transform">▶</span>
+                                    </summary>
+                                    <div className="mt-3 space-y-3">
+                                        {session.sales?.length > 0 ? session.sales.map((s: any) => (
+                                            <div key={s.id} className="text-xs border-b pb-2 last:border-0 dark:border-border/50">
+                                                <div className="flex justify-between font-medium">
+                                                    <span>{s.invoiceNumber || 'Ticket'} — {(s.reservation?.customerName || s.event?.name || 'Kiosco')}</span>
+                                                    <span className="text-emerald-600">${s.total.toLocaleString()}</span>
+                                                </div>
+                                                <div className="text-muted-foreground flex gap-2 mt-0.5">
+                                                    <span>{format(new Date(s.createdAt), "HH:mm")}</span>
+                                                    <span>•</span>
+                                                    <span className="uppercase">{s.paymentMethod}</span>
+                                                </div>
+                                            </div>
+                                        )) : <p className="text-xs text-muted-foreground">No hubieron cobros.</p>}
+                                        {session.expenses?.length > 0 && (
+                                            <div className="text-xs border-t pt-2 dark:border-border/50">
+                                                <span className="font-bold text-red-600">Gastos Registrados</span>
+                                                {session.expenses.map((e: any) => (
+                                                    <div key={e.id} className="flex justify-between text-muted-foreground mt-1">
+                                                        <span>{e.description}</span>
+                                                        <span className="text-red-600">-${e.amount.toLocaleString()}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </details>
                             </Card>
                         ))}
                     </div>

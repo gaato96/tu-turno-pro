@@ -111,7 +111,19 @@ export async function getCashData() {
 
     const history = await prisma.cashSession.findMany({
         where: { tenantId, complexId: targetComplexId, status: "closed" },
-        include: { openedBy: { select: { name: true } }, closedBy: { select: { name: true } } },
+        include: {
+            openedBy: { select: { name: true } },
+            closedBy: { select: { name: true } },
+            sales: {
+                where: { status: { not: "cancelled" } },
+                include: {
+                    items: { include: { product: { select: { name: true } } } },
+                    reservation: { select: { customerName: true, date: true, startTime: true, endTime: true, status: true, customerId: true } },
+                    event: { select: { name: true, date: true, startTime: true, endTime: true } }
+                }
+            },
+            expenses: true
+        },
         orderBy: { closingDate: "desc" },
         take: 10
     });
@@ -206,6 +218,31 @@ export async function getCashData() {
                 cashTotal: h.cashTotal ? Number(h.cashTotal) : null,
                 cardTotal: h.cardTotal ? Number(h.cardTotal) : null,
                 transferTotal: h.transferTotal ? Number(h.transferTotal) : null,
+                sales: (h.sales || []).map((s: any) => ({
+                    ...s,
+                    total: Number(s.total),
+                    subtotal: Number(s.subtotal),
+                    createdAt: s.createdAt?.toISOString?.() || s.createdAt,
+                    paymentDetails: s.paymentDetails || null,
+                    reservation: s.reservation ? {
+                        ...s.reservation,
+                        date: s.reservation.date?.toISOString?.() || s.reservation.date,
+                        startTime: s.reservation.startTime?.toISOString?.() || s.reservation.startTime,
+                        endTime: s.reservation.endTime?.toISOString?.() || s.reservation.endTime,
+                    } : null,
+                    event: s.event ? {
+                        ...s.event,
+                        date: s.event.date?.toISOString?.() || s.event.date,
+                        startTime: s.event.startTime?.toISOString?.() || s.event.startTime,
+                        endTime: s.event.endTime?.toISOString?.() || s.event.endTime,
+                    } : null,
+                    items: (s.items || []).map((i: any) => ({
+                        ...i,
+                        productName: i.product?.name || i.productName || 'Producto',
+                        subtotal: Number(i.subtotal),
+                    }))
+                })),
+                expenses: (h.expenses || []).map((e: any) => ({ ...e, amount: Number(e.amount) })),
             })),
             userRole: (session?.user as any)?.role
         };
@@ -222,6 +259,31 @@ export async function getCashData() {
             cashTotal: h.cashTotal ? Number(h.cashTotal) : null,
             cardTotal: h.cardTotal ? Number(h.cardTotal) : null,
             transferTotal: h.transferTotal ? Number(h.transferTotal) : null,
+            sales: (h.sales || []).map((s: any) => ({
+                ...s,
+                total: Number(s.total),
+                subtotal: Number(s.subtotal),
+                createdAt: s.createdAt?.toISOString?.() || s.createdAt,
+                paymentDetails: s.paymentDetails || null,
+                reservation: s.reservation ? {
+                    ...s.reservation,
+                    date: s.reservation.date?.toISOString?.() || s.reservation.date,
+                    startTime: s.reservation.startTime?.toISOString?.() || s.reservation.startTime,
+                    endTime: s.reservation.endTime?.toISOString?.() || s.reservation.endTime,
+                } : null,
+                event: s.event ? {
+                    ...s.event,
+                    date: s.event.date?.toISOString?.() || s.event.date,
+                    startTime: s.event.startTime?.toISOString?.() || s.event.startTime,
+                    endTime: s.event.endTime?.toISOString?.() || s.event.endTime,
+                } : null,
+                items: (s.items || []).map((i: any) => ({
+                    ...i,
+                    productName: i.product?.name || i.productName || 'Producto',
+                    subtotal: Number(i.subtotal),
+                }))
+            })),
+            expenses: (h.expenses || []).map((e: any) => ({ ...e, amount: Number(e.amount) })),
         })),
         userRole: (session?.user as any)?.role
     };

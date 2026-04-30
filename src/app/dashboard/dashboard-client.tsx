@@ -285,7 +285,7 @@ export default function DashboardClient({ initialData, greeting }: { initialData
                 <KPICard
                     title="Cantidad de Cobros"
                     value={String(data?.salesCount ?? 0)}
-                    subtitle="operaciones en el día"
+                    subtitle="operaciones en el turno"
                     icon={DollarSign}
                     color="emerald"
                 />

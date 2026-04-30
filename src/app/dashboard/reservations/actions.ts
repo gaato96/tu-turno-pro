@@ -393,6 +393,24 @@ export async function createReservation(formData: FormData) {
             }
         }
 
+        const defaultDiscountRaw = formData.get("defaultDiscount");
+        const defaultDiscount = defaultDiscountRaw ? Number(defaultDiscountRaw) : 0;
+
+        if (defaultDiscount > 0) {
+            const allCreatedIds = [newRes.id];
+            if (isRecurring) {
+                const createdRecurring = await tx.reservation.findMany({ where: { parentReservationId: newRes.id }, select: { id: true } });
+                allCreatedIds.push(...createdRecurring.map(r => r.id));
+            }
+            const discountData = allCreatedIds.map(id => ({
+                tenantId,
+                reservationId: id,
+                description: "Descuento Fijo Asignado",
+                amount: defaultDiscount,
+            }));
+            await tx.reservationDiscount.createMany({ data: discountData });
+        }
+
         if (depositAmount > 0) {
             const cashSession = await tx.cashSession.findFirst({
                 where: { tenantId, status: "open" }

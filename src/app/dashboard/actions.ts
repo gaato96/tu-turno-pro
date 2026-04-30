@@ -29,7 +29,11 @@ export async function getDashboardData() {
     const endOfDay = new Date(localTime);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const [todayReservations, activeReservations, upcomingReservations, pendingReservations, finishedReservations, todaySales, topProducts, complexes, openCashSession] = await Promise.all([
+    const openCashSession = await prisma.cashSession.findFirst({
+        where: { tenantId, complexId: targetComplexId, status: "open" }
+    });
+
+    const [todayReservations, activeReservations, upcomingReservations, pendingReservations, finishedReservations, todaySales, topProducts, complexes] = await Promise.all([
         prisma.reservation.count({
             where: { tenantId, complexId: targetComplexId, date: { gte: startOfDay, lte: endOfDay }, status: { notIn: ["cancelled"] } }
         }),
@@ -84,44 +88,29 @@ export async function getDashboardData() {
             orderBy: { endTime: "desc" },
             take: 10
         }),
-        prisma.sale.findMany({
+        openCashSession ? prisma.sale.findMany({
             where: {
                 tenantId,
-                createdAt: { gte: startOfDay, lte: endOfDay },
-                status: { not: "cancelled" },
-                ...(targetComplexId && {
-                    OR: [
-                        { reservation: { complexId: targetComplexId } },
-                        { cashSession: { complexId: targetComplexId } }
-                    ]
-                })
+                cashSessionId: openCashSession.id,
+                status: { not: "cancelled" }
             }
-        }),
-        prisma.saleItem.groupBy({
+        }) : Promise.resolve([]),
+        openCashSession ? prisma.saleItem.groupBy({
             by: ["productId"],
             where: {
                 sale: {
                     tenantId,
-                    createdAt: { gte: startOfDay, lte: endOfDay },
-                    status: { not: "cancelled" },
-                    ...(targetComplexId && {
-                        OR: [
-                            { reservation: { complexId: targetComplexId } },
-                            { cashSession: { complexId: targetComplexId } }
-                        ]
-                    })
+                    cashSessionId: openCashSession.id,
+                    status: { not: "cancelled" }
                 }
             },
             _sum: { quantity: true, subtotal: true },
             orderBy: { _sum: { quantity: "desc" } },
             take: 5
-        }),
+        }) : Promise.resolve([]),
         prisma.complex.findMany({
             where: { tenantId, id: targetComplexId },
             select: { id: true, name: true }
-        }),
-        prisma.cashSession.findFirst({
-            where: { tenantId, complexId: targetComplexId, status: "open" }
         })
     ]);
 

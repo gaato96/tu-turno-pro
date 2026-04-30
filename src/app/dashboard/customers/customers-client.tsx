@@ -50,12 +50,14 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
   const [isNewCustomerOpen, setIsNewCustomerOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
+  const [newDefaultDiscount, setNewDefaultDiscount] = useState("");
   const [isSubmittingNew, setIsSubmittingNew] = useState(false);
 
   // Edit Customer state
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editDefaultDiscount, setEditDefaultDiscount] = useState("");
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
 
   // Delete confirm
@@ -82,6 +84,7 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
       // Pre-fill edit states
       setEditName(data.name);
       setEditPhone(data.phone || "");
+      setEditDefaultDiscount(data.defaultDiscount ? String(data.defaultDiscount) : "");
     } catch (error: any) {
       toast.error(error.message || "Error al cargar detalle");
     } finally {
@@ -120,11 +123,12 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
     }
     setIsSubmittingNew(true);
     try {
-      await createCustomer({ name: newName, phone: newPhone });
+      await createCustomer({ name: newName, phone: newPhone, defaultDiscount: newDefaultDiscount ? Number(newDefaultDiscount) : undefined });
       toast.success("Cliente creado");
       setIsNewCustomerOpen(false);
       setNewName("");
       setNewPhone("");
+      setNewDefaultDiscount("");
       window.location.reload();
     } catch (err: any) {
       toast.error(err.message || "Error al crear cliente");
@@ -137,7 +141,7 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
     if (!editName || !selectedCustomerId) return;
     setIsSubmittingEdit(true);
     try {
-      await updateCustomer(selectedCustomerId, { name: editName, phone: editPhone });
+      await updateCustomer(selectedCustomerId, { name: editName, phone: editPhone, defaultDiscount: editDefaultDiscount ? Number(editDefaultDiscount) : undefined });
       toast.success("Cliente actualizado");
       setIsEditOpen(false);
       window.location.reload();
@@ -174,9 +178,9 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
       setSelectedRecurring(null);
       await openCustomerDetail(selectedCustomerId!);
     } catch (e: any) {
-        toast.error(e.message || "Error al cancelar turnos fijos");
+      toast.error(e.message || "Error al cancelar turnos fijos");
     } finally {
-        setIsCancelingRecurring(false);
+      setIsCancelingRecurring(false);
     }
   };
 
@@ -281,6 +285,7 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
                     <h3 className="text-xl font-bold">{detailData.name}</h3>
                     {detailData.phone && <p className="text-muted-foreground text-sm mt-1 flex items-center"><Phone className="h-3 w-3 mr-2" />{detailData.phone}</p>}
                     {detailData.email && <p className="text-muted-foreground text-sm mt-1">{detailData.email}</p>}
+                    {detailData.defaultDiscount > 0 && <p className="text-emerald-600 font-medium text-sm flex items-center mt-2 bg-emerald-50 w-fit px-2 py-0.5 rounded-full dark:bg-emerald-500/10">Descuento Asignado Activo (-${Number(detailData.defaultDiscount).toLocaleString()})</p>}
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-muted-foreground mb-1">Saldo a Cuenta</p>
@@ -317,17 +322,17 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
                         <div key={res.id} className="flex justify-between items-center p-3 border border-amber-200 bg-amber-50/30 dark:border-amber-900/50 dark:bg-amber-900/10 rounded-lg">
                           <div>
                             <p className="font-medium text-sm">
-                                {res.court?.name}
+                              {res.court?.name}
                             </p>
                             <p className="text-xs text-muted-foreground mt-1">
-                                {format(new Date(res.startTime), "EEEE", { locale: es })} a las {format(new Date(res.startTime), "HH:mm")}
+                              {format(new Date(res.startTime), "EEEE", { locale: es })} a las {format(new Date(res.startTime), "HH:mm")}
                             </p>
                           </div>
                           <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => {
-                              setSelectedRecurring(res);
-                              setIsCancelRecurringOpen(true);
+                            setSelectedRecurring(res);
+                            setIsCancelRecurringOpen(true);
                           }}>
-                              Borrar turno fijo
+                            Borrar turno fijo
                           </Button>
                         </div>
                       ))}
@@ -447,6 +452,16 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
                 onChange={(e) => setNewPhone(e.target.value)}
               />
             </div>
+            <div className="space-y-2">
+              <Label>Descuento Fijo Asignado ($)</Label>
+              <Input
+                type="number"
+                placeholder="Ej. 1000"
+                value={newDefaultDiscount}
+                onChange={(e) => setNewDefaultDiscount(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Se aplicará automáticamente de modo fijo a todos los nuevos turnos y reservas creadas para este cliente.</p>
+            </div>
           </div>
 
           <DialogFooter>
@@ -481,6 +496,16 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: Custom
                 value={editPhone}
                 onChange={(e) => setEditPhone(e.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Descuento Fijo Asignado ($)</Label>
+              <Input
+                type="number"
+                placeholder="Ej. 1000"
+                value={editDefaultDiscount}
+                onChange={(e) => setEditDefaultDiscount(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Se aplicará automáticamente de modo fijo a todos los nuevos turnos y reservas creadas para este cliente.</p>
             </div>
           </div>
 

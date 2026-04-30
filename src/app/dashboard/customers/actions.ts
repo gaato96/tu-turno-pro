@@ -29,7 +29,7 @@ export async function searchCustomers(query: string) {
     });
 }
 
-export async function createCustomer(data: { name: string; phone?: string; email?: string }) {
+export async function createCustomer(data: { name: string; phone?: string; email?: string; defaultDiscount?: number }) {
     const session = await auth();
     const tenantId = getTenantId(session);
 
@@ -50,6 +50,7 @@ export async function createCustomer(data: { name: string; phone?: string; email
             name: data.name,
             phone,
             email,
+            defaultDiscount: data.defaultDiscount !== undefined ? data.defaultDiscount : null,
         },
     });
 
@@ -111,6 +112,7 @@ export async function getCustomerDetail(id: string) {
             date: { gte: new Date() }
         },
         distinct: ['startTime', 'courtId'], // Try to group them by the time slot and court
+        orderBy: { date: 'asc' },
         select: {
             id: true,
             courtId: true,
@@ -125,6 +127,7 @@ export async function getCustomerDetail(id: string) {
     return {
         ...customer,
         futureRecurring,
+        defaultDiscount: customer.defaultDiscount ? Number(customer.defaultDiscount) : null,
         balance: Number(customer.balance)
     };
 }
@@ -174,7 +177,7 @@ export async function cancelFutureRecurringReservations(reservationId: string) {
     return { count: toCancelIds.length };
 }
 
-export async function updateCustomer(id: string, data: { name: string; phone?: string; email?: string; notes?: string }) {
+export async function updateCustomer(id: string, data: { name: string; phone?: string; email?: string; notes?: string; defaultDiscount?: number }) {
     const session = await auth();
     const tenantId = getTenantId(session);
 
@@ -186,15 +189,17 @@ export async function updateCustomer(id: string, data: { name: string; phone?: s
         const existing = await prisma.customer.findFirst({
             where: { tenantId, phone, id: { not: id } }
         });
-        if (existing) throw new Error("Phone number already used by another customer");
+        if (existing) throw new Error("El teléfono ya está registrado por otro cliente");
     }
 
     const updated = await prisma.customer.update({
         where: { id, tenantId },
         data: {
-            ...data,
+            name: data.name,
             phone,
-            email
+            email,
+            notes: data.notes,
+            defaultDiscount: data.defaultDiscount !== undefined ? data.defaultDiscount : null
         }
     });
 
@@ -219,7 +224,7 @@ export async function addCustomerPayment(customerId: string, amount: number, pay
 
     // In a real app we might also want to link this to a CashSession
     // But for now, just creating a Payment and decreasing the balance
-    
+
     // We execute this in a transaction
     const result = await prisma.$transaction(async (tx) => {
         const customer = await tx.customer.findUniqueOrThrow({
