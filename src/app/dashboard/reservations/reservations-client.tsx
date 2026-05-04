@@ -837,6 +837,7 @@ export default function ReservationsClient({
                                                 // Check if this slot is occupied for the selected court
                                                 const isOccupied = newRes.courtId ? reservations.some((r) => {
                                                     if (r.courtId !== newRes.courtId || r.status === "cancelled") return false;
+                                                    if (r.date.split("T")[0] !== newRes.date) return false;
                                                     const rStart = format(new Date(r.startTime), "HH:mm");
                                                     const rEnd = format(new Date(r.endTime), "HH:mm");
                                                     return t >= rStart && t < rEnd;
