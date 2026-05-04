@@ -177,15 +177,15 @@ export async function getCashData() {
                     paymentDetails: s.paymentDetails || null,
                     reservation: s.reservation ? {
                         ...s.reservation,
-                        date: s.reservation.date?.toISOString?.() || s.reservation.date,
-                        startTime: s.reservation.startTime?.toISOString?.() || s.reservation.startTime,
-                        endTime: s.reservation.endTime?.toISOString?.() || s.reservation.endTime,
+                        date: s.reservation.date?.toISOString?.()?.replace('Z', '') || s.reservation.date,
+                        startTime: s.reservation.startTime?.toISOString?.()?.replace('Z', '') || s.reservation.startTime,
+                        endTime: s.reservation.endTime?.toISOString?.()?.replace('Z', '') || s.reservation.endTime,
                     } : null,
                     event: s.event ? {
                         ...s.event,
-                        date: s.event.date?.toISOString?.() || s.event.date,
-                        startTime: s.event.startTime?.toISOString?.() || s.event.startTime,
-                        endTime: s.event.endTime?.toISOString?.() || s.event.endTime,
+                        date: s.event.date?.toISOString?.()?.replace('Z', '') || s.event.date,
+                        startTime: s.event.startTime?.toISOString?.()?.replace('Z', '') || s.event.startTime,
+                        endTime: s.event.endTime?.toISOString?.()?.replace('Z', '') || s.event.endTime,
                     } : null,
                     items: (s.items || []).map((i: any) => ({
                         ...i,
@@ -226,15 +226,15 @@ export async function getCashData() {
                     paymentDetails: s.paymentDetails || null,
                     reservation: s.reservation ? {
                         ...s.reservation,
-                        date: s.reservation.date?.toISOString?.() || s.reservation.date,
-                        startTime: s.reservation.startTime?.toISOString?.() || s.reservation.startTime,
-                        endTime: s.reservation.endTime?.toISOString?.() || s.reservation.endTime,
+                        date: s.reservation.date?.toISOString?.()?.replace('Z', '') || s.reservation.date,
+                        startTime: s.reservation.startTime?.toISOString?.()?.replace('Z', '') || s.reservation.startTime,
+                        endTime: s.reservation.endTime?.toISOString?.()?.replace('Z', '') || s.reservation.endTime,
                     } : null,
                     event: s.event ? {
                         ...s.event,
-                        date: s.event.date?.toISOString?.() || s.event.date,
-                        startTime: s.event.startTime?.toISOString?.() || s.event.startTime,
-                        endTime: s.event.endTime?.toISOString?.() || s.event.endTime,
+                        date: s.event.date?.toISOString?.()?.replace('Z', '') || s.event.date,
+                        startTime: s.event.startTime?.toISOString?.()?.replace('Z', '') || s.event.startTime,
+                        endTime: s.event.endTime?.toISOString?.()?.replace('Z', '') || s.event.endTime,
                     } : null,
                     items: (s.items || []).map((i: any) => ({
                         ...i,

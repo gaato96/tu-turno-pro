@@ -294,7 +294,11 @@ export async function createReservation(formData: FormData) {
     });
 
     if (overlappingReservations.length > 0) {
-        throw new Error("El horario seleccionado o una cancha vinculada ya se encuentra reservada.");
+        const conflicts = overlappingReservations.map((r: any) =>
+            `[${r.customerName} | Cancha: ${r.courtId} | ${r.startTime.toISOString()} - ${r.endTime.toISOString()} | Fecha DB: ${r.date?.toISOString()} | Status: ${r.status}]`
+        ).join(', ');
+        console.error(`OVERLAP DETECTED trying to book ${dateStr} ${startTimeStr}-${endTimeStr} on court ${courtId}. Conflicts: ${conflicts}`);
+        throw new Error(`El horario seleccionado o una cancha vinculada ya se encuentra reservada. Debug: ${conflicts}`);
     }
 
     // Event overlap validation (Events block all courts in the complex)
