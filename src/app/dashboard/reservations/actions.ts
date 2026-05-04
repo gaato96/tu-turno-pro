@@ -284,6 +284,7 @@ export async function createReservation(formData: FormData) {
     const overlappingReservations = await prisma.reservation.findMany({
         where: {
             courtId: { in: courtIdsToCheck },
+            date,
             status: { notIn: ["cancelled"] },
             AND: [
                 { startTime: { lt: endTime } },
@@ -300,6 +301,7 @@ export async function createReservation(formData: FormData) {
     const overlappingEvents = await prisma.event.findMany({
         where: {
             complexId,
+            date,
             status: { notIn: ["cancelled"] },
             AND: [
                 { startTime: { lt: endTime } },
