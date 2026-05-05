@@ -36,8 +36,9 @@ export function PaymentDialog({ open, onOpenChange, totalAmount, hasCustomer = t
             const mCash = Number(mixedPayment.cash || 0);
             const mCard = Number(mixedPayment.card || 0);
             const mTransfer = Number(mixedPayment.transfer || 0);
+            const mixedTotal = mCash + mCard + mTransfer;
 
-            onConfirm("mixed", amountToPayThisTime, leaveOnAccount, { cash: mCash, card: mCard, transfer: mTransfer });
+            onConfirm("mixed", mixedTotal, leaveOnAccount, { cash: mCash, card: mCard, transfer: mTransfer });
         } else {
             onConfirm(paymentMethod, amountToPayThisTime, leaveOnAccount);
         }
