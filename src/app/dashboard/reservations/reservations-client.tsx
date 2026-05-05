@@ -707,65 +707,73 @@ export default function ReservationsClient({
                             <p className="text-xs text-muted-foreground">Vista de todos los turnos del día corriente. Solo visible para administradores.</p>
                         </div>
 
-                        {/* User Management Summary - Turnos por usuario */}
-                        {reservations.length > 0 && (
-                            <div className="p-4 border-b bg-emerald-50/30 dark:bg-emerald-500/5">
-                                <h4 className="text-sm font-bold flex items-center gap-2 mb-3">
-                                    <Users className="w-4 h-4 text-emerald-600" />
-                                    Turnos por Usuario
-                                </h4>
-                                <div className="flex flex-wrap gap-2">
-                                    {(() => {
-                                        const userCounts: Record<string, number> = {};
-                                        reservations.forEach((r: any) => {
-                                            const userName = r.user?.name || "Cliente / Sistema";
-                                            userCounts[userName] = (userCounts[userName] || 0) + 1;
-                                        });
-                                        return Object.entries(userCounts)
-                                            .sort((a, b) => b[1] - a[1])
-                                            .map(([name, count]) => (
-                                                <Badge key={name} variant="secondary" className="rounded-full px-3 py-1 text-xs">
-                                                    {name}: <span className="font-bold ml-1">{count}</span>
-                                                </Badge>
-                                            ));
-                                    })()}
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="p-4">
-                            {reservations.length === 0 ? (
-                                <p className="text-sm text-center py-8 text-muted-foreground">No hay turnos registrados para esta fecha.</p>
-                            ) : (
-                                <div className="space-y-2">
-                                    {reservations.map((r: any) => (
-                                        <div key={r.id} className={cn("flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border bg-card hover:bg-muted/50 transition-colors cursor-pointer", r.status === "cancelled" && "opacity-60 grayscale border-dashed")} onClick={() => setDetailReservation(r)}>
-                                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
-                                                <div className="flex items-center gap-2">
-                                                    <Badge className={`${statusConfig[r.status]?.class} rounded-full`}>{statusConfig[r.status]?.label}</Badge>
-                                                    <span className="text-sm font-bold">{format(new Date(r.startTime), "HH:mm")} - {format(new Date(r.endTime), "HH:mm")}</span>
-                                                </div>
-                                                <div>
-                                                    <p className="font-bold text-sm">{r.customerName}</p>
-                                                    <p className="text-xs text-muted-foreground">{courts.find(c => c.id === r.courtId)?.name}</p>
-                                                    {r.discounts && r.discounts.length > 0 && (
-                                                        <p className="text-[11px] text-red-500 font-medium mt-0.5 line-clamp-1" title={r.discounts.map((d: any) => `-$${d.amount} (${d.description})`).join(', ')}>
-                                                            Descuento: {r.discounts.map((d: any) => d.description).join(', ')}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="mt-2 sm:mt-0 flex items-center gap-3">
-                                                <Badge variant="outline" className="rounded-full text-[10px] shrink-0">
-                                                    {r.user?.name || "Cliente / Sistema"}
-                                                </Badge>
-                                                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">${Number(r.paidAmount).toLocaleString("es-AR")} <span className="text-muted-foreground font-normal text-xs">/ ${Number(r.totalAmount).toLocaleString("es-AR")}</span></p>
+                        {(() => {
+                            const dStr = format(selectedDate, "yyyy-MM-dd");
+                            const dayReservations = reservations.filter((r: any) => r.date.split("T")[0] === dStr);
+                            return (
+                                <>
+                                    {/* User Management Summary - Turnos por usuario */}
+                                    {dayReservations.length > 0 && (
+                                        <div className="p-4 border-b bg-emerald-50/30 dark:bg-emerald-500/5">
+                                            <h4 className="text-sm font-bold flex items-center gap-2 mb-3">
+                                                <Users className="w-4 h-4 text-emerald-600" />
+                                                Turnos por Usuario
+                                            </h4>
+                                            <div className="flex flex-wrap gap-2">
+                                                {(() => {
+                                                    const userCounts: Record<string, number> = {};
+                                                    dayReservations.forEach((r: any) => {
+                                                        const userName = r.user?.name || "Cliente / Sistema";
+                                                        userCounts[userName] = (userCounts[userName] || 0) + 1;
+                                                    });
+                                                    return Object.entries(userCounts)
+                                                        .sort((a, b) => b[1] - a[1])
+                                                        .map(([name, count]) => (
+                                                            <Badge key={name} variant="secondary" className="rounded-full px-3 py-1 text-xs">
+                                                                {name}: <span className="font-bold ml-1">{count}</span>
+                                                            </Badge>
+                                                        ));
+                                                })()}
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                                    )}
+
+                                    <div className="p-4">
+                                        {dayReservations.length === 0 ? (
+                                            <p className="text-sm text-center py-8 text-muted-foreground">No hay turnos registrados para esta fecha.</p>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {dayReservations.map((r: any) => (
+                                                    <div key={r.id} className={cn("flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border bg-card hover:bg-muted/50 transition-colors cursor-pointer", r.status === "cancelled" && "opacity-60 grayscale border-dashed")} onClick={() => setDetailReservation(r)}>
+                                                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
+                                                            <div className="flex items-center gap-2">
+                                                                <Badge className={`${statusConfig[r.status]?.class} rounded-full`}>{statusConfig[r.status]?.label}</Badge>
+                                                                <span className="text-sm font-bold">{format(new Date(r.startTime), "HH:mm")} - {format(new Date(r.endTime), "HH:mm")}</span>
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-bold text-sm">{r.customerName}</p>
+                                                                <p className="text-xs text-muted-foreground">{courts.find(c => c.id === r.courtId)?.name}</p>
+                                                                {r.discounts && r.discounts.length > 0 && (
+                                                                    <p className="text-[11px] text-red-500 font-medium mt-0.5 line-clamp-1" title={r.discounts.map((d: any) => `-$${d.amount} (${d.description})`).join(', ')}>
+                                                                        Descuento: {r.discounts.map((d: any) => d.description).join(', ')}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="mt-2 sm:mt-0 flex items-center gap-3">
+                                                            <Badge variant="outline" className="rounded-full text-[10px] shrink-0">
+                                                                {r.user?.name || "Cliente / Sistema"}
+                                                            </Badge>
+                                                            <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">${Number(r.paidAmount).toLocaleString("es-AR")} <span className="text-muted-foreground font-normal text-xs">/ ${Number(r.totalAmount).toLocaleString("es-AR")}</span></p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </div>
                 ) : null}
             </Card>

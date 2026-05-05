@@ -391,12 +391,39 @@ export async function deleteSale(saleId: string) {
     if (!sale) throw new Error("Venta no encontrada");
 
     await prisma.$transaction(async (tx) => {
+        // If the sale is linked to a reservation, revert paidAmount and status
+        if (sale.reservationId) {
+            const reservation = await tx.reservation.findFirst({
+                where: { id: sale.reservationId }
+            });
+            if (reservation) {
+                const saleTotal = Number(sale.total);
+                const currentPaid = Number(reservation.paidAmount);
+                const newPaid = Math.max(0, currentPaid - saleTotal);
+
+                // Determine new status: if was paid/finished and now has less paid, revert to confirmed
+                let newStatus = reservation.status;
+                if (reservation.status === "paid" || reservation.status === "finished") {
+                    newStatus = newPaid > 0 ? "confirmed" : "confirmed";
+                }
+
+                await tx.reservation.update({
+                    where: { id: sale.reservationId },
+                    data: {
+                        paidAmount: newPaid,
+                        status: newStatus,
+                    }
+                });
+            }
+        }
+
         await tx.saleItem.deleteMany({ where: { saleId } });
         await tx.sale.delete({ where: { id: saleId } });
     });
 
     revalidatePath("/dashboard/cash");
     revalidatePath("/dashboard");
+    revalidatePath("/dashboard/reservations");
     return { success: true };
 }
 
