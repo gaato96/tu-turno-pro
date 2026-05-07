@@ -2,10 +2,11 @@ import { getPOSData } from "./actions";
 import { POSTerminal } from "./pos-terminal";
 import { Suspense } from "react";
 
-export default async function POSPage({ searchParams }: { searchParams: { reservationId?: string } }) {
+export default async function POSPage({ searchParams }: { searchParams: Promise<{ reservationId?: string }> }) {
+    const params = await searchParams;
     let categories: any[] = [], products: any[] = [], activeReservations: any[] = [];
     try {
-        const data = await getPOSData(searchParams.reservationId);
+        const data = await getPOSData(params.reservationId);
         categories = data.categories;
         products = data.products;
         activeReservations = data.activeReservations;

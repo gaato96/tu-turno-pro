@@ -83,80 +83,87 @@ export async function processSale(data: {
     reservationId?: string;
     isStaffConsumption?: boolean;
 }) {
-    const session = await auth();
-    const tenantId = getTenantId(session);
+    try {
+        const session = await auth();
+        const tenantId = getTenantId(session);
 
-    const targetComplexId = await getActiveComplexOrRedirect();
-    if (!targetComplexId) throw new Error("No active complex");
+        const targetComplexId = await getActiveComplexOrRedirect();
+        if (!targetComplexId) throw new Error("No active complex");
 
-    const originalSubtotal = data.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
-    const subtotal = data.isStaffConsumption ? 0 : originalSubtotal;
-    const total = subtotal;
-    const isOnTab = !!data.reservationId;
+        const originalSubtotal = data.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+        const subtotal = data.isStaffConsumption ? 0 : originalSubtotal;
+        const total = subtotal;
+        const isOnTab = !!data.reservationId;
 
-    // Generate invoice number: V{YYYYMMDD}-{XXXX}
-    const now = new Date();
-    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
-    const todaySalesCount = await prisma.sale.count({
-        where: {
-            tenantId,
-            createdAt: { gte: new Date(now.toISOString().slice(0, 10) + "T00:00:00") }
-        }
-    });
-    const invoiceNumber = `V${dateStr}-${(todaySalesCount + 1).toString().padStart(4, "0")}`;
-
-    // Find active cash session
-    const cashSession = await prisma.cashSession.findFirst({
-        where: { tenantId, complexId: targetComplexId, status: "open" }
-    });
-
-    const sale = await prisma.sale.create({
-        data: {
-            tenantId,
-            reservationId: data.reservationId || null,
-            cashSessionId: cashSession?.id || null,
-            invoiceNumber,
-            subtotal,
-            total,
-            status: isOnTab ? "on_tab" : "completed",
-            paymentMethod: data.isStaffConsumption ? "staff" : (isOnTab ? null : data.paymentMethod),
-            paymentDetails: data.paymentDetails || null,
-            isStaffConsumption: data.isStaffConsumption || false,
-            items: {
-                create: data.items.map(i => ({
-                    productId: i.productId,
-                    quantity: i.quantity,
-                    unitPrice: i.unitPrice,
-                    subtotal: i.unitPrice * i.quantity,
-                }))
+        // Generate invoice number: V{YYYYMMDD}-{XXXX}
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
+        const todaySalesCount = await prisma.sale.count({
+            where: {
+                tenantId,
+                createdAt: { gte: new Date(now.toISOString().slice(0, 10) + "T00:00:00") }
             }
-        }
-    });
-
-    // Deduct stock
-    for (const item of data.items) {
-        await prisma.product.update({
-            where: { id: item.productId },
-            data: { stock: { decrement: item.quantity } }
         });
-    }
+        const invoiceNumber = `V${dateStr}-${(todaySalesCount + 1).toString().padStart(4, "0")}`;
 
-    // If on_tab, update reservation consumption
-    if (isOnTab && data.reservationId) {
-        const reservation = await prisma.reservation.findUnique({ where: { id: data.reservationId } });
-        if (reservation) {
-            const newConsumption = Number(reservation.consumptionAmount) + total;
-            await prisma.reservation.update({
-                where: { id: data.reservationId },
-                data: {
-                    consumptionAmount: newConsumption,
-                    totalAmount: Number(reservation.courtAmount) + newConsumption - Number(reservation.discount),
+        // Find active cash session
+        const cashSession = await prisma.cashSession.findFirst({
+            where: { tenantId, complexId: targetComplexId, status: "open" }
+        });
+
+        const sale = await prisma.sale.create({
+            data: {
+                tenantId,
+                reservationId: data.reservationId || null,
+                cashSessionId: cashSession?.id || null,
+                invoiceNumber,
+                subtotal,
+                total,
+                status: isOnTab ? "on_tab" : "completed",
+                paymentMethod: data.isStaffConsumption ? "staff" : (isOnTab ? null : data.paymentMethod),
+                paymentDetails: data.paymentDetails || null,
+                isStaffConsumption: data.isStaffConsumption || false,
+                items: {
+                    create: data.items.map(i => ({
+                        productId: i.productId,
+                        quantity: i.quantity,
+                        unitPrice: i.unitPrice,
+                        subtotal: i.unitPrice * i.quantity,
+                    }))
                 }
+            }
+        });
+
+        // Deduct stock
+        for (const item of data.items) {
+            await prisma.product.update({
+                where: { id: item.productId },
+                data: { stock: { decrement: item.quantity } }
             });
         }
-    }
 
-    revalidatePath("/dashboard/pos");
-    revalidatePath("/dashboard/reservations");
-    return { success: true, invoiceNumber };
+        // If on_tab, update reservation consumption
+        if (isOnTab && data.reservationId) {
+            const reservation = await prisma.reservation.findUnique({ where: { id: data.reservationId } });
+            if (reservation) {
+                const newConsumption = Number(reservation.consumptionAmount) + total;
+                await prisma.reservation.update({
+                    where: { id: data.reservationId },
+                    data: {
+                        consumptionAmount: newConsumption,
+                        totalAmount: Number(reservation.courtAmount) + newConsumption - Number(reservation.discount),
+                    }
+                });
+            } else {
+                console.error(`Reservation ${data.reservationId} not found in processSale stage 2`);
+            }
+        }
+
+        revalidatePath("/dashboard/pos");
+        revalidatePath("/dashboard/reservations");
+        return { success: true, invoiceNumber };
+    } catch (error: any) {
+        console.error("Error in processSale:", error);
+        throw new Error(error.message || "Error interno al procesar la venta");
+    }
 }
