@@ -391,26 +391,37 @@ export async function deleteSale(saleId: string) {
     if (!sale) throw new Error("Venta no encontrada");
 
     await prisma.$transaction(async (tx) => {
-        // If the sale is linked to a reservation, revert paidAmount and status
+        // If the sale is linked to a reservation, revert amounts and status
         if (sale.reservationId) {
             const reservation = await tx.reservation.findFirst({
                 where: { id: sale.reservationId }
             });
             if (reservation) {
                 const saleTotal = Number(sale.total);
+
+                // Revert paidAmount if the sale was a completed payment
                 const currentPaid = Number(reservation.paidAmount);
-                const newPaid = Math.max(0, currentPaid - saleTotal);
+                const newPaid = Math.max(0, currentPaid - (sale.status === "completed" ? saleTotal : 0));
+
+                // Revert consumptionAmount if the sale was on_tab (product added to the reservation)
+                const currentConsumption = Number(reservation.consumptionAmount);
+                const newConsumption = Math.max(0, currentConsumption - (sale.status === "on_tab" ? saleTotal : 0));
+
+                // Recalculate totalAmount
+                const newTotal = Number(reservation.courtAmount) + newConsumption - Number(reservation.discount);
 
                 // Determine new status: if was paid/finished and now has less paid, revert to confirmed
                 let newStatus = reservation.status;
                 if (reservation.status === "paid" || reservation.status === "finished") {
-                    newStatus = newPaid > 0 ? "confirmed" : "confirmed";
+                    newStatus = "confirmed";
                 }
 
                 await tx.reservation.update({
                     where: { id: sale.reservationId },
                     data: {
                         paidAmount: newPaid,
+                        consumptionAmount: newConsumption,
+                        totalAmount: newTotal,
                         status: newStatus,
                     }
                 });
