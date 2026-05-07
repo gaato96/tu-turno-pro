@@ -11,7 +11,7 @@ function getTenantId(session: any): string {
     return tid;
 }
 
-export async function getPOSData() {
+export async function getPOSData(requestedReservationId?: string) {
     const session = await auth();
     const tenantId = getTenantId(session);
 
@@ -39,8 +39,18 @@ export async function getPOSData() {
                 where: {
                     tenantId,
                     complexId: targetComplexId,
-                    date: { gte: startOfDay, lte: endOfDay },
-                    status: { in: ["confirmed", "in_game", "finished"] }
+                    OR: [
+                        {
+                            date: { gte: startOfDay, lte: endOfDay },
+                            status: { in: ["confirmed", "in_game", "finished"] }
+                        },
+                        {
+                            status: "in_game" // Always show reservations currently in game
+                        },
+                        {
+                            id: requestedReservationId || "none" // Specifically requested reservation
+                        }
+                    ]
                 },
                 include: { court: { select: { name: true } } },
                 orderBy: { startTime: "asc" }
