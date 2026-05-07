@@ -83,87 +83,115 @@ export async function processSale(data: {
     reservationId?: string;
     isStaffConsumption?: boolean;
 }) {
+    console.log("[POS_ACTION] Starting processSale", { reservationId: data.reservationId, itemCount: data.items.length });
+
     try {
         const session = await auth();
         const tenantId = getTenantId(session);
+        console.log("[POS_ACTION] Session validated", { tenantId });
 
         const targetComplexId = await getActiveComplexOrRedirect();
-        if (!targetComplexId) throw new Error("No active complex");
+        if (!targetComplexId) {
+            console.error("[POS_ACTION] No active complex found");
+            return { success: false, error: "No se ha seleccionado un complejo activo" };
+        }
+        console.log("[POS_ACTION] Complex validated", { targetComplexId });
 
         const originalSubtotal = data.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
         const subtotal = data.isStaffConsumption ? 0 : originalSubtotal;
         const total = subtotal;
         const isOnTab = !!data.reservationId;
 
-        // Generate invoice number: V{YYYYMMDD}-{XXXX}
+        // Generate invoice number: V{YYYYMMDDHHMMSS}-{XXXX}
+        // Using a more unique timestamp-based prefix to avoid collisions
         const now = new Date();
         const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
-        const todaySalesCount = await prisma.sale.count({
-            where: {
-                tenantId,
-                createdAt: { gte: new Date(now.toISOString().slice(0, 10) + "T00:00:00") }
-            }
-        });
-        const invoiceNumber = `V${dateStr}-${(todaySalesCount + 1).toString().padStart(4, "0")}`;
+        const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, "");
+        const invoiceNumber = `V${dateStr}-${timeStr}-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
+        console.log("[POS_ACTION] Generated invoice number", invoiceNumber);
 
         // Find active cash session
         const cashSession = await prisma.cashSession.findFirst({
             where: { tenantId, complexId: targetComplexId, status: "open" }
         });
+        console.log("[POS_ACTION] Cash session found", { cashSessionId: cashSession?.id });
 
-        const sale = await prisma.sale.create({
-            data: {
-                tenantId,
-                reservationId: data.reservationId || null,
-                cashSessionId: cashSession?.id || null,
-                invoiceNumber,
-                subtotal,
-                total,
-                status: isOnTab ? "on_tab" : "completed",
-                paymentMethod: data.isStaffConsumption ? "staff" : (isOnTab ? null : data.paymentMethod),
-                paymentDetails: data.paymentDetails || null,
-                isStaffConsumption: data.isStaffConsumption || false,
-                items: {
-                    create: data.items.map(i => ({
-                        productId: i.productId,
-                        quantity: i.quantity,
-                        unitPrice: i.unitPrice,
-                        subtotal: i.unitPrice * i.quantity,
-                    }))
+        // Create Sale in a transaction
+        const result = await prisma.$transaction(async (tx) => {
+            console.log("[POS_ACTION] Starting transaction");
+
+            const sale = await tx.sale.create({
+                data: {
+                    tenantId,
+                    reservationId: data.reservationId || null,
+                    cashSessionId: cashSession?.id || null,
+                    invoiceNumber,
+                    subtotal,
+                    total,
+                    status: isOnTab ? "on_tab" : "completed",
+                    paymentMethod: data.isStaffConsumption ? "staff" : (isOnTab ? null : data.paymentMethod),
+                    paymentDetails: data.paymentDetails || null,
+                    isStaffConsumption: data.isStaffConsumption || false,
+                    items: {
+                        create: data.items.map(i => ({
+                            productId: i.productId,
+                            quantity: i.quantity,
+                            unitPrice: i.unitPrice,
+                            subtotal: i.unitPrice * i.quantity,
+                        }))
+                    }
+                }
+            });
+            console.log("[POS_ACTION] Sale created", { saleId: sale.id });
+
+            // Deduct stock
+            for (const item of data.items) {
+                await tx.product.update({
+                    where: { id: item.productId },
+                    data: { stock: { decrement: item.quantity } }
+                });
+            }
+            console.log("[POS_ACTION] Stock deducted");
+
+            // If on_tab, update reservation consumption
+            if (isOnTab && data.reservationId) {
+                const reservation = await tx.reservation.findUnique({
+                    where: { id: data.reservationId },
+                    select: { id: true, consumptionAmount: true, courtAmount: true, discount: true }
+                });
+
+                if (reservation) {
+                    const currentConsumption = Number(reservation.consumptionAmount) || 0;
+                    const currentCourt = Number(reservation.courtAmount) || 0;
+                    const currentDiscount = Number(reservation.discount) || 0;
+
+                    const newConsumption = currentConsumption + total;
+                    const newTotal = currentCourt + newConsumption - currentDiscount;
+
+                    await tx.reservation.update({
+                        where: { id: data.reservationId },
+                        data: {
+                            consumptionAmount: newConsumption,
+                            totalAmount: newTotal,
+                        }
+                    });
+                    console.log("[POS_ACTION] Reservation updated", { newConsumption, newTotal });
+                } else {
+                    console.warn("[POS_ACTION] Reservation not found for tab update", data.reservationId);
                 }
             }
+
+            return { sale, invoiceNumber };
         });
 
-        // Deduct stock
-        for (const item of data.items) {
-            await prisma.product.update({
-                where: { id: item.productId },
-                data: { stock: { decrement: item.quantity } }
-            });
-        }
-
-        // If on_tab, update reservation consumption
-        if (isOnTab && data.reservationId) {
-            const reservation = await prisma.reservation.findUnique({ where: { id: data.reservationId } });
-            if (reservation) {
-                const newConsumption = Number(reservation.consumptionAmount) + total;
-                await prisma.reservation.update({
-                    where: { id: data.reservationId },
-                    data: {
-                        consumptionAmount: newConsumption,
-                        totalAmount: Number(reservation.courtAmount) + newConsumption - Number(reservation.discount),
-                    }
-                });
-            } else {
-                console.error(`Reservation ${data.reservationId} not found in processSale stage 2`);
-            }
-        }
+        console.log("[POS_ACTION] Transaction completed successfully");
 
         revalidatePath("/dashboard/pos");
         revalidatePath("/dashboard/reservations");
-        return { success: true, invoiceNumber };
+
+        return { success: true, invoiceNumber: result.invoiceNumber };
     } catch (error: any) {
-        console.error("Error in processSale:", error);
-        throw new Error(error.message || "Error interno al procesar la venta");
+        console.error("[POS_ACTION] CRITICAL ERROR:", error);
+        return { success: false, error: error.message || "Error desconocido al procesar la venta" };
     }
 }

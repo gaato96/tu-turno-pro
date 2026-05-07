@@ -81,12 +81,18 @@ export function POSTerminal({ categories, products, activeReservations }: any) {
                     reservationId: checkoutType === "tab" ? selectedReservationId : undefined,
                     isStaffConsumption,
                 });
-                toast.success(`Venta registrada: ${result.invoiceNumber}`);
-                setCart([]);
-                setCheckoutOpen(false);
-                router.refresh();
-            } catch {
-                toast.error("Error al procesar la venta");
+
+                if (result.success) {
+                    toast.success(`Venta registrada: ${result.invoiceNumber}`);
+                    setCart([]);
+                    setCheckoutOpen(false);
+                    router.refresh();
+                } else {
+                    toast.error(result.error || "Error al procesar la venta");
+                }
+            } catch (err: any) {
+                console.error("Cart error:", err);
+                toast.error("Ocurrió un error inesperado");
             }
         });
     };
