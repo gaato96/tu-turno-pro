@@ -4,6 +4,8 @@ import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createReservation, changeReservationStatus, payReservation, getAvailableSlots, addDiscount, removeDiscount, extendReservation, deleteReservation, addDeposit } from "./actions";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PaymentDialog } from "@/components/payment-dialog";
 import { Input } from "@/components/ui/input";
