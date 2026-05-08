@@ -1188,7 +1188,7 @@ export default function ReservationsClient({
                                                 onChange={(e) => setDepositAmountUI(e.target.value)}
                                                 className="text-xs h-8 rounded-lg flex-1"
                                             />
-                                            <Select value={depositMethod} onValueChange={setDepositMethod}>
+                                            <Select value={depositMethod} onValueChange={(v) => v && setDepositMethod(v)}>
                                                 <SelectTrigger className="h-8 text-xs rounded-lg w-28">
                                                     <SelectValue />
                                                 </SelectTrigger>
