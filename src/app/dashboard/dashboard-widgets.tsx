@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Timer, Play, Clock, AlertCircle, Square, DollarSign, Activity, MessageCircle, ShoppingCart, Check, X, Percent, Trash2 } from "lucide-react";
-import { changeReservationStatus, payReservation, deleteReservation, extendReservation, addDiscount, removeDiscount } from "./reservations/actions";
+import { changeReservationStatus, payReservation, deleteReservation, extendReservation, addDiscount, removeDiscount, addDeposit } from "./reservations/actions";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -29,6 +29,10 @@ export function DashboardReservationModal({ reservation, onClose, userRole }: { 
     // Discount form state
     const [discountDesc, setDiscountDesc] = useState("");
     const [discountAmount, setDiscountAmount] = useState("");
+
+    // Deposit form state
+    const [depositAmountUI, setDepositAmountUI] = useState("");
+    const [depositMethod, setDepositMethod] = useState("cash");
 
     if (!reservation) return null;
 
@@ -93,6 +97,23 @@ export function DashboardReservationModal({ reservation, onClose, userRole }: { 
                 router.refresh();
             } catch (error: any) {
                 toast.error(error.message || "Error al agregar descuento");
+            }
+        });
+    };
+
+    const handleAddDeposit = () => {
+        if (!depositAmountUI || Number(depositAmountUI) <= 0) {
+            toast.error("Ingresá un monto válido para la seña");
+            return;
+        }
+        startTransition(async () => {
+            try {
+                await addDeposit(reservation.id, Number(depositAmountUI), depositMethod);
+                toast.success("Seña agregada");
+                setDepositAmountUI("");
+                router.refresh();
+            } catch (error: any) {
+                toast.error(error.message || "Error al agregar seña");
             }
         });
     };
@@ -225,6 +246,70 @@ export function DashboardReservationModal({ reservation, onClose, userRole }: { 
                                             <span className="font-semibold text-red-600 dark:text-red-400">-${Number(d.amount).toLocaleString("es-AR")}</span>
                                         </div>
                                     ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Seña / Abono Section */}
+                        {reservation.status !== "cancelled" && reservation.status !== "paid" && (
+                            <div className="space-y-2 px-2 pt-2">
+                                <h4 className="text-sm font-bold flex items-center gap-2">
+                                    <DollarSign className="w-4 h-4" /> Seña / Abono
+                                </h4>
+
+                                {Number(reservation.depositAmount) > 0 && (
+                                    <div className="bg-emerald-50/50 dark:bg-emerald-500/5 rounded-xl p-3 space-y-2 border border-emerald-200/50 dark:border-emerald-500/20">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-muted-foreground">Total abonado anticipado</span>
+                                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                                ${Number(reservation.depositAmount).toLocaleString("es-AR")}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex gap-2">
+                                    <input
+                                        type="number"
+                                        placeholder="$ Monto"
+                                        value={depositAmountUI}
+                                        onChange={(e) => setDepositAmountUI(e.target.value)}
+                                        className="flex h-8 w-full rounded-lg border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                    />
+                                    <select
+                                        value={depositMethod}
+                                        onChange={(e) => setDepositMethod(e.target.value)}
+                                        className="flex h-8 w-28 rounded-lg border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <option value="cash">Efectivo</option>
+                                        <option value="transfer">Transf.</option>
+                                        <option value="card">Tarjeta</option>
+                                    </select>
+                                    <Button
+                                        size="sm"
+                                        className="h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+                                        onClick={handleAddDeposit}
+                                        disabled={isPending || !depositAmountUI}
+                                    >
+                                        Abonar
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Show existing seña for paid/cancelled (read-only) */}
+                        {(reservation.status === "paid" || reservation.status === "cancelled") && Number(reservation.depositAmount) > 0 && (
+                            <div className="space-y-2 px-2 pt-2">
+                                <h4 className="text-sm font-bold flex items-center gap-2">
+                                    <DollarSign className="w-4 h-4" /> Seña / Abono
+                                </h4>
+                                <div className="bg-emerald-50/50 dark:bg-emerald-500/5 rounded-xl p-3 space-y-2 border border-emerald-200/50 dark:border-emerald-500/20">
+                                    <div className="flex justify-between text-xs">
+                                        <span className="text-muted-foreground">Total abonado anticipado</span>
+                                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                            ${Number(reservation.depositAmount).toLocaleString("es-AR")}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         )}

@@ -816,3 +816,96 @@ export async function removeDiscount(discountId: string) {
     revalidatePath("/dashboard");
     return { success: true };
 }
+
+// ── Add Deposit (Seña) ──
+
+export async function addDeposit(reservationId: string, amount: number, paymentMethod: string) {
+    const session = await auth();
+    const tenantId = getTenantId(session);
+
+    if (amount <= 0) throw new Error("El monto de la seña debe ser mayor a 0");
+
+    const reservation = await prisma.reservation.findFirst({
+        where: { id: reservationId, tenantId }
+    });
+    if (!reservation) throw new Error("Reserva no encontrada");
+
+    const totalAmount = Number(reservation.totalAmount);
+    const previouslyPaid = Number(reservation.paidAmount || 0);
+    const pendingBalance = totalAmount - previouslyPaid;
+
+    if (amount > pendingBalance) {
+        throw new Error("La seña no puede ser mayor al saldo pendiente.");
+    }
+
+    const cashSession = await prisma.cashSession.findFirst({
+        where: { tenantId, status: "open" }
+    });
+
+    await prisma.$transaction(async (tx) => {
+        await tx.payment.create({
+            data: {
+                tenantId,
+                reservationId: reservation.id,
+                customerId: reservation.customerId || null,
+                cashSessionId: cashSession?.id,
+                amount,
+                paymentMethod,
+                concept: "seña",
+            }
+        });
+
+        const newPaidAmount = previouslyPaid + amount;
+        const newDepositAmount = Number(reservation.depositAmount || 0) + amount;
+
+        let status = reservation.status;
+        if (newPaidAmount >= totalAmount) {
+            status = "paid";
+        }
+
+        await tx.reservation.update({
+            where: { id: reservationId },
+            data: {
+                status,
+                paidAmount: newPaidAmount,
+                depositAmount: newDepositAmount,
+                paymentMethod: status === "paid" ? paymentMethod : undefined,
+            }
+        });
+
+        if (status === "paid") {
+            await tx.sale.updateMany({
+                where: { reservationId, status: "on_tab" },
+                data: { status: "paid_with_reservation" }
+            });
+        }
+
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
+        const todaySalesCount = await tx.sale.count({
+            where: {
+                tenantId,
+                createdAt: { gte: new Date(now.toISOString().slice(0, 10) + "T00:00:00") }
+            }
+        });
+        const invoiceNumber = `S${dateStr}-${(todaySalesCount + 1).toString().padStart(4, "0")}`;
+
+        await tx.sale.create({
+            data: {
+                tenantId,
+                reservationId: reservation.id,
+                cashSessionId: cashSession?.id || null,
+                invoiceNumber,
+                subtotal: amount,
+                total: amount,
+                status: "completed",
+                paymentMethod,
+            }
+        });
+    });
+
+    revalidatePath("/dashboard/reservations");
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/cash");
+    return { success: true };
+}
