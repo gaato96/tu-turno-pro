@@ -29,14 +29,8 @@ export async function registerEventPayment(eventId: string, amount: number, meth
         status: isFullyPaid ? "confirmed" : "pending",
     };
 
-    // Si es mixto, el detalle viene en method/notes o similar (en este caso lo pasamos como string en notes)
-    // Pero mejor: si method es 'mixed', decodificamos el JSON de las notas.
-    if (method === "mixed" && notes) {
-        try {
-            const details = JSON.parse(notes);
-            updateData.paymentDetails = details;
-        } catch (e) { }
-    }
+    // Payment details for mixed payments are stored in the Payment and Sale records,
+    // NOT on the Event itself (Event model doesn't have paymentDetails field).
 
     const cashSession = await prisma.cashSession.findFirst({
         where: { tenantId, complexId: event.complexId, status: "open" }
